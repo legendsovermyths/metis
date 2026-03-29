@@ -8,7 +8,7 @@ use crate::error::Result;
 static DB_INSTANCE: OnceLock<Db> = OnceLock::new();
 
 fn get_database() -> &'static Db {
-    DB_INSTANCE.get_or_init(|| Db::open("./data/metis.db").unwrap())
+    DB_INSTANCE.get_or_init(|| Db::open("../data/metis.db").unwrap())
 }
 pub struct Db {
     pub conn: Mutex<Connection>,

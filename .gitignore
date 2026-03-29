@@ -27,5 +27,5 @@ service/target/
 service/gen/schemas/
 
 # App data (database, uploaded books)
-service/data/
-service/books/
+data/
+books/

@@ -75,7 +75,7 @@ pub async fn generate_artifacts(chapter_title: &str) -> Result<String> {
     let (book_path, book_title) = find_book_for_chapter(chapter_title)?;
     let sanitized_book = sanitize_name(&book_title);
     let sanitized_chapter = sanitize_name(chapter_title);
-    let chapter_dir = format!("books/{}/chapters/{}", sanitized_book, sanitized_chapter);
+    let chapter_dir = format!("../books/{}/chapters/{}", sanitized_book, sanitized_chapter);
     fs::create_dir_all(&chapter_dir).map_err(|e| MetisError::UtilsError(e.to_string()))?;
 
     let chapter_pdf = format!("{}/chapter.pdf", chapter_dir);

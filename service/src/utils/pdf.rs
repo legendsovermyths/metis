@@ -14,8 +14,8 @@ pub fn copy_pdf(src: &str) -> Result<String> {
         .to_str()
         .ok_or(MetisError::UtilsError("File name not supported".to_string()))?;
 
-    fs::create_dir_all("books").map_err(|e| MetisError::UtilsError(e.to_string()))?;
-    let dest = format!("books/{}", file_name);
+    fs::create_dir_all("../books").map_err(|e| MetisError::UtilsError(e.to_string()))?;
+    let dest = format!("../books/{}", file_name);
     fs::copy(src, &dest).map_err(|e| MetisError::UtilsError(e.to_string()))?;
 
     Ok(dest)
