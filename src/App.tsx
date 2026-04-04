@@ -1,40 +1,70 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Index from "./pages/Index";
-import Library from "./pages/Library";
-import About from "./pages/About";
-import Courses from "./pages/Courses";
-import Welcome from "./pages/Welcome";
-import CourseOutline from "./pages/CourseOutline";
+
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppContextProvider } from "@/context/AppContext";
+import { useAppContext } from "@/context/AppContext";
+import { BookUploadProvider } from "@/context/UploadContext";
+import { AppNav } from "@/components/AppNav";
+import HomePage from "./pages/HomePage";
+import ChatPage from "./pages/ChatPage";
+import LibraryPage from "./pages/LibraryPage";
+import JourneysPage from "./pages/JourneysPage";
+import JourneyDetailPage from "./pages/JourneyDetailPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+function AppLayout() {
+  const location = useLocation();
+  const { context, loading } = useAppContext();
+  const isChatPage = location.pathname === "/chat";
+  const onboarded = !!context?.onboarded;
+  const showNav = onboarded && !isChatPage;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-4xl font-serif tracking-tighter text-foreground animate-pulse">Metis</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      {showNav && <AppNav />}
+      <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/learn" element={<Index key="learn" />} />
-          <Route path="/library" element={<Library />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/course-outline" element={<CourseOutline />} />
-          <Route path="/profiling" element={<Index key="profiling" mode="profiling" />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/library" element={<LibraryPage />} />
+          <Route path="/journeys" element={<JourneysPage />} />
+          <Route path="/journeys/:id" element={<JourneyDetailPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </main>
+    </div>
+  );
+}
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContextProvider>
+        <BookUploadProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        </TooltipProvider>
+        </BookUploadProvider>
+      </AppContextProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

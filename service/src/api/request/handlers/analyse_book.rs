@@ -31,7 +31,7 @@ struct AnalyseBookResponse {
     table_of_content: Vec<Chapter>,
 }
 
-pub fn analyse_book_handler(payload: AnalyseBookPayload) -> Result<Value> {
+pub fn analyse_book_handler(payload: AnalyseBookPayload, context: Arc<Mutex<AppContext>>) -> Result<Value> {
     runtime().block_on(async move {
         let book_path = copy_pdf(&payload.path)?;
         let upload_path = truncated_copy(&book_path)?;

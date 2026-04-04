@@ -33,5 +33,7 @@ pub enum MetisError{
     #[error("Invaid Request: the request type doesn't exist")]
     InvalidRequest,
     #[error("Request type not found")]
-    RequestTypeMissing
+    RequestTypeMissing,
+    #[error("Metis error: {0}")]
+    MetisError(String)
 }

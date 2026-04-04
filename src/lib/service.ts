@@ -1,8 +1,72 @@
 import { invoke } from "@tauri-apps/api/core";
 
+// -- AppContext types (mirrors Rust AppContext) --
+
+export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching";
+
+export interface ChatState {
+  phase: MetisPhase;
+  notes: string | null;
+  is_done: boolean;
+}
+
+export interface AppContext {
+  chapter_title: string;
+  /** Full generate-course output; list/detail UIs use `getAllJourneys` / `getJourney` (DB rows). */
+  journey_artifacts: JourneyArtifacts | null;
+  chapter_content_dir: string | null;
+  onboarded: boolean;
+  chat_state: ChatState;
+}
+
+export interface Journey {
+  journey_title: string;
+  arcs: JourneyArc[];
+}
+
+export interface JourneyArtifacts {
+  id: number | null;
+  chapter_title: string;
+  chapter_dir: string;
+  journey: Journey;
+  advisor_notes: string;
+}
+
+export interface JourneyArc {
+  arc_title: string;
+  topics: ArcTopic[];
+}
+
+export interface ArcTopic {
+  name: string;
+  mode: "reinvent" | "discover" | "derive" | "connect" | "introduce";
+}
+
+/** Row from `journeys` table (API). */
+export interface JourneyRow {
+  id: number;
+  chapter_title: string;
+  chapter_dir: string;
+  journey: Journey;
+  created_at: number;
+  advisor_notes: string;
+}
+
+// -- Global context setter (registered by AppContextProvider) --
+
+type ContextSetter = ((ctx: AppContext) => void) | null;
+let _contextSetter: ContextSetter = null;
+
+export function registerContextSetter(setter: ContextSetter) {
+  _contextSetter = setter;
+}
+
+// -- Service layer --
+
 interface ServiceResponse {
   response: unknown | null;
   status: "Success" | { Error: string };
+  context: AppContext | null;
 }
 
 interface ServiceRequest {
@@ -13,6 +77,10 @@ interface ServiceRequest {
 
 async function callService(request: ServiceRequest): Promise<unknown> {
   const raw = await invoke<ServiceResponse>("handle_request", { request });
+
+  if (raw.context && _contextSetter) {
+    _contextSetter(raw.context);
+  }
 
   if (raw.status !== "Success") {
     const errMsg =
@@ -25,26 +93,92 @@ async function callService(request: ServiceRequest): Promise<unknown> {
   return raw.response;
 }
 
-export interface Book {
+// -- Book types --
+
+export interface BackendChapter {
+  title: string;
+  topics: { title: string }[];
+}
+
+export interface BackendBook {
   id: number;
   title: string;
-  table_of_content: Chapter[];
+  table_of_content: BackendChapter[];
 }
 
-export interface Chapter {
-  title: string;
-  topics: Topic[];
+// -- API functions --
+
+export async function analyseBook(path: string): Promise<BackendBook> {
+  const data = await callService({
+    api_type: "Service",
+    request_type: "AnalyseBook",
+    params: { path },
+  });
+  return data as BackendBook;
 }
 
-export interface Topic {
-  title: string;
-}
-
-export async function getAllBooks(): Promise<Book[]> {
+export async function getAllBooks(): Promise<BackendBook[]> {
   const data = await callService({
     api_type: "Service",
     request_type: "GetAllBooks",
     params: null,
   });
-  return data as Book[];
+  return data as BackendBook[];
+}
+
+export async function getAllJourneys(): Promise<JourneyRow[]> {
+  const data = await callService({
+    api_type: "Service",
+    request_type: "GetAllJourneys",
+    params: null,
+  });
+  return data as JourneyRow[];
+}
+
+export async function getJourney(id: number): Promise<JourneyRow> {
+  const data = await callService({
+    api_type: "Service",
+    request_type: "GetJourney",
+    params: { id },
+  });
+  return data as JourneyRow;
+}
+
+/** Runs course generation, inserts DB row, returns artifacts; context is updated from the response. */
+export async function generateCourse(chapterTitle?: string): Promise<JourneyArtifacts> {
+  const data = await callService({
+    api_type: "Service",
+    request_type: "GenerateCourse",
+    params: chapterTitle?.trim() ? { chapter_title: chapterTitle.trim() } : {},
+  });
+  return data as JourneyArtifacts;
+}
+
+export async function getContext(): Promise<AppContext> {
+  const data = await callService({
+    api_type: "Service",
+    request_type: "GetContext",
+    params: null,
+  });
+  return data as AppContext;
+}
+
+export async function setContext(context: AppContext): Promise<void> {
+  await callService({
+    api_type: "Service",
+    request_type: "SetContext",
+    params: { context },
+  });
+}
+
+export interface AgentResponse {
+  message: string;
+}
+
+export async function sendMessage(message: string): Promise<AgentResponse> {
+  const data = await callService({
+    api_type: "UserMessage",
+    params: { message },
+  });
+  return data as AgentResponse;
 }

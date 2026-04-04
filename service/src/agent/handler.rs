@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    agent::{advisor::Advisor, onboarder::Onboarder, Agent},
+    agent::{advisor::Advisor, onboarder::Onboarder, Agent, AgentResponse},
     app::{state::MetisPhase, AppContext},
     error::Result,
 };
@@ -29,7 +29,7 @@ impl AgentHandler {
         }
     }
     fn ensure_agent(&mut self) {
-        let active_phase = self.context.lock().unwrap().active_phase;
+        let active_phase = self.context.lock().unwrap().chat_state.phase;
         if !self.agents.contains_key(&active_phase) {
             let agent = self.create_agent(active_phase);
             self.agents.insert(active_phase, agent);
@@ -40,6 +40,7 @@ impl AgentHandler {
         match phase {
             MetisPhase::Onboarding => Box::new(Onboarder::new(Arc::clone(&self.context))),
             MetisPhase::Advising => Box::new(Advisor::new(Arc::clone(&self.context))),
+            MetisPhase::Idle => Box::new(Advisor::new(Arc::clone(&self.context))),
             MetisPhase::Teaching => todo!("Teaching agent not implemented yet"),
         }
     }
@@ -47,11 +48,11 @@ impl AgentHandler {
     fn get_agent(&mut self) -> &mut Box<dyn Agent> {
         self.ensure_agent();
         self.agents
-            .get_mut(&self.context.lock().unwrap().active_phase)
+            .get_mut(&self.context.lock().unwrap().chat_state.phase)
             .unwrap()
     }
 
-    pub fn generate(&mut self, message: Option<String>)->Result<String> {
+    pub fn generate(&mut self, message: Option<String>)->Result<AgentResponse> {
         let agent = self.get_agent();
         let response = agent.generate(message);
         response

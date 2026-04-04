@@ -1,10 +1,13 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::app::AppContext;
+
 #[derive(Serialize)]
 pub struct Response {
     response: Option<Value>,
     status: Status,
+    pub context: Option<AppContext>,
 }
 
 #[derive(Serialize)]
@@ -18,12 +21,14 @@ impl Response {
         Response {
             response: Some(value),
             status: Status::Success,
+            context: None,
         }
     }
     pub fn err(value: String) -> Self {
         Response {
             response: None,
             status: Status::Error(value),
+            context: None,
         }
     }
 }

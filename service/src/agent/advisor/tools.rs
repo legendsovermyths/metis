@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Value, json};
 
 use crate::{
-    app::{AppContext, book::Book, state::MetisPhase},
-    db::repo::books::BooksRepo,
+    app::{book::Book, state::MetisPhase, AppContext},
+    db::repo::{appdata::AppDataRepo, books::BooksRepo},
     error::Result,
     llm_client::tool::{Parameter, Tool},
 };
@@ -12,8 +12,8 @@ use crate::{
 pub struct GetStudentProfileTool;
 
 impl Tool for GetStudentProfileTool {
-    fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let profile = context.lock().unwrap().user_profile.clone();
+    fn execute(&self, _value: Value, _context: Arc<Mutex<AppContext>>) -> Result<Value> {
+        let profile = AppDataRepo::get("user_profile")?;
         if profile.is_none() {
             return Ok(json!({ "profile": "No student profile available yet." }));
         }
@@ -143,7 +143,7 @@ impl Tool for SetNotesTool {
             .ok_or_else(|| {
                 crate::error::MetisError::ToolError("missing required parameter: notes".into())
             })?;
-        context.lock().unwrap().advisor_notes = Some(notes.to_string());
+        context.lock().unwrap().chat_state.notes = Some(notes.to_string());
 
         Ok(json!({ "status": "ok" }))
     }
@@ -169,7 +169,7 @@ pub struct GetNotesTool;
 
 impl Tool for GetNotesTool {
     fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let notes = context.lock().unwrap().advisor_notes.clone();
+        let notes = context.lock().unwrap().chat_state.notes.clone();
         if notes.is_none() {
             return Ok(json!({ "notes": "No notes yet." }));
         }
@@ -194,13 +194,13 @@ pub struct SetDoneTool;
 impl Tool for SetDoneTool {
     fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
         let mut ctx = context.lock().unwrap();
-        if ctx.advisor_notes.is_none() {
+        if ctx.chat_state.notes.is_none() {
             return Ok(json!({ "status": "error", "message": "Cannot finish without notes. Call set_notes first." }));
         }
         if ctx.chapter_title.is_empty() {
             return Ok(json!({ "status": "error", "message": "Cannot finish without a chapter selected. Call set_chapter first." }));
         }
-        ctx.active_phase = MetisPhase::Teaching;
+        ctx.chat_state.is_done = true;
         Ok(json!({ "status": "done", "message": "Advising complete. Ready for the professor." }))
     }
 

@@ -3,9 +3,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Value, json};
 
 use crate::{
-    app::{AppContext, state::MetisPhase},
-    error::Result,
-    llm_client::tool::{Parameter, Parameters, Tool},
+    app::AppContext, db::repo::appdata::{self, AppDataRepo}, error::Result, llm_client::tool::{Parameter, Parameters, Tool}
 };
 
 pub struct SetNotesTool;
@@ -15,7 +13,8 @@ impl Tool for SetNotesTool {
         let notes = value.get("notes").and_then(|v| v.as_str()).ok_or_else(|| {
             crate::error::MetisError::ToolError("missing required parameter: notes".into())
         })?;
-        context.lock().unwrap().user_profile = Some(notes.to_string());
+        context.lock().unwrap().chat_state.notes = Some(notes.to_string());
+        appdata::AppDataRepo::set("user_profile", &notes)?; 
 
         Ok(json!({ "status": "ok" }))
     }
@@ -41,7 +40,7 @@ pub struct GetNotesTool;
 
 impl Tool for GetNotesTool {
     fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let notes = context.lock().unwrap().user_profile.clone();
+        let notes = context.lock().unwrap().chat_state.notes.clone();
         if notes.is_none() {
             return Ok(json!({ "notes": "No notes yet." }));
         }
@@ -66,12 +65,15 @@ pub struct SetDoneTool;
 impl Tool for SetDoneTool {
     fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
         let mut ctx = context.lock().unwrap();
-        if ctx.user_profile.is_none() {
+        if ctx.chat_state.notes.is_none() {
             return Ok(
                 json!({ "status": "error", "message": "Cannot finish without notes. Call set_notes first." }),
             );
         }
-        ctx.active_phase = MetisPhase::Advising;
+        let user_profile = ctx.chat_state.notes.clone().unwrap();
+        AppDataRepo::set("user_profile", &user_profile)?; 
+        ctx.onboarded = true;
+        ctx.chat_state.is_done = true;
         Ok(json!({ "status": "done", "message": "Onboarding complete." }))
     }
 

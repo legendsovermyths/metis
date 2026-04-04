@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use crate::{
     agent::{
         onboarder::tools::{GetNotesTool, SetDoneTool, SetNotesTool},
-        Agent,
+        Agent, AgentResponse,
     },
     api::request::handler::runtime,
     app::AppContext,
@@ -47,11 +47,11 @@ impl Onboarder {
 }
 
 impl Agent for Onboarder {
-    fn generate(&mut self, message: Option<String>) -> Result<String> {
+    fn generate(&mut self, message: Option<String>) -> Result<AgentResponse> {
         runtime().block_on(async {
             if let Some(message) = message {
                 let response = self.client.lock().await.generate(message).await?.text();
-                return Ok(response);
+                return Ok(AgentResponse::with(response));
             }
             return Err(crate::error::MetisError::AgentError(
                 "Message is required for onboarding agent".to_string(),
