@@ -189,6 +189,48 @@ impl Tool for GetNotesTool {
     }
 }
 
+pub struct SetBookTool;
+
+impl Tool for SetBookTool {
+    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
+        let id = value
+            .get("book_id")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| {
+                crate::error::MetisError::ToolError(
+                    "missing required parameter: book_id".into(),
+                )
+            })?;
+
+        match BooksRepo::get(id)? {
+            Some(row) => {
+                context.lock().unwrap().selected_book_id = Some(id);
+                Ok(json!({
+                    "status": "ok",
+                    "message": format!("Book \"{}\" selected.", row.title),
+                }))
+            }
+            None => Ok(json!({ "status": "error", "message": format!("No book found with id {}", id) })),
+        }
+    }
+
+    fn name(&self) -> &str {
+        "set_book"
+    }
+
+    fn parameters(&self) -> Vec<Parameter> {
+        vec![Parameter {
+            name: "book_id".to_string(),
+            parameter_type: "integer".to_string(),
+            description: "The ID of the book the student is studying from.".to_string(),
+        }]
+    }
+
+    fn description(&self) -> &str {
+        "Set the specific book to use for course generation. Call this whenever a chapter is selected so the correct book is used, especially when multiple books share the same chapter title."
+    }
+}
+
 pub struct SetDoneTool;
 
 impl Tool for SetDoneTool {
@@ -200,7 +242,10 @@ impl Tool for SetDoneTool {
         if ctx.chapter_title.is_empty() {
             return Ok(json!({ "status": "error", "message": "Cannot finish without a chapter selected. Call set_chapter first." }));
         }
-        ctx.chat_state.is_done = true;
+        if ctx.selected_book_id.is_none() {
+            return Ok(json!({ "status": "error", "message": "Cannot finish without a book selected. Call set_book first." }));
+        }
+        ctx.chat_state.set_done();
         Ok(json!({ "status": "done", "message": "Advising complete. Ready for the professor." }))
     }
 

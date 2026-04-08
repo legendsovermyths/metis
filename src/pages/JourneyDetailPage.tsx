@@ -1,8 +1,9 @@
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Circle, ChevronDown, Loader2 } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Circle, Loader2, Play } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { getJourney, type JourneyRow } from "@/lib/service";
+import { Button } from "@/components/ui/button";
+import { getJourney, teachingInit, type JourneyRow } from "@/lib/service";
 
 const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
 
@@ -12,10 +13,12 @@ function journeyGlyph(id: number): string {
 
 export default function JourneyDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const numericId = id !== undefined ? Number(id) : NaN;
   const [row, setRow] = useState<JourneyRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   const arcKeys = useMemo(() => {
     if (!row) return [];
@@ -67,7 +70,11 @@ export default function JourneyDetailPage() {
   const title = row.journey.journey_title || row.chapter_title || "Untitled journey";
   const description = row.chapter_title ? `Chapter · ${row.chapter_title}` : "Your learning path";
   const totalTopics = row.journey.arcs.reduce((n, a) => n + a.topics.length, 0);
-  const progressPct = 0;
+
+  const progress = row.progress;
+  const completedTopics = progress.arcs.reduce((n, a) => n + a.topic_idx, 0);
+  const progressPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+  const allDone = progress.is_journey_complete;
 
   const toggleArc = (arcKey: string) => {
     setExpandedArcs((prev) => {
@@ -76,6 +83,18 @@ export default function JourneyDetailPage() {
       else next.add(arcKey);
       return next;
     });
+  };
+
+  const handleContinue = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      await teachingInit(numericId);
+      navigate("/teach");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStarting(false);
+    }
   };
 
   return (
@@ -121,8 +140,10 @@ export default function JourneyDetailPage() {
           <div className="space-y-3">
             {row.journey.arcs.map((arc, i) => {
               const arcKey = `arc-${i}`;
-              const completed = 0;
+              const ap = progress.arcs[i];
+              const completed = ap?.topic_idx ?? 0;
               const total = arc.topics.length;
+              const isDone = ap?.completed ?? false;
               const isExpanded = expandedArcs.has(arcKey);
 
               return (
@@ -142,6 +163,7 @@ export default function JourneyDetailPage() {
                         <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
                           {completed}/{total}
                         </span>
+                        {isDone && <Check className="h-3.5 w-3.5 text-green-500" />}
                       </div>
                     </div>
                     <ChevronDown
@@ -153,24 +175,69 @@ export default function JourneyDetailPage() {
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-border px-5 py-3">
-                      {arc.topics.map((topic, ti) => (
-                        <div
-                          key={`${arcKey}-t-${ti}`}
-                          className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-hover"
-                        >
-                          <Circle className="h-5 w-5 shrink-0 text-border" strokeWidth={1.5} />
-                          <span className="text-sm text-foreground">{topic.name}</span>
-                          <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {topic.mode}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="border-t border-border">
+                      <div className="px-5 py-3">
+                        {arc.topics.map((topic, ti) => {
+                          const topicDone = ti < completed;
+                          return (
+                            <div
+                              key={`${arcKey}-t-${ti}`}
+                              className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-hover"
+                            >
+                              {topicDone ? (
+                                <Check className="h-5 w-5 shrink-0 text-green-500" strokeWidth={1.5} />
+                              ) : (
+                                <Circle className="h-5 w-5 shrink-0 text-border" strokeWidth={1.5} />
+                              )}
+                              <span className={cn("text-sm", topicDone ? "text-muted-foreground" : "text-foreground")}>
+                                {topic.name}
+                              </span>
+                              <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {topic.mode}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Single Continue / Start button at the bottom */}
+        {row.journey.arcs.length > 0 && (
+          <div className="mt-8 flex justify-center animate-fade-in">
+            <Button
+              onClick={handleContinue}
+              disabled={starting || allDone}
+              className="rounded-xl px-8 shadow-soft"
+              size="lg"
+            >
+              {starting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Starting...
+                </>
+              ) : allDone ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Completed
+                </>
+              ) : completedTopics > 0 ? (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Continue
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Start
+                </>
+              )}
+            </Button>
           </div>
         )}
 

@@ -158,6 +158,12 @@ Set `topic_complete` to `true` when this chunk finishes the current topic. The n
 
 {arc}
 
+## Reference Material
+
+The following is the relevant textbook content for the current topic. Use this as a factual reference to ensure accuracy, but teach in your own voice — do not copy or paraphrase the textbook directly.
+
+{reference_material}
+
 ## Dialogue So Far
 
 {dialogue_so_far}

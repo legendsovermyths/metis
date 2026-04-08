@@ -8,9 +8,10 @@ use crate::api::request::handler::ServiceHandler;
 use crate::api::request::Request;
 use crate::api::ApiType;
 use crate::app::journey::JourneyArtifacts;
-use crate::app::state::MetisPhase;
+use crate::app::state::{MetisPhase, TeachingState};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
+use crate::logs::EventHistory;
 pub mod book;
 pub mod journey;
 pub mod state;
@@ -46,21 +47,31 @@ pub struct ChatState {
     pub phase: MetisPhase,
     pub notes: Option<String>,
     pub is_done: bool,
+    pub event_history: EventHistory,
 }
 
-impl ChatState{
-    pub fn with(phase: MetisPhase)->Self{
-        ChatState { phase, notes: None, is_done: false }
+impl ChatState {
+    pub fn with(phase: MetisPhase) -> Self {
+        ChatState {
+            phase,
+            notes: None,
+            is_done: false,
+            event_history: EventHistory::new(),
+        }
+    }
+    pub fn set_done(&mut self){
+        self.is_done = true;
     }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AppContext {
     pub chapter_title: String,
-    pub journey_artifacts: Option<JourneyArtifacts>,
+    pub selected_book_id: Option<i64>,
     pub chapter_content_dir: Option<String>,
     pub onboarded: bool,
-    pub chat_state: ChatState
+    pub chat_state: ChatState,
+    pub teaching_state: Option<TeachingState>,
 }
 
 impl AppContext {
@@ -71,11 +82,17 @@ impl AppContext {
             false
         };
         Ok(Self {
-            chat_state: ChatState { phase: MetisPhase::Idle, notes: Some(String::new()), is_done: false },
+            chat_state: ChatState {
+                phase: MetisPhase::Idle,
+                notes: Some(String::new()),
+                is_done: false,
+                event_history: EventHistory::new()
+            },
             chapter_title: String::new(),
-            journey_artifacts: None,
+            selected_book_id: None,
             chapter_content_dir: None,
             onboarded,
+            teaching_state: None,
         })
     }
 }

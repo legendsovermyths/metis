@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    agent::{advisor::Advisor, onboarder::Onboarder, Agent, AgentResponse},
+    agent::{advisor::Advisor, narrator::Narrator, onboarder::Onboarder, Agent, AgentResponse},
     app::{state::MetisPhase, AppContext},
     error::Result,
 };
@@ -41,7 +41,7 @@ impl AgentHandler {
             MetisPhase::Onboarding => Box::new(Onboarder::new(Arc::clone(&self.context))),
             MetisPhase::Advising => Box::new(Advisor::new(Arc::clone(&self.context))),
             MetisPhase::Idle => Box::new(Advisor::new(Arc::clone(&self.context))),
-            MetisPhase::Teaching => todo!("Teaching agent not implemented yet"),
+            MetisPhase::Teaching => Box::new(Narrator::new(Arc::clone(&self.context))),
         }
     }
 
@@ -61,6 +61,7 @@ impl AgentHandler {
     pub fn handle(&mut self, params: Value) -> Result<Value> {
         let params: AgentRequestParams = serde_json::from_value(params)?;
         let response = self.generate(params.message)?;
+        self.context.lock().unwrap().chat_state.event_history = self.get_agent().get_event_history();
         Ok(serde_json::to_value(response)?)
 
     }

@@ -15,9 +15,9 @@ pub enum ClientType {
 }
 
 impl<'a> LLMClientFactory {
-    pub fn get_client(client_type: ClientType) -> Rc<RefCell<dyn LLMClient>> {
+    pub fn get_client(client_type: ClientType) -> Arc<tokio::sync::Mutex<dyn LLMClient>> {
         match client_type {
-            ClientType::GEMINI => Rc::new(RefCell::new(GeminiClient::new())),
+            ClientType::GEMINI => Arc::new(tokio::sync::Mutex::new(GeminiClient::new())),
         }
     }
 

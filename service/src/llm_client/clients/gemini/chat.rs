@@ -1,17 +1,25 @@
-use std::{collections::HashMap, env, sync::{Arc, Mutex}};
+use std::{
+    collections::HashMap,
+    env,
+    sync::{Arc, Mutex},
+};
 
 use async_trait::async_trait;
 use reqwest::Client;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::{
-    app::AppContext, constants::GEMINI_BASE_URL, error::{MetisError, Result}, llm_client::{
+    app::AppContext,
+    constants::GEMINI_BASE_URL,
+    error::{MetisError, Result},
+    llm_client::{
         llm_client::{LLMChatClient, LLMResponse},
         tool::Tool,
-    }, logs::{Event, EventHistory, EventType}
+    },
+    logs::{Event, EventHistory, EventType},
 };
 
-pub struct GeminiChat{
+pub struct GeminiChat {
     base_url: String,
     client: Client,
     system_prompt: String,
@@ -19,11 +27,11 @@ pub struct GeminiChat{
     tools_map: HashMap<String, Box<dyn Tool + Send>>,
     tool_description: Vec<Value>,
     event_history: EventHistory,
-    context: Arc<Mutex<AppContext>>
+    context: Arc<Mutex<AppContext>>,
 }
 
-impl<'a> GeminiChat{
-    pub fn new(context: Arc<Mutex<AppContext>>)->Self {
+impl<'a> GeminiChat {
+    pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
         Self {
             base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
@@ -32,7 +40,7 @@ impl<'a> GeminiChat{
             tools_map: HashMap::new(),
             tool_description: Vec::new(),
             event_history: EventHistory::new(),
-            context
+            context,
         }
     }
     fn content(&self) -> Vec<Value> {
@@ -149,11 +157,7 @@ impl<'a> GeminiChat{
                     .get("args")
                     .ok_or(MetisError::JsonError("No key named args".to_string()))?;
 
-                let fn_call_event = Event::new(
-                    &name,
-                    EventType::FunctionCall,
-                    &args.to_string(),
-                );
+                let fn_call_event = Event::new(&name, EventType::FunctionCall, &args.to_string());
                 self.event_history.events.push(fn_call_event);
 
                 let tool = self
@@ -162,11 +166,8 @@ impl<'a> GeminiChat{
                     .ok_or(MetisError::ToolError(format!("Unknown tool: {name}")))?;
                 let result = tool.execute(args.clone(), Arc::clone(&self.context))?;
 
-                let result_event = Event::new(
-                    &name,
-                    EventType::FunctionResponse,
-                    &result.to_string(),
-                );
+                let result_event =
+                    Event::new(&name, EventType::FunctionResponse, &result.to_string());
                 self.event_history.events.push(result_event);
 
                 continue;
@@ -199,5 +200,8 @@ impl LLMChatClient for GeminiChat {
 
     fn set_system_prompt(&mut self, prompt: String) {
         self.system_prompt = prompt;
+    }
+    fn get_event_history(&mut self) -> EventHistory {
+        self.event_history.clone()
     }
 }

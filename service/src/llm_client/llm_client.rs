@@ -1,4 +1,4 @@
-use crate::{error::Result, llm_client::tool::Tool};
+use crate::{error::Result, llm_client::tool::Tool, logs::EventHistory};
 use async_trait::async_trait;
 
 
@@ -13,6 +13,7 @@ pub trait LLMChatClient: Send + Sync {
     async fn generate(&mut self, message: String) -> Result<LLMResponse>;
     fn set_system_prompt(&mut self, prompt: String);
     fn add_tool(&mut self, tool: Box<dyn Tool>);
+    fn get_event_history(&mut self)->EventHistory;
 }
 
 pub struct LLMResponse {

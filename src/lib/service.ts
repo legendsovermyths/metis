@@ -4,19 +4,39 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching";
 
+export type EventType =
+  | "UserMessage"
+  | "LlmMessage"
+  | "FunctionCall"
+  | "FunctionResponse"
+  | "UserRequest";
+
+export interface ChatEvent {
+  name: string;
+  event_type: EventType;
+  content: string;
+  timestamp: string;
+}
+
+export interface EventHistory {
+  events: ChatEvent[];
+}
+
 export interface ChatState {
   phase: MetisPhase;
   notes: string | null;
   is_done: boolean;
+  event_history: EventHistory;
 }
 
 export interface AppContext {
   chapter_title: string;
-  /** Full generate-course output; list/detail UIs use `getAllJourneys` / `getJourney` (DB rows). */
+  selected_book_id: number | null;
   journey_artifacts: JourneyArtifacts | null;
   chapter_content_dir: string | null;
   onboarded: boolean;
   chat_state: ChatState;
+  teaching_state: TeachingState | null;
 }
 
 export interface Journey {
@@ -42,6 +62,18 @@ export interface ArcTopic {
   mode: "reinvent" | "discover" | "derive" | "connect" | "introduce";
 }
 
+export interface ArcProgress {
+  topic_idx: number;
+  dialogues: string[];
+  completed: boolean;
+}
+
+export interface JourneyProgress {
+  arc_idx: number;
+  arcs: ArcProgress[];
+  is_journey_complete: boolean;
+}
+
 /** Row from `journeys` table (API). */
 export interface JourneyRow {
   id: number;
@@ -50,6 +82,7 @@ export interface JourneyRow {
   journey: Journey;
   created_at: number;
   advisor_notes: string;
+  progress: JourneyProgress;
 }
 
 // -- Global context setter (registered by AppContextProvider) --
@@ -173,12 +206,26 @@ export async function setContext(context: AppContext): Promise<void> {
 
 export interface AgentResponse {
   message: string;
+  message_type: "Chat" | "Dialogue";
 }
 
-export async function sendMessage(message: string): Promise<AgentResponse> {
+export async function sendMessage(message?: string): Promise<AgentResponse> {
   const data = await callService({
     api_type: "UserMessage",
-    params: { message },
+    params: { message: message ?? null },
   });
   return data as AgentResponse;
+}
+
+export interface TeachingState {
+  journey: JourneyArtifacts;
+  progress: JourneyProgress;
+}
+
+export async function teachingInit(journeyId: number): Promise<void> {
+  await callService({
+    api_type: "Service",
+    request_type: "TeachingInit",
+    params: { journey_id: journeyId },
+  });
 }

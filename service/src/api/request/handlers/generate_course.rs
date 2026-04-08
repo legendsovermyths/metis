@@ -2,7 +2,6 @@ use std::{fs, sync::{Arc, Mutex}};
 
 use serde::Deserialize;
 use serde_json::Value;
-use tokio::try_join;
 
 use crate::{
     api::request::handler::runtime,
@@ -17,8 +16,8 @@ use crate::{
     utils::{
         format::{sanitize_name, strip_json_block},
         journey::{
-            convert_to_markdown, detect_page_range, find_book_for_chapter, find_chapter_topics,
-            map_topics,
+            convert_to_markdown, detect_page_range, extract_topics_from_content,
+            find_book_for_chapter, map_topics,
         },
         pdf::extract_page_range,
     },
@@ -37,13 +36,22 @@ pub fn generate_journey_artifacts(
     context: Arc<Mutex<AppContext>>,
 ) -> Result<JourneyArtifacts> {
     runtime().block_on(async {
-        log::info!("[generate_course] spawning generate_journey + generate_artifacts in parallel");
-        let res = try_join!(
-            generate_journey(chapter_title),
-            generate_artifacts(chapter_title)
-        );
-        let (journey, chapter_dir) = res?;
-        log::info!("[generate_course] parallel tasks done — chapter_dir: {}, arcs: {}", chapter_dir, journey.arcs.len());
+        let selected_book_id = context.lock().unwrap().selected_book_id;
+
+        // Step 1: extract chapter PDF → convert to content.md
+        log::info!("[generate_course] generating artifacts (PDF → markdown)");
+        let (chapter_dir, content_md) = generate_artifacts(chapter_title, selected_book_id).await?;
+        log::info!("[generate_course] artifacts done — chapter_dir: {}", chapter_dir);
+
+        // Step 2: extract teachable topic list from content.md via LLM
+        log::info!("[generate_course] extracting topic list from content.md");
+        let topics = extract_topics_from_content(&content_md).await?;
+        log::info!("[generate_course] extracted {} topics", topics.len());
+
+        // Step 3: build arc structure from extracted topics
+        log::info!("[generate_course] generating journey arc structure");
+        let journey = generate_journey(topics).await?;
+        log::info!("[generate_course] journey done — {} arcs", journey.arcs.len());
 
         log::info!("[generate_course] building topic map");
         let _ = create_topic_map(&chapter_dir, &journey).await;
@@ -99,24 +107,19 @@ pub fn generate_course_handler(
     log::info!("[generate_course] done — journey id: {:?}", artifacts.id);
     {
         let mut ctx = context.lock().unwrap();
-        ctx.journey_artifacts = Some(artifacts.clone());
         ctx.chapter_title = artifacts.chapter_title.clone();
         ctx.chapter_content_dir = Some(artifacts.chapter_dir.clone());
     }
-    Ok(serde_json::to_value(&artifacts)?)
+    Ok(serde_json::to_value(artifacts)?)
 }
 
-pub async fn generate_journey(chapter_title: &str) -> Result<Journey> {
-    log::info!("[generate_journey] finding topics for \"{}\"", chapter_title);
-    let topics = find_chapter_topics(chapter_title)?;
-    log::info!("[generate_journey] found {} topics", topics.len());
-
+pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
+    log::info!("[generate_journey] {} topics — calling LLM to generate arc structure", topics.len());
     let topic_list = topics.join("\n");
     let prompt = get_prompt_provider().get_architect_prompt(&topic_list);
     let mut client = GeminiClient::new();
     client.set_system_prompt(prompt);
 
-    log::info!("[generate_journey] calling LLM to generate arc structure");
     let response = client.generate("Generate the journey.".to_string()).await?;
     let text = response.text();
     let text = strip_json_block(&text);
@@ -127,9 +130,10 @@ pub async fn generate_journey(chapter_title: &str) -> Result<Journey> {
     Ok(journey)
 }
 
-pub async fn generate_artifacts(chapter_title: &str) -> Result<String> {
+/// Returns `(chapter_dir, content_md)`.
+pub async fn generate_artifacts(chapter_title: &str, preferred_book_id: Option<i64>) -> Result<(String, String)> {
     log::info!("[generate_artifacts] looking up book for \"{}\"", chapter_title);
-    let (book_path, book_title) = find_book_for_chapter(chapter_title)?;
+    let (book_path, book_title) = find_book_for_chapter(chapter_title, preferred_book_id)?;
     log::info!("[generate_artifacts] found book \"{}\" at {}", book_title, book_path);
 
     let sanitized_book = sanitize_name(&book_title);
@@ -167,7 +171,8 @@ pub async fn generate_artifacts(chapter_title: &str) -> Result<String> {
     let content_md_path = format!("{}/content.md", chapter_dir);
     fs::write(&content_md_path, &content_md).map_err(|e| MetisError::UtilsError(e.to_string()))?;
     log::info!("[generate_artifacts] wrote content.md");
-    Ok(chapter_dir)
+
+    Ok((chapter_dir, content_md))
 }
 
 pub async fn create_topic_map(chapter_dir: &str, journey: &Journey) -> Result<()> {

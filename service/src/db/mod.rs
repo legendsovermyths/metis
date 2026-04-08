@@ -32,6 +32,7 @@ impl Db {
         conn.execute_batch(include_str!("../../migrations/0001_create_books.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0002_create_journeys.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0003_create_appdata.sql"))?;
+
         Ok(())
     }
 }

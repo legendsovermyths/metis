@@ -8,7 +8,7 @@ use crate::{
     agent::{
         advisor::tools::{
             GetAvailableBooksTool, GetBookInfoTool, GetNotesTool, GetStudentProfileTool,
-            SetChapterTool, SetDoneTool, SetNotesTool,
+            SetBookTool, SetChapterTool, SetDoneTool, SetNotesTool,
         },
         Agent, AgentResponse,
     },
@@ -45,6 +45,7 @@ impl Advisor {
             Box::new(GetStudentProfileTool),
             Box::new(GetAvailableBooksTool),
             Box::new(GetBookInfoTool),
+            Box::new(SetBookTool),
             Box::new(SetChapterTool),
             Box::new(SetNotesTool),
             Box::new(GetNotesTool),
@@ -64,5 +65,8 @@ impl Agent for Advisor {
                 "Message is required for onboarding agent".to_string(),
             ));
         })
+    }
+    fn get_event_history(&mut self) -> crate::logs::EventHistory {
+        runtime().block_on(async { self.client.lock().await.get_event_history() })
     }
 }

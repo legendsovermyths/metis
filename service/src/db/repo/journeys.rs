@@ -2,7 +2,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
-use crate::{app::journey::Journey, db::get_database, error::Result};
+use crate::{
+    app::journey::{Journey, JourneyProgress},
+    db::get_database,
+    error::Result,
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct JourneyRow {
@@ -12,9 +16,15 @@ pub struct JourneyRow {
     pub journey: Journey,
     pub created_at: i64,
     pub advisor_notes: String,
+    pub progress: JourneyProgress,
 }
 
 pub struct JourneysRepo;
+
+fn parse_progress(raw: Option<String>) -> JourneyProgress {
+    raw.and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
 
 impl JourneysRepo {
     pub fn insert(
@@ -39,7 +49,7 @@ impl JourneysRepo {
     pub fn get(id: i64) -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes FROM journeys WHERE id = ?1",
+            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes, progress_json FROM journeys WHERE id = ?1",
         )?;
         let mut rows = stmt.query(rusqlite::params![id])?;
         if let Some(row) = rows.next()? {
@@ -50,6 +60,7 @@ impl JourneysRepo {
                 journey: serde_json::from_str(&row.get::<_, String>(3)?)?,
                 created_at: row.get(4)?,
                 advisor_notes: row.get(5)?,
+                progress: parse_progress(row.get(6)?),
             }))
         } else {
             Ok(None)
@@ -59,7 +70,7 @@ impl JourneysRepo {
     pub fn get_latest() -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes FROM journeys ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes, progress_json FROM journeys ORDER BY created_at DESC LIMIT 1",
         )?;
         let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
@@ -70,6 +81,7 @@ impl JourneysRepo {
                 journey: serde_json::from_str(&row.get::<_, String>(3)?)?,
                 created_at: row.get(4)?,
                 advisor_notes: row.get(5)?,
+                progress: parse_progress(row.get(6)?),
             }))
         } else {
             Ok(None)
@@ -79,7 +91,7 @@ impl JourneysRepo {
     pub fn get_all() -> Result<Vec<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes FROM journeys ORDER BY created_at DESC",
+            "SELECT id, chapter_title, chapter_dir, journey_json, created_at, advisor_notes, progress_json FROM journeys ORDER BY created_at DESC",
         )?;
         let mut rows = stmt.query([])?;
         let mut out = Vec::new();
@@ -91,9 +103,20 @@ impl JourneysRepo {
                 journey: serde_json::from_str(&row.get::<_, String>(3)?)?,
                 created_at: row.get(4)?,
                 advisor_notes: row.get(5)?,
+                progress: parse_progress(row.get(6)?),
             });
         }
         Ok(out)
+    }
+
+    pub fn update_progress(id: i64, progress: &JourneyProgress) -> Result<()> {
+        let json = serde_json::to_string(progress)?;
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "UPDATE journeys SET progress_json = ?2 WHERE id = ?1",
+            rusqlite::params![id, json],
+        )?;
+        Ok(())
     }
 }
 

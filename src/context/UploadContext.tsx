@@ -2,11 +2,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { analyseBook, type BackendBook } from "@/lib/service";
+import { analyseBook, getAllBooks, type BackendBook } from "@/lib/service";
 
 export interface PendingUpload {
   tempId: string;
@@ -14,19 +15,33 @@ export interface PendingUpload {
 }
 
 interface UploadContextValue {
+  books: BackendBook[];
+  booksLoading: boolean;
+  booksError: string | null;
   pendingUploads: PendingUpload[];
-  /** Increments each time a book finishes uploading — LibraryPage watches this to re-fetch. */
-  booksVersion: number;
-  /** Opens the file picker and starts the upload in the background. */
   pickAndUpload: () => Promise<void>;
 }
 
 const UploadContext = createContext<UploadContextValue | null>(null);
 
 export function BookUploadProvider({ children }: { children: React.ReactNode }) {
+  const [books, setBooks] = useState<BackendBook[]>([]);
+  const [booksLoading, setBooksLoading] = useState(true);
+  const [booksError, setBooksError] = useState<string | null>(null);
   const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
-  const [booksVersion, setBooksVersion] = useState(0);
   const nextId = useRef(0);
+
+  const fetchBooks = useCallback((silent = false) => {
+    if (!silent) setBooksLoading(true);
+    setBooksError(null);
+    return getAllBooks()
+      .then(setBooks)
+      .catch((e: unknown) => setBooksError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setBooksLoading(false));
+  }, []);
+
+  // Fetch once on mount
+  useEffect(() => { fetchBooks(false); }, [fetchBooks]);
 
   const pickAndUpload = useCallback(async () => {
     const selected = await open({
@@ -42,19 +57,13 @@ export function BookUploadProvider({ children }: { children: React.ReactNode }) 
     setPendingUploads((prev) => [...prev, { tempId, filename }]);
 
     analyseBook(path)
-      .then((_book: BackendBook) => {
-        setBooksVersion((v) => v + 1);
-      })
-      .catch((err: unknown) => {
-        console.error("[upload] failed:", err);
-      })
-      .finally(() => {
-        setPendingUploads((prev) => prev.filter((u) => u.tempId !== tempId));
-      });
-  }, []);
+      .then(() => fetchBooks(true))
+      .catch((err: unknown) => console.error("[upload] failed:", err))
+      .finally(() => setPendingUploads((prev) => prev.filter((u) => u.tempId !== tempId)));
+  }, [fetchBooks]);
 
   return (
-    <UploadContext.Provider value={{ pendingUploads, booksVersion, pickAndUpload }}>
+    <UploadContext.Provider value={{ books, booksLoading, booksError, pendingUploads, pickAndUpload }}>
       {children}
     </UploadContext.Provider>
   );

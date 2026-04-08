@@ -23,6 +23,7 @@ use crate::{
             get_context::{self, get_context},
             get_journey::get_journey,
             set_context::{self, set_context},
+            teaching_init::teaching_init,
         },
         RequestType,
     },
@@ -91,6 +92,10 @@ impl ServiceHandler {
         handler.register(
             RequestType::SetContext,
             Box::new(TypedHandler::make_handler(set_context)),
+        );
+        handler.register(
+            RequestType::TeachingInit,
+            Box::new(TypedHandler::make_handler(teaching_init)),
         );
         handler
     }

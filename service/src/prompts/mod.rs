@@ -15,6 +15,8 @@ pub struct PromptProvider {
     page_range_prompt: String,
     page_to_md_prompt: String,
     topic_mapper_prompt: String,
+    content_to_topics_prompt: String,
+    narrator_system_prompt: String,
 }
 
 impl PromptProvider {
@@ -27,6 +29,8 @@ impl PromptProvider {
             page_range_prompt: include_str!("markdowns/page_range.md").to_string(),
             page_to_md_prompt: include_str!("markdowns/page_to_md.md").to_string(),
             topic_mapper_prompt: include_str!("markdowns/topic_mapper.md").to_string(),
+            content_to_topics_prompt: include_str!("markdowns/content_to_topics.md").to_string(),
+            narrator_system_prompt: include_str!("markdowns/narrator.md").to_string(),
         })
     }
 
@@ -45,10 +49,37 @@ impl PromptProvider {
     pub fn get_page_range_prompt(&self, chapter_title: &str) -> String {
         self.page_range_prompt.replace("{chapter_title}", chapter_title)
     }
-    pub fn get_page_to_md_prompt(&self, page_number: usize) -> String {
-        format!("{}\n\nExtract page {} of this PDF.", self.page_to_md_prompt, page_number)
+    pub fn get_page_to_md_prompt(&self, page_start: usize, page_end: usize) -> String {
+        if page_start == page_end {
+            format!("{}\n\nExtract page {} of this PDF.", self.page_to_md_prompt, page_start)
+        } else {
+            format!("{}\n\nExtract pages {} and {} of this PDF.", self.page_to_md_prompt, page_start, page_end)
+        }
     }
     pub fn get_topic_mapper_prompt(&self, topics: &str) -> String {
         format!("{}\n\n## Topics to map\n\n{}", self.topic_mapper_prompt, topics)
+    }
+    pub fn get_content_to_topics_prompt(&self) -> String {
+        self.content_to_topics_prompt.clone()
+    }
+    pub fn get_narrator_prompt(
+        &self,
+        profiler_output: &str,
+        arc: &str,
+        dialogue_so_far: &str,
+        reference_material: &str,
+    ) -> String {
+        self.narrator_system_prompt
+            .replace("{profiler_output}", profiler_output)
+            .replace("{arc}", arc)
+            .replace("{dialogue_so_far}", dialogue_so_far)
+            .replace(
+                "{reference_material}",
+                if reference_material.is_empty() {
+                    "No reference material available for this topic."
+                } else {
+                    reference_material
+                },
+            )
     }
 }

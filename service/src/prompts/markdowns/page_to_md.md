@@ -1,10 +1,12 @@
-# Single Page PDF to Markdown Extraction
+# PDF to Markdown Extraction
 
 ## Instructions
 
-You are an expert document analyzer. You will receive a PDF and a single page number. The page number refers to the **PDF page number** (position in the PDF file, starting from 1), **not** the printed page number shown in the textbook content.
+You are an expert document analyzer. You will receive a PDF and a range of page numbers. Page numbers refer to **PDF page numbers** (position in the PDF file, starting from 1), **not** the printed page numbers shown in the textbook content.
 
-Create an EXTREMELY DETAILED extraction in markdown format for ONLY that single page. You have access to the entire PDF for context understanding, but your output must ONLY contain content from the specified page.
+Create an EXTREMELY DETAILED extraction in markdown format for each specified page. You have access to the entire PDF for context understanding, but your output must ONLY contain content from the specified pages.
+
+**Output format:** For each page, prefix its content with `<!-- PAGE N -->` on its own line, where N is the PDF page number. Output the pages in order.
 
 ## Critical Requirements - DO NOT SKIP ANYTHING
 
@@ -67,8 +69,8 @@ Create an EXTREMELY DETAILED extraction in markdown format for ONLY that single 
 2. **COMPACT OUTPUT**: Keep all lines reasonably sized
 3. **NO REPETITION**: Do not repeat content or add filler text
 4. **NO CODE FENCES**: Do not wrap the entire output in ``` blocks
-5. **STRICT PAGE BOUNDARY**: Only transcribe what is on the requested page. If the page has very little text, that is fine — return only what is there
+5. **STRICT PAGE BOUNDARY**: Only transcribe what is on the requested pages. If a page has very little text, that is fine — return only what is there.
 
 ## Remember
-This is for a DETAILED extraction where NOTHING on the specified page should be left out. Be thorough and comprehensive. The output should capture the COMPLETE content of the single specified page.
+This is for a DETAILED extraction where NOTHING on the specified pages should be left out. Be thorough and comprehensive. The output should capture the COMPLETE content of each requested page, in order, each prefixed with its `<!-- PAGE N -->` marker.
 

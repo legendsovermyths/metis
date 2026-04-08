@@ -7,12 +7,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppContextProvider } from "@/context/AppContext";
 import { useAppContext } from "@/context/AppContext";
 import { BookUploadProvider } from "@/context/UploadContext";
+import { JourneyCreationProvider } from "@/context/JourneyCreationContext";
 import { AppNav } from "@/components/AppNav";
 import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
 import JourneysPage from "./pages/JourneysPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
+import TeachingPage from "./pages/TeachingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,8 +23,9 @@ function AppLayout() {
   const location = useLocation();
   const { context, loading } = useAppContext();
   const isChatPage = location.pathname === "/chat";
+  const isTeachPage = location.pathname === "/teach";
   const onboarded = !!context?.onboarded;
-  const showNav = onboarded && !isChatPage;
+  const showNav = onboarded && !isChatPage && !isTeachPage;
 
   if (loading) {
     return (
@@ -42,6 +45,7 @@ function AppLayout() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/journeys" element={<JourneysPage />} />
           <Route path="/journeys/:id" element={<JourneyDetailPage />} />
+          <Route path="/teach" element={<TeachingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -54,6 +58,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AppContextProvider>
         <BookUploadProvider>
+        <JourneyCreationProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -61,6 +66,7 @@ const App = () => {
             <AppLayout />
           </BrowserRouter>
         </TooltipProvider>
+        </JourneyCreationProvider>
         </BookUploadProvider>
       </AppContextProvider>
     </QueryClientProvider>

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
-import { generateCourse, sendMessage } from "@/lib/service";
+import { sendMessage } from "@/lib/service";
+import { useJourneyCreation } from "@/context/JourneyCreationContext";
 import "katex/dist/katex.min.css";
 import Latex from "react-latex-next";
 import { Link, useNavigate } from "react-router-dom";
@@ -33,6 +34,16 @@ function phaseToMode(phase: string | undefined): Mode {
   }
 }
 
+function historyToMessages(events: import("@/lib/service").ChatEvent[]): Message[] {
+  return events
+    .filter((e) => e.event_type === "UserMessage" || e.event_type === "LlmMessage")
+    .map((e, i) => ({
+      id: `history-${i}`,
+      role: e.event_type === "UserMessage" ? "user" : "assistant",
+      content: e.content,
+    }));
+}
+
 export default function ChatPage() {
   const { theme, toggle } = useTheme();
   const { context } = useAppContext();
@@ -44,12 +55,23 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [creatingJourney, setCreatingJourney] = useState(false);
+  const { startJourneyCreation } = useJourneyCreation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seededRef = useRef(false);
 
   const isBusy = isWaiting || isStreaming;
+
+  // Seed messages from backend event history exactly once when context first arrives
+  useEffect(() => {
+    if (seededRef.current || !context) return;
+    const events = context.chat_state?.event_history?.events ?? [];
+    if (events.length > 0) {
+      setMessages(historyToMessages(events));
+    }
+    seededRef.current = true;
+  }, [context]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,15 +82,6 @@ export default function ChatPage() {
       if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!creatingJourney) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [creatingJourney]);
 
   const streamText = (fullText: string) => {
     const msgId = (Date.now() + 1).toString();
@@ -128,60 +141,6 @@ export default function ChatPage() {
 
   return (
     <div className="relative flex h-[calc(100vh-57px)] flex-col md:h-screen">
-      {creatingJourney && (
-        <div
-          className="fixed inset-0 z-[200] flex flex-col items-center justify-center paper-texture bg-background/92 backdrop-blur-md px-6 animate-fade-in"
-          role="alertdialog"
-          aria-modal="true"
-          aria-busy="true"
-          aria-labelledby="journey-loader-title"
-          aria-describedby="journey-loader-desc"
-        >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-1/4 left-1/2 h-[min(70vw,28rem)] w-[min(70vw,28rem)] -translate-x-1/2 rounded-full bg-primary/[0.06] blur-3xl dark:bg-primary/[0.12]" />
-            <div className="absolute bottom-0 right-0 h-72 w-72 translate-x-1/3 translate-y-1/3 rounded-full bg-foreground/[0.04] blur-3xl" />
-          </div>
-
-          <div className="relative mx-auto max-w-md text-center">
-            <div className="relative mx-auto mb-8 flex h-[5.5rem] w-[5.5rem] items-center justify-center">
-              <span className="absolute inset-0 rounded-2xl border border-border/60 bg-card/80 shadow-medium animate-pulse-soft" />
-              <span className="absolute inset-2 rounded-xl border border-border/40 opacity-60" />
-              <Route className="relative h-10 w-10 text-foreground/90" strokeWidth={1.35} aria-hidden />
-            </div>
-
-            <h2
-              id="journey-loader-title"
-              className="text-4xl font-serif font-semibold tracking-tighter text-foreground md:text-5xl"
-            >
-              Metis
-            </h2>
-            <p className="mt-3 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-              Crafting your journey
-            </p>
-
-            <p id="journey-loader-desc" className="mt-8 text-sm leading-relaxed text-muted-foreground">
-              Extracting your chapter, drafting arcs and topics, and saving your path. This usually takes a little while.
-            </p>
-
-            {context?.chapter_title?.trim() ? (
-              <p className="mt-5 rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-xs font-medium text-foreground/90 shadow-soft">
-                {context.chapter_title.trim()}
-              </p>
-            ) : null}
-
-            <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-4">
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-[35%] rounded-full bg-foreground/45 animate-shimmer bg-gradient-to-r from-transparent via-foreground/50 to-transparent bg-[length:200%_100%]" />
-              </div>
-              <Loader2
-                className="h-8 w-8 animate-spin text-muted-foreground/70 [animation-duration:1.65s]"
-                aria-hidden
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Top bar */}
       <div className="flex items-center justify-between border-b border-border bg-card/50 px-4 py-2 backdrop-blur-sm">
         <Link to="/" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
@@ -269,28 +228,18 @@ export default function ChatPage() {
           {chatDone && messages.length > 0 && !isBusy && phase === "Advising" && (
             <div className="flex justify-center pt-4 animate-fade-in">
               <Button
-                disabled={creatingJourney || !context?.chapter_title?.trim()}
+                disabled={!context?.chapter_title?.trim()}
                 onClick={() => {
-                  if (!context) return;
-                  setCreatingJourney(true);
-                  void generateCourse(context.chapter_title || undefined)
-                    .then((artifacts) => {
-                      const id = artifacts.id;
-                      if (id != null && Number.isFinite(id)) {
-                        navigate(`/journeys/${id}`);
-                      } else {
-                        navigate("/journeys");
-                      }
-                    })
-                    .catch((err) => {
-                      const msg: Message = {
-                        id: (Date.now() + 1).toString(),
-                        role: "assistant",
-                        content: `Could not create journey: ${err instanceof Error ? err.message : String(err)}`,
-                      };
-                      setMessages((prev) => [...prev, msg]);
-                    })
-                    .finally(() => setCreatingJourney(false));
+                  if (!context?.chapter_title?.trim()) return;
+                  startJourneyCreation(context.chapter_title, (errMsg) => {
+                    const msg: Message = {
+                      id: (Date.now() + 1).toString(),
+                      role: "assistant",
+                      content: `Could not create journey: ${errMsg}`,
+                    };
+                    setMessages((prev) => [...prev, msg]);
+                  });
+                  navigate("/journeys");
                 }}
                 className="rounded-xl px-6 shadow-soft"
               >

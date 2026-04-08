@@ -11,8 +11,21 @@ use crate::{
 
 const MAX_CONCURRENT_PRO: usize = 5;
 
-pub fn find_book_for_chapter(chapter_title: &str) -> Result<(String, String)> {
+pub fn find_book_for_chapter(chapter_title: &str, preferred_book_id: Option<i64>) -> Result<(String, String)> {
     let books = BooksRepo::list()?;
+
+    // If the advisor set a specific book, search only that one first.
+    if let Some(id) = preferred_book_id {
+        if let Some(book) = books.iter().find(|b| b.id == id) {
+            for chapter in &book.toc {
+                if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
+                    return Ok((book.path.clone(), book.title.clone()));
+                }
+            }
+            // Chapter not found in the preferred book — fall through to all books.
+        }
+    }
+
     for book in &books {
         for chapter in &book.toc {
             if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
@@ -83,6 +96,8 @@ pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<P
     Ok(range)
 }
 
+const PAGES_PER_CALL: usize = 2;
+
 pub async fn convert_to_markdown(
     client: &Arc<GeminiClient>,
     file_uri: &str,
@@ -92,37 +107,43 @@ pub async fn convert_to_markdown(
     let mut set = JoinSet::new();
     let prompts = get_prompt_provider();
 
-    for page in 1..=num_pages {
+    // Batch pages in pairs — one API call per pair (or single page if odd total)
+    let mut page = 1;
+    while page <= num_pages {
+        let page_end = (page + PAGES_PER_CALL - 1).min(num_pages);
         let sem = semaphore.clone();
         let client = client.clone();
         let uri = file_uri.to_string();
-        let prompt = prompts.get_page_to_md_prompt(page);
+        let prompt = prompts.get_page_to_md_prompt(page, page_end);
+        let batch_start = page;
         set.spawn(async move {
             let _permit = sem
                 .acquire()
                 .await
                 .map_err(|e| MetisError::UtilsError(e.to_string()))?;
             let response = client.generate_with_file(prompt, &uri).await?;
-            Ok::<(usize, String), MetisError>((page, response.text()))
+            Ok::<(usize, String), MetisError>((batch_start, response.text()))
         });
+        page += PAGES_PER_CALL;
     }
 
-    let mut pages: Vec<(usize, String)> = Vec::with_capacity(num_pages);
+    // Collect batches, sort by start page, then join raw (LLM already outputs <!-- PAGE N --> markers)
+    let mut batches: Vec<(usize, String)> = Vec::new();
     while let Some(result) = set.join_next().await {
         match result {
-            Ok(Ok(page_data)) => {
-                println!("  [md] page {}/{}", page_data.0, num_pages);
-                pages.push(page_data);
+            Ok(Ok(batch)) => {
+                println!("  [md] pages {}-{}/{}", batch.0, (batch.0 + PAGES_PER_CALL - 1).min(num_pages), num_pages);
+                batches.push(batch);
             }
             Ok(Err(e)) => return Err(e),
             Err(e) => return Err(MetisError::UtilsError(format!("Task join error: {e}"))),
         }
     }
 
-    pages.sort_by_key(|(page, _)| *page);
-    let combined = pages
+    batches.sort_by_key(|(start, _)| *start);
+    let combined = batches
         .iter()
-        .map(|(page, content)| format!("<!-- PAGE {} -->\n{}", page, clean_page_output(content)))
+        .map(|(_, content)| clean_page_output(content))
         .collect::<Vec<_>>()
         .join("\n\n");
 
@@ -144,4 +165,27 @@ pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
         "Chapter \"{}\" not found in any book",
         chapter_title
     )))
+}
+
+/// Sends content.md to Gemini and asks it to produce a flat, teachable topic list
+/// by extracting every meaningful heading, excluding exercises/problems sections.
+pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>> {
+    let mut client = GeminiClient::with_model("gemini-2.5-pro");
+    client.set_system_prompt(get_prompt_provider().get_content_to_topics_prompt());
+
+    let response = client
+        .generate(format!(
+            "Extract the teachable topic list from this chapter content:\n\n{}",
+            content_md
+        ))
+        .await?;
+
+    let text = response.text();
+    let json_text = strip_json_block(&text);
+    let topics: Vec<String> = serde_json::from_str(json_text).map_err(|e| {
+        MetisError::JsonError(format!(
+            "Failed to parse topic list: {e}\nResponse: {text}"
+        ))
+    })?;
+    Ok(topics)
 }

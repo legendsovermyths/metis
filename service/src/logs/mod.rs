@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
 use chrono::Local;
+use serde::{Deserialize, Serialize};
 
 const LOG_DIR: &str = "../metis_logs";
 
@@ -11,7 +12,7 @@ static LOGGER: LazyLock<Mutex<Logger>> = LazyLock::new(|| Mutex::new(Logger::new
 
 pub type Events = Vec<Event>;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum EventType {
     UserMessage,
     LlmMessage,
@@ -33,6 +34,7 @@ impl std::fmt::Display for EventType {
     }
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Event {
     pub name: String,
     pub event_type: EventType,
@@ -40,6 +42,7 @@ pub struct Event {
     pub timestamp: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EventHistory {
     pub events: Events,
 }

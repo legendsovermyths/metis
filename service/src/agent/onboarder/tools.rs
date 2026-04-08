@@ -73,7 +73,7 @@ impl Tool for SetDoneTool {
         let user_profile = ctx.chat_state.notes.clone().unwrap();
         AppDataRepo::set("user_profile", &user_profile)?; 
         ctx.onboarded = true;
-        ctx.chat_state.is_done = true;
+        ctx.chat_state.set_done();
         Ok(json!({ "status": "done", "message": "Onboarding complete." }))
     }
 

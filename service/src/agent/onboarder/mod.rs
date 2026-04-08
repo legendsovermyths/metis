@@ -58,4 +58,7 @@ impl Agent for Onboarder {
             ));
         })
     }
+    fn get_event_history(&mut self) -> crate::logs::EventHistory {
+        runtime().block_on(async { self.client.lock().await.get_event_history() })
+    }
 }
