@@ -12,6 +12,7 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 function preprocessMath(md: string): string {
+  // Display math $$...$$ (may span lines)
   let result = md.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
@@ -19,7 +20,9 @@ function preprocessMath(md: string): string {
       return `$$${tex}$$`;
     }
   });
-  result = result.replace(/(?<!\$)\$(?!\$)((?:[^$\\]|\\.)+?)\$(?!\$)/g, (_, tex) => {
+  // Inline math $...$ — single-line only, max 200 chars, must start with
+  // a non-digit (to avoid matching currency like $10)
+  result = result.replace(/(?<!\$)\$(?!\$)(?!\d)((?:[^$\n\\]|\\.){1,200}?)\$(?!\$)/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
     } catch {
