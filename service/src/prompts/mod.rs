@@ -17,6 +17,7 @@ pub struct PromptProvider {
     topic_mapper_prompt: String,
     content_to_topics_prompt: String,
     narrator_system_prompt: String,
+    blackboard_system_prompt: String,
 }
 
 impl PromptProvider {
@@ -31,6 +32,7 @@ impl PromptProvider {
             topic_mapper_prompt: include_str!("markdowns/topic_mapper.md").to_string(),
             content_to_topics_prompt: include_str!("markdowns/content_to_topics.md").to_string(),
             narrator_system_prompt: include_str!("markdowns/narrator.md").to_string(),
+            blackboard_system_prompt: include_str!("markdowns/blackboard.md").to_string(),
         })
     }
 
@@ -68,6 +70,7 @@ impl PromptProvider {
         arc: &str,
         dialogue_so_far: &str,
         reference_material: &str,
+        blackboard_state: &str,
     ) -> String {
         self.narrator_system_prompt
             .replace("{profiler_output}", profiler_output)
@@ -81,5 +84,23 @@ impl PromptProvider {
                     reference_material
                 },
             )
+            .replace(
+                "{blackboard_state}",
+                if blackboard_state.is_empty() {
+                    "The blackboard is empty."
+                } else {
+                    blackboard_state
+                },
+            )
+    }
+
+    pub fn get_blackboard_prompt(
+        &self,
+        instruction: &str,
+        topic: &str,
+    ) -> String {
+        self.blackboard_system_prompt
+            .replace("{instruction}", instruction)
+            .replace("{topic}", topic)
     }
 }

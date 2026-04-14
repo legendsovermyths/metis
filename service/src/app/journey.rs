@@ -50,12 +50,21 @@ pub struct JourneyProgress {
     pub arc_idx: usize,
     pub arcs: Vec<ArcProgress>,
     pub is_journey_complete: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blackboard_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Dialogue {
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ArcProgress {
     pub topic_idx: usize,
-    pub dialogues: Vec<String>,
+    pub dialogues: Vec<Dialogue>,
     pub completed: bool,
 }
 
@@ -70,8 +79,6 @@ impl Journey {
 }
 
 impl JourneyProgress {
-    /// Advance to the next topic (or next arc if current arc is done).
-    /// Returns true if the entire journey is complete.
     pub fn advance(&mut self, journey: &Journey) -> bool {
         let arc_idx = self.arc_idx;
         let next_topic = self.arcs[arc_idx].topic_idx + 1;
@@ -95,9 +102,7 @@ impl JourneyProgress {
         }
     }
 
-    /// Push a dialogue chunk and optionally advance if the topic is complete.
-    /// Returns true if the entire journey is now complete.
-    pub fn push_dialogue(&mut self, dialogue: String, topic_complete: bool, journey: &Journey) -> bool {
+    pub fn push_dialogue(&mut self, dialogue: Dialogue, topic_complete: bool, journey: &Journey) -> bool {
         self.arcs[self.arc_idx].dialogues.push(dialogue);
         if topic_complete {
             self.advance(journey)
@@ -105,9 +110,8 @@ impl JourneyProgress {
             false
         }
     }
-
-    /// Last N dialogues from the current arc for prompt context.
-    pub fn recent_dialogues(&self, n: usize) -> &[String] {
+    
+    pub fn recent_dialogues(&self, n: usize) -> &[Dialogue] {
         let d = &self.arcs[self.arc_idx].dialogues;
         let start = d.len().saturating_sub(n);
         &d[start..]

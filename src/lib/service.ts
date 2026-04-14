@@ -62,9 +62,14 @@ export interface ArcTopic {
   mode: "reinvent" | "discover" | "derive" | "connect" | "introduce";
 }
 
+export interface Dialogue {
+  content: string;
+  image_url?: string | null;
+}
+
 export interface ArcProgress {
   topic_idx: number;
-  dialogues: string[];
+  dialogues: Dialogue[];
   completed: boolean;
 }
 

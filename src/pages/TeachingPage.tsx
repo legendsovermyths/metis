@@ -4,31 +4,39 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
-import { sendMessage } from "@/lib/service";
+import { sendMessage, type Dialogue } from "@/lib/service";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Link, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
+const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
+
 function preprocessMath(md: string): string {
+  // Protect escaped dollars (\$) so they aren't treated as math delimiters
+  let result = md.replace(/\\\$/g, ESC_DOLLAR);
+
   // Display math $$...$$ (may span lines)
-  let result = md.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
     } catch {
       return `$$${tex}$$`;
     }
   });
-  // Inline math $...$ — single-line only, max 200 chars, must start with
-  // a non-digit (to avoid matching currency like $10)
-  result = result.replace(/(?<!\$)\$(?!\$)(?!\d)((?:[^$\n\\]|\\.){1,200}?)\$(?!\$)/g, (_, tex) => {
+  // Inline math $...$
+  result = result.replace(/(?<!\$)\$(?!\$)((?:[^$\n\\]|\\.){1,200}?)\$(?!\$)/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
     } catch {
       return `$${tex}$`;
     }
   });
+
+  // Restore escaped dollars as literal $
+  result = result.split(ESC_DOLLAR).join("$");
   return result;
 }
 
@@ -102,6 +110,7 @@ export default function TeachingPage() {
   const totalPages = dialogues.length;
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
+  const currentDialogue: Dialogue | undefined = dialogues[pageIndex];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -173,23 +182,36 @@ export default function TeachingPage() {
           )}
 
           {!hasNoPages && (
-            <article
-              key={pageIndex}
-              className={cn(
-                "prose prose-neutral dark:prose-invert max-w-none animate-fade-in",
-                "prose-headings:font-serif prose-headings:tracking-tight",
-                "prose-p:leading-[1.8] prose-p:text-foreground/90",
-                "prose-blockquote:border-foreground/20 prose-blockquote:text-foreground/70",
-                "prose-strong:text-foreground prose-strong:font-semibold",
-                "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
-                "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
-                "[&_.katex]:text-foreground"
+            <div key={pageIndex} className="animate-fade-in">
+              {currentDialogue?.image_url && (
+                <div className="mb-8 flex justify-center">
+                  <img
+                    src={convertFileSrc(currentDialogue.image_url)}
+                    alt="Blackboard figure"
+                    className={cn(
+                      "max-w-full h-auto rounded-lg",
+                      "dark:invert"
+                    )}
+                  />
+                </div>
               )}
-            >
-              <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                {preprocessMath(dialogues[pageIndex])}
-              </ReactMarkdown>
-            </article>
+              <article
+                className={cn(
+                  "prose prose-neutral dark:prose-invert max-w-none",
+                  "prose-headings:font-serif prose-headings:tracking-tight",
+                  "prose-p:leading-[1.8] prose-p:text-foreground/90",
+                  "prose-blockquote:border-foreground/20 prose-blockquote:text-foreground/70",
+                  "prose-strong:text-foreground prose-strong:font-semibold",
+                  "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
+                  "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
+                  "[&_.katex]:text-foreground"
+                )}
+              >
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                  {preprocessMath(currentDialogue?.content ?? "")}
+                </ReactMarkdown>
+              </article>
+            </div>
           )}
 
           {isLoading && (
