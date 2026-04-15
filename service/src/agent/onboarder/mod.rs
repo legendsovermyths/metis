@@ -26,7 +26,7 @@ pub struct Onboarder {
 
 impl Onboarder {
     pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
-        let client = LLMClientFactory::get_chat_client(ClientType::GEMINI, context);
+        let client = LLMClientFactory::get_chat_client(ClientType::GeminiFlash, context);
         let mut gaurd = client.blocking_lock();
         let tools = Self::tools();
         for tool in tools {

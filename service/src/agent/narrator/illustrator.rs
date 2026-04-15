@@ -35,7 +35,7 @@ pub struct Illustrator {
 
 impl Illustrator {
     pub fn with() -> Self {
-        let client = LLMClientFactory::get_client(ClientType::GEMINI);
+        let client = LLMClientFactory::get_client(ClientType::GeminiPro);
         Self { client }
     }
 

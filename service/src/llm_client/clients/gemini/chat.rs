@@ -32,11 +32,15 @@ pub struct GeminiChat {
 
 impl<'a> GeminiChat {
     pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
+        Self::with_model("gemini-3.0-flash", context)
+    }
+
+    pub fn with_model(model: &str, context: Arc<Mutex<AppContext>>) -> Self {
         Self {
             base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
             system_prompt: String::new(),
-            model_name: "gemini-2.5-pro".to_string(),
+            model_name: model.to_string(),
             tools_map: HashMap::new(),
             tool_description: Vec::new(),
             event_history: EventHistory::new(),

@@ -170,7 +170,7 @@ Respond ONLY with valid JSON (no markdown fencing, no commentary):
 }
 
 - Set `topic_complete` to `true` when this chunk finishes the current topic. The next call will begin the next topic in the arc (or end the arc if this was the last topic).
-- The `blackboard` field is optional. Include it only when you want to change what's on the board. Set it to `"clear"` to erase the board. Omit it or set it to `null` to leave the board unchanged.
+- The `blackboard_instructions` field is **required**. Set it to `"persist"` to leave the board unchanged, `"clear"` to erase it, or a detailed natural-language instruction to draw something new.
 
 ## Student Profile
 

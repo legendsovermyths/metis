@@ -117,7 +117,7 @@ pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
     log::info!("[generate_journey] {} topics — calling LLM to generate arc structure", topics.len());
     let topic_list = topics.join("\n");
     let prompt = get_prompt_provider().get_architect_prompt(&topic_list);
-    let mut client = GeminiClient::new();
+    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
     client.set_system_prompt(prompt);
 
     let response = client.generate("Generate the journey.".to_string()).await?;

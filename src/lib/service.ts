@@ -32,7 +32,6 @@ export interface ChatState {
 export interface AppContext {
   chapter_title: string;
   selected_book_id: number | null;
-  journey_artifacts: JourneyArtifacts | null;
   chapter_content_dir: string | null;
   onboarded: boolean;
   chat_state: ChatState;
@@ -50,6 +49,7 @@ export interface JourneyArtifacts {
   chapter_dir: string;
   journey: Journey;
   advisor_notes: string;
+  progress: JourneyProgress;
 }
 
 export interface JourneyArc {
@@ -62,9 +62,14 @@ export interface ArcTopic {
   mode: "reinvent" | "discover" | "derive" | "connect" | "introduce";
 }
 
+export interface Blackboard {
+  description: string;
+  image_url?: string | null;
+}
+
 export interface Dialogue {
   content: string;
-  image_url?: string | null;
+  blackboard: Blackboard;
 }
 
 export interface ArcProgress {
@@ -223,8 +228,7 @@ export async function sendMessage(message?: string): Promise<AgentResponse> {
 }
 
 export interface TeachingState {
-  journey: JourneyArtifacts;
-  progress: JourneyProgress;
+  artifacts: { data: JourneyArtifacts };
 }
 
 export async function teachingInit(journeyId: number): Promise<void> {

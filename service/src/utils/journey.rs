@@ -46,7 +46,7 @@ pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<Topic
         .join("\n");
     let prompt = get_prompt_provider().get_topic_mapper_prompt(&topic_list);
 
-    let mut mapper = GeminiClient::new();
+    let mut mapper = GeminiClient::with_model("gemini-3.1-pro-preview");
     mapper.set_system_prompt(prompt);
     let response = mapper
         .generate(format!(
@@ -166,7 +166,7 @@ pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
 }
 
 pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>> {
-    let mut client = GeminiClient::with_model("gemini-2.5-pro");
+    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
     client.set_system_prompt(get_prompt_provider().get_content_to_topics_prompt());
 
     let response = client

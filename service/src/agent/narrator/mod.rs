@@ -35,7 +35,7 @@ pub struct Narrator {
 
 impl Narrator {
     pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
-        let client = LLMClientFactory::get_client(ClientType::GEMINI);
+        let client = LLMClientFactory::get_client(ClientType::GeminiPro);
         let illustrator = Illustrator::with();
         Self {
             client,

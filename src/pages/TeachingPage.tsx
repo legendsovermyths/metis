@@ -50,11 +50,11 @@ export default function TeachingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const journey = ts?.journey;
-  const journeyId = journey?.id;
-  const arcIndex = ts?.progress.arc_idx ?? 0;
-  const arc = journey?.journey.arcs[arcIndex];
-  const arcProgress = ts?.progress.arcs[arcIndex];
+  const artifacts = ts?.artifacts?.data;
+  const journeyId = artifacts?.id;
+  const arcIndex = artifacts?.progress.arc_idx ?? 0;
+  const arc = artifacts?.journey.arcs[arcIndex];
+  const arcProgress = artifacts?.progress.arcs[arcIndex];
   const dialogues = arcProgress?.dialogues ?? [];
   const currentTopicIndex = arcProgress?.topic_idx ?? 0;
   const arcDone = arcProgress?.completed ?? false;
@@ -93,7 +93,7 @@ export default function TeachingPage() {
     if (pageIndex > 0) setPageIndex((p) => p - 1);
   }, [pageIndex]);
 
-  if (!ts || !arc) {
+  if (!ts || !artifacts || !arc) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 paper-texture px-6">
         <p className="text-muted-foreground">No active teaching session.</p>
@@ -183,10 +183,10 @@ export default function TeachingPage() {
 
           {!hasNoPages && (
             <div key={pageIndex} className="animate-fade-in">
-              {currentDialogue?.image_url && (
+              {currentDialogue?.blackboard?.image_url && (
                 <div className="mb-8 flex justify-center">
                   <img
-                    src={convertFileSrc(currentDialogue.image_url)}
+                    src={convertFileSrc(currentDialogue.blackboard.image_url)}
                     alt="Blackboard figure"
                     className={cn(
                       "max-w-full h-auto rounded-lg",

@@ -25,7 +25,7 @@ impl GeminiClient {
             base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
             system_prompt: String::new(),
-            model_name: "gemini-3.1-pro-preview".to_string(),
+            model_name: "gemini-3.0-flash".to_string(),
         }
     }
 
