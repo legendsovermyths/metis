@@ -3,7 +3,7 @@ use std::{fs, sync::Arc};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-    app::journey::TopicRange, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, api::request::handlers::generate_course::PageRange, utils::{
+     api::request::handlers::generate_course::PageRange, app::journey::artifact::TopicRange, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, utils::{
         format::{clean_page_output, extract_json_object, strip_json_block},
         pdf::truncated_copy,
     }
@@ -14,7 +14,6 @@ const MAX_CONCURRENT_PRO: usize = 5;
 pub fn find_book_for_chapter(chapter_title: &str, preferred_book_id: Option<i64>) -> Result<(String, String)> {
     let books = BooksRepo::list()?;
 
-    // If the advisor set a specific book, search only that one first.
     if let Some(id) = preferred_book_id {
         if let Some(book) = books.iter().find(|b| b.id == id) {
             for chapter in &book.toc {
@@ -22,7 +21,6 @@ pub fn find_book_for_chapter(chapter_title: &str, preferred_book_id: Option<i64>
                     return Ok((book.path.clone(), book.title.clone()));
                 }
             }
-            // Chapter not found in the preferred book — fall through to all books.
         }
     }
 
@@ -167,8 +165,6 @@ pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
     )))
 }
 
-/// Sends content.md to Gemini and asks it to produce a flat, teachable topic list
-/// by extracting every meaningful heading, excluding exercises/problems sections.
 pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>> {
     let mut client = GeminiClient::with_model("gemini-2.5-pro");
     client.set_system_prompt(get_prompt_provider().get_content_to_topics_prompt());

@@ -7,11 +7,11 @@ use crate::agent::handler::AgentHandler;
 use crate::api::request::handler::ServiceHandler;
 use crate::api::request::Request;
 use crate::api::ApiType;
-use crate::app::journey::JourneyArtifacts;
 use crate::app::state::{MetisPhase, TeachingState};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
 use crate::logs::EventHistory;
+use crate::utils::cmd::ensure_venv;
 pub mod book;
 pub mod journey;
 pub mod state;
@@ -24,6 +24,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Result<Self> {
+        ensure_venv()?;
         let context = Arc::new(Mutex::new(AppContext::init()?));
         Ok(Self {
             request_handler: ServiceHandler::with(Arc::clone(&context)),
@@ -64,7 +65,7 @@ impl ChatState {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AppContext {
     pub chapter_title: String,
     pub selected_book_id: Option<i64>,

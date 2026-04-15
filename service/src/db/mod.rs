@@ -1,4 +1,5 @@
 pub mod repo;
+pub mod persistence;
 
 use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::journey::{JourneyArtifacts, JourneyProgress};
+use crate::{app::journey::artifact::JourneyArtifacts, db::persistence::Persistent};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetisPhase {
@@ -10,8 +10,7 @@ pub enum MetisPhase {
     Teaching,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TeachingState {
-    pub journey: JourneyArtifacts,
-    pub progress: JourneyProgress,
+    pub artifacts: Persistent<JourneyArtifacts>,
 }

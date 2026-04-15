@@ -6,8 +6,7 @@ use serde_json::Value;
 use crate::{
     api::request::handler::runtime,
     app::{
-        journey::{Journey, JourneyArtifacts},
-        AppContext,
+        journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey}, AppContext
     },
     db::repo::journeys::JourneysRepo,
     error::{MetisError, Result},
@@ -78,6 +77,7 @@ pub fn generate_journey_artifacts(
             chapter_dir,
             journey,
             advisor_notes,
+            progress: JourneyProgress::default()
         })
     })
 }

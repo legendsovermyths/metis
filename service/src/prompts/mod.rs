@@ -98,9 +98,13 @@ impl PromptProvider {
         &self,
         instruction: &str,
         topic: &str,
+        dialogue: &str,
+        description: &str
     ) -> String {
         self.blackboard_system_prompt
             .replace("{instruction}", instruction)
             .replace("{topic}", topic)
+            .replace("{dialogue}", dialogue)
+            .replace("{description}", description)
     }
 }

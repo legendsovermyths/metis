@@ -3,9 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 
 use crate::{
-    app::journey::{Journey, JourneyProgress},
+    app::journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
     db::get_database,
-    error::Result,
+    error::{MetisError, Result},
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -118,5 +118,35 @@ impl JourneysRepo {
         )?;
         Ok(())
     }
+    pub fn update(artifacts: &JourneyArtifacts) -> Result<()> {
+        let id = artifacts.id.ok_or_else(|| {
+            MetisError::MetisError("Artifacts passed without id to update".to_string())
+        })?;
+        let journey_json = serde_json::to_string(&artifacts.journey)?;
+        let progress_json = serde_json::to_string(&artifacts.progress)?;
+        let conn = get_database().conn.lock().unwrap();
+        let rows_affected = conn.execute(
+            "UPDATE journeys
+         SET chapter_title = ?2,
+             chapter_dir   = ?3,
+             journey_json  = ?4,
+             advisor_notes = ?5,
+             progress_json = ?6
+         WHERE id = ?1",
+            rusqlite::params![
+                id,
+                artifacts.chapter_title,
+                artifacts.chapter_dir,
+                journey_json,
+                artifacts.advisor_notes,
+                progress_json,
+            ],
+        )?;
+        if rows_affected == 0 {
+            return Err(MetisError::MetisError(
+                "No id found in database for the artifact, update failed".to_string(),
+            ));
+        }
+        Ok(())
+    }
 }
-
