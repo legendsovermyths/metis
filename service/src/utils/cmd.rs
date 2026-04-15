@@ -14,45 +14,54 @@ fn venv_python() -> PathBuf {
 
 pub fn ensure_venv() -> Result<()> {
     let python = venv_python();
-    if python.exists() {
-        return Ok(());
-    }
 
-    let create = Command::new("python3")
-        .args(["-m", "venv", VENV_DIR])
-        .output();
+    if !python.exists() {
+        log::info!("[venv] creating python venv at {VENV_DIR}");
+        let create = Command::new("python3")
+            .args(["-m", "venv", VENV_DIR])
+            .output();
 
-    match create {
-        Ok(out) if out.status.success() => {
-            let pip = Path::new(VENV_DIR).join("bin/pip");
-            let install = Command::new(pip)
-                .arg("install")
-                .args(REQUIRED_PACKAGES)
-                .output();
-
-            match install {
-                Ok(out) if !out.status.success() => {
-                    let stderr = String::from_utf8_lossy(&out.stderr);
-                    return Err(MetisError::UtilsError(format!("pip install failed: {}", stderr)));
-                }
-                Err(e) => return Err(MetisError::UtilsError(e.to_string())),
-                Ok(_) => return Ok(()),
+        match create {
+            Ok(out) if !out.status.success() => {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                return Err(MetisError::UtilsError(format!("Failed to create venv: {}", stderr)));
             }
-        }
-        Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            return Err(MetisError::UtilsError(format!(
-                "Failed to create venv: {}",
-                stderr
-            )));
-        }
-        Err(e) => {
-            return Err(MetisError::UtilsError(format!(
-                "Failed to run python3 -m venv: {}",
-                e
-            )))
+            Err(e) => {
+                return Err(MetisError::UtilsError(format!("Failed to run python3 -m venv: {}", e)));
+            }
+            Ok(_) => {}
         }
     }
+    
+    let mut missing: Vec<&str> = Vec::new();
+    for pkg in REQUIRED_PACKAGES {
+        let check = Command::new(&python)
+            .args(["-c", &format!("import {pkg}")])
+            .output();
+        if !matches!(check, Ok(ref out) if out.status.success()) {
+            missing.push(pkg);
+        }
+    }
+
+    if !missing.is_empty() {
+        log::info!("[venv] installing missing packages: {}", missing.join(", "));
+        let pip = Path::new(VENV_DIR).join("bin/pip");
+        let install = Command::new(pip)
+            .arg("install")
+            .args(&missing)
+            .output();
+
+        match install {
+            Ok(out) if !out.status.success() => {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                return Err(MetisError::UtilsError(format!("pip install failed: {}", stderr)));
+            }
+            Err(e) => return Err(MetisError::UtilsError(e.to_string())),
+            Ok(_) => log::info!("[venv] packages installed successfully"),
+        }
+    }
+
+    Ok(())
 }
 
 pub fn execute_python(code: &str) -> Result<()> {

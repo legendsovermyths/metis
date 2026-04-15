@@ -34,7 +34,11 @@ impl Default for JourneyProgress {
     fn default() -> Self {
         Self {
             arc_idx: 0,
-            arcs: Vec::new(),
+            arcs: vec![ArcProgress {
+                topic_idx: 0,
+                dialogues: Vec::new(),
+                completed: false,
+            }],
             is_journey_complete: false,
         }
     }

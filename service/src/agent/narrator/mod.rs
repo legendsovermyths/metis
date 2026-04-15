@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::{
     agent::{narrator::illustrator::Illustrator, Agent, AgentResponse},
     api::request::handler::runtime,
-    app::{journey::{artifact, blackboard::{Blackboard, BlackboardInstructions}, progress::Dialogue}, AppContext},
+    app::{journey::{artifact, blackboard::{Blackboard, BlackboardInstructions}, progress::Dialogue}, state::TeachingState, AppContext},
     db::repo::{appdata::AppDataRepo, journeys::JourneysRepo},
     error::{MetisError, Result},
     llm_client::{
@@ -15,7 +15,7 @@ use crate::{
     },
     logs::EventHistory,
     prompts::get_prompt_provider,
-    utils::{format::strip_json_block, narrator::load_topic_content},
+    utils::{format::{fix_json_escapes, strip_json_block}, narrator::load_topic_content},
 };
 
 const DIALOGUE_CONTEXT_SIZE: usize = 10;
@@ -97,12 +97,17 @@ impl Agent for Narrator {
 
         let raw = response.text();
         let json_str = strip_json_block(&raw);
-        let parsed: NarratorOutput = serde_json::from_str(json_str)?;
+        let fixed = fix_json_escapes(json_str);
+        let parsed: NarratorOutput = serde_json::from_str(&fixed)?;
         let blackboard = self.illustrator.from(&parsed, &blackboard, &artifacts, &topic)?;
        
         let dialogue = Dialogue::new(parsed.dialogue, blackboard);
-        let mut artifacts = artifacts_guard.write();
-        artifacts.push_dialogue(dialogue.clone(), parsed.topic_complete);
+        {
+            let mut artifacts = artifacts_guard.write();
+            artifacts.push_dialogue(dialogue.clone(), parsed.topic_complete);
+        } 
+        self.context.lock().unwrap().teaching_state =
+            Some(TeachingState { artifacts: artifacts_guard });
 
         Ok(AgentResponse::dialogue(dialogue.content))
     }

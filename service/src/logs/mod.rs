@@ -98,18 +98,12 @@ impl Logger {
             .open(&self.log_file)
             .expect("Failed to open log file");
 
-        let content = if event.content.len() > 500 {
-            format!("{}...", &event.content[..500])
-        } else {
-            event.content.clone()
-        };
-
         let entry = format!(
             "[{timestamp}] {event_type} ({name})\n{content}\n\n",
             timestamp = event.timestamp,
             event_type = event.event_type,
             name = event.name,
-            content = content,
+            content = event.content,
         );
 
         file.write_all(entry.as_bytes())

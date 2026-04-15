@@ -1,6 +1,7 @@
 use crate::error::Result;
 use std::sync::OnceLock;
 
+
 static INSTANCE: OnceLock<PromptProvider> = OnceLock::new();
 
 pub fn get_prompt_provider() -> &'static PromptProvider {
@@ -51,12 +52,8 @@ impl PromptProvider {
     pub fn get_page_range_prompt(&self, chapter_title: &str) -> String {
         self.page_range_prompt.replace("{chapter_title}", chapter_title)
     }
-    pub fn get_page_to_md_prompt(&self, page_start: usize, page_end: usize) -> String {
-        if page_start == page_end {
-            format!("{}\n\nExtract page {} of this PDF.", self.page_to_md_prompt, page_start)
-        } else {
-            format!("{}\n\nExtract pages {} and {} of this PDF.", self.page_to_md_prompt, page_start, page_end)
-        }
+    pub fn get_page_to_md_raw(&self) -> &str {
+        &self.page_to_md_prompt
     }
     pub fn get_topic_mapper_prompt(&self, topics: &str) -> String {
         format!("{}\n\n## Topics to map\n\n{}", self.topic_mapper_prompt, topics)

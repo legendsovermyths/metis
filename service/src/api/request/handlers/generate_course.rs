@@ -24,8 +24,8 @@ use crate::{
 
 #[derive(Deserialize)]
 pub struct PageRange {
-    chapter_start: u32,
-    chapter_end: u32,
+    pub chapter_start: u32,
+    pub chapter_end: u32,
 }
 
 // --- Public entry point ---
@@ -158,14 +158,9 @@ pub async fn generate_artifacts(chapter_title: &str, preferred_book_id: Option<i
     log::info!("[generate_artifacts] chapter PDF extracted");
 
     let pages = (page_range.chapter_end - page_range.chapter_start + 1) as usize;
-    let client = Arc::new(GeminiClient::new());
 
-    log::info!("[generate_artifacts] uploading chapter PDF to Gemini ({} pages)", pages);
-    let (chapter_uri, _) = client.upload_file(&chapter_pdf).await?;
-    log::info!("[generate_artifacts] uploaded — uri: {}", chapter_uri);
-
-    log::info!("[generate_artifacts] converting chapter to markdown");
-    let content_md = convert_to_markdown(&client, &chapter_uri, pages).await?;
+    log::info!("[generate_artifacts] converting chapter to markdown ({} pages)", pages);
+    let content_md = convert_to_markdown(&chapter_pdf, pages).await?;
     log::info!("[generate_artifacts] markdown done ({} chars)", content_md.len());
 
     let content_md_path = format!("{}/content.md", chapter_dir);

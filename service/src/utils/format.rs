@@ -1,3 +1,29 @@
+/// Fix invalid JSON escape sequences produced by LLMs.
+/// In JSON, only `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\uXXXX` are valid.
+/// LLMs often emit raw LaTeX like `\epsilon` which contains `\e` — not a valid escape.
+/// This function doubles any lone `\` that isn't part of a valid JSON escape.
+pub fn fix_json_escapes(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    let mut chars = raw.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.peek() {
+                Some(&next) if matches!(next, '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' | 'u') => {
+                    out.push('\\');
+                    out.push(chars.next().unwrap());
+                }
+                _ => {
+                    out.push('\\');
+                    out.push('\\');
+                }
+            }
+        } else {
+            out.push(ch);
+        }
+    }
+    out
+}
+
 pub fn strip_json_block(text: &str) -> &str {
     let text = text.trim();
     if text.starts_with("```json") {
@@ -15,24 +41,6 @@ pub fn strip_json_block(text: &str) -> &str {
             .unwrap_or(text);
     }
     text
-}
-
-pub fn extract_json_object(text: &str) -> Option<&str> {
-    let start = text.find('{')?;
-    let mut depth = 0;
-    for (i, ch) in text[start..].char_indices() {
-        match ch {
-            '{' => depth += 1,
-            '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(&text[start..start + i + 1]);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 pub fn clean_page_output(text: &str) -> String {

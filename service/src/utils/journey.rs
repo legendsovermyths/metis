@@ -4,8 +4,8 @@ use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
      api::request::handlers::generate_course::PageRange, app::journey::artifact::TopicRange, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, utils::{
-        format::{clean_page_output, extract_json_object, strip_json_block},
-        pdf::truncated_copy,
+        format::{clean_page_output, strip_json_block},
+        pdf::{extract_page_range, truncated_copy},
     }
 };
 
@@ -68,6 +68,7 @@ pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<Topic
 pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<PageRange> {
     let truncated = truncated_copy(book_path)?;
     let mut client = GeminiClient::new();
+    client.set_json_mode(true);
     let (file_uri, _) = client.upload_file(&truncated).await?;
     let prompt = get_prompt_provider().get_page_range_prompt(chapter_title);
     client.set_system_prompt(prompt);
@@ -84,56 +85,79 @@ pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<P
     }
 
     let response_text = response.text();
-    let json_text =
-        extract_json_object(&response_text).unwrap_or_else(|| strip_json_block(&response_text));
-    let range: PageRange = serde_json::from_str(json_text).map_err(|e| {
+    let range: PageRange = serde_json::from_str(&response_text).map_err(|e| {
         MetisError::JsonError(format!(
             "Failed to parse page range: {e}\nResponse: {response_text}"
         ))
     })?;
+    log::info!(
+        "[detect_page_range] complete — PDF pages {}-{}",
+        range.chapter_start, range.chapter_end
+    );
     Ok(range)
 }
 
 const PAGES_PER_CALL: usize = 2;
 
 pub async fn convert_to_markdown(
-    client: &Arc<GeminiClient>,
-    file_uri: &str,
+    chapter_pdf: &str,
     num_pages: usize,
 ) -> Result<String> {
-    let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_PRO));
-    let mut set = JoinSet::new();
-    let prompts = get_prompt_provider();
+    let total_batches = (num_pages + PAGES_PER_CALL - 1) / PAGES_PER_CALL;
 
-    // Batch pages in pairs — one API call per pair (or single page if odd total)
+    // Phase 1: slice all batch PDFs upfront (fast, synchronous)
+    let mut batch_pdfs: Vec<(usize, usize, String)> = Vec::new();
     let mut page = 1;
     while page <= num_pages {
         let page_end = (page + PAGES_PER_CALL - 1).min(num_pages);
+        let batch_pdf = format!("{}.batch_{}-{}.pdf", chapter_pdf.trim_end_matches(".pdf"), page, page_end);
+        extract_page_range(chapter_pdf, page as u32, page_end as u32, &batch_pdf)?;
+        batch_pdfs.push((page, page_end, batch_pdf));
+        page += PAGES_PER_CALL;
+    }
+    log::info!("[convert_to_markdown] sliced {total_batches} batch PDFs, uploading + extracting (max {MAX_CONCURRENT_PRO} concurrent)");
+
+    // Phase 2: upload + generate in parallel, semaphore only gates the LLM call
+    let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_PRO));
+    let mut set = JoinSet::new();
+
+    for (batch_start, page_end, batch_pdf) in batch_pdfs {
         let sem = semaphore.clone();
-        let client = client.clone();
-        let uri = file_uri.to_string();
-        let prompt = prompts.get_page_to_md_prompt(page, page_end);
-        let batch_start = page;
+        let batch_pages = page_end - batch_start + 1;
+
         set.spawn(async move {
+            let client = GeminiClient::new();
+            let (file_uri, _) = client.upload_file(&batch_pdf).await?;
+            let _ = fs::remove_file(&batch_pdf);
+
             let _permit = sem
                 .acquire()
                 .await
                 .map_err(|e| MetisError::UtilsError(e.to_string()))?;
-            let response = client.generate_with_file(prompt, &uri).await?;
+
+            let prompts = get_prompt_provider();
+            let prompt = if batch_pages == 1 {
+                format!("{}\n\nExtract page 1 of this PDF.", prompts.get_page_to_md_raw())
+            } else {
+                format!("{}\n\nExtract pages 1 and 2 of this PDF.", prompts.get_page_to_md_raw())
+            };
+
+            let response = client.generate_with_file(prompt, &file_uri).await?;
             Ok::<(usize, String), MetisError>((batch_start, response.text()))
         });
-        page += PAGES_PER_CALL;
     }
 
-    // Collect batches, sort by start page, then join raw (LLM already outputs <!-- PAGE N --> markers)
     let mut batches: Vec<(usize, String)> = Vec::new();
     while let Some(result) = set.join_next().await {
         match result {
             Ok(Ok(batch)) => {
-                println!("  [md] pages {}-{}/{}", batch.0, (batch.0 + PAGES_PER_CALL - 1).min(num_pages), num_pages);
+                log::info!("[convert_to_markdown] {}/{total_batches} done", batches.len() + 1);
                 batches.push(batch);
             }
-            Ok(Err(e)) => return Err(e),
+            Ok(Err(e)) => {
+                log::error!("[convert_to_markdown] batch failed: {e}");
+                return Err(e);
+            }
             Err(e) => return Err(MetisError::UtilsError(format!("Task join error: {e}"))),
         }
     }
@@ -141,7 +165,18 @@ pub async fn convert_to_markdown(
     batches.sort_by_key(|(start, _)| *start);
     let combined = batches
         .iter()
-        .map(|(_, content)| clean_page_output(content))
+        .enumerate()
+        .map(|(i, (_, content))| {
+            let raw = clean_page_output(content);
+            let page_num = i * PAGES_PER_CALL + 1;
+            let page_end = (page_num + PAGES_PER_CALL - 1).min(num_pages);
+            if page_num == page_end {
+                format!("<!-- PAGE {} -->\n\n{}", page_num, raw)
+            } else {
+                raw.replace("<!-- PAGE 1 -->", &format!("<!-- PAGE {} -->", page_num))
+                   .replace("<!-- PAGE 2 -->", &format!("<!-- PAGE {} -->", page_end))
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n\n");
 

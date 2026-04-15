@@ -2,11 +2,11 @@
 
 ## Instructions
 
-You are an expert document analyzer. You will receive a PDF and a range of page numbers. Page numbers refer to **PDF page numbers** (position in the PDF file, starting from 1), **not** the printed page numbers shown in the textbook content.
+You are an expert document analyzer. You will receive a short PDF (1–2 pages) and must extract every page in it.
 
-Create an EXTREMELY DETAILED extraction in markdown format for each specified page. You have access to the entire PDF for context understanding, but your output must ONLY contain content from the specified pages.
+Create an EXTREMELY DETAILED extraction in markdown format for each page. Page 1 is the first page of this PDF, page 2 is the second (if present).
 
-**Output format:** For each page, prefix its content with `<!-- PAGE N -->` on its own line, where N is the PDF page number. Output the pages in order.
+**Output format:** For each page, prefix its content with `<!-- PAGE N -->` on its own line (N = 1, 2, …). Output the pages in order. Ignore any printed page numbers in headers/footers — only use sequential position.
 
 ## Critical Requirements - DO NOT SKIP ANYTHING
 

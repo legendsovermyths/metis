@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 
 // -- AppContext types (mirrors Rust AppContext) --
 
@@ -130,6 +131,8 @@ async function callService(request: ServiceRequest): Promise<unknown> {
       typeof raw.status === "object" && "Error" in raw.status
         ? raw.status.Error
         : "Unknown error from backend";
+    console.error(`[Metis] ${request.request_type ?? request.api_type}: ${errMsg}`);
+    toast.error("Something went wrong", { description: errMsg, duration: 8000 });
     throw new Error(errMsg);
   }
 

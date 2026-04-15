@@ -10,7 +10,7 @@ use crate::{
 
 pub struct LLMClientFactory;
 
-const FLASH: &str = "gemini-3.0-flash";
+const FLASH: &str = "gemini-3-flash-preview";
 const PRO: &str = "gemini-3.1-pro-preview";
 
 pub enum ClientType {

@@ -23,9 +23,8 @@ impl<'a, T: DbObject> DerefMut for PersistentGuard<'a, T> {
 
 impl<'a, T: DbObject> Drop for PersistentGuard<'a, T> {
     fn drop(&mut self) {
-        match self.save() {
-            Err(_val) => (),
-            _ => (),
+        if let Err(e) = self.save() {
+            log::error!("[PersistentGuard] failed to save on drop: {e}");
         }
     }
 }

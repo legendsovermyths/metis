@@ -17,6 +17,7 @@ pub struct GeminiClient {
     client: Client,
     system_prompt: String,
     model_name: String,
+    json_mode: bool,
 }
 
 impl GeminiClient {
@@ -25,7 +26,8 @@ impl GeminiClient {
             base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
             system_prompt: String::new(),
-            model_name: "gemini-3.0-flash".to_string(),
+            model_name: "gemini-3-flash-preview".to_string(),
+            json_mode: false,
         }
     }
 
@@ -35,7 +37,12 @@ impl GeminiClient {
             client: Client::new(),
             system_prompt: String::new(),
             model_name: model.to_string(),
+            json_mode: false,
         }
+    }
+
+    pub fn set_json_mode(&mut self, enabled: bool) {
+        self.json_mode = enabled;
     }
 
     pub async fn upload_file(&self, path: &str) -> Result<(String, i64)> {
@@ -102,14 +109,20 @@ impl GeminiClient {
                 "file_data": { "mime_type": "application/pdf", "file_uri": uri }
             }));
         }
-        json!({
+        let mut request = json!({
             "systemInstruction": {
                 "parts": [{"text": self.system_prompt}]
             },
             "contents": [
                 {"parts": parts}
             ],
-        })
+        });
+        if self.json_mode {
+            request["generationConfig"] = json!({
+                "responseMimeType": "application/json"
+            });
+        }
+        request
     }
 
     fn parse_response(response: serde_json::Value) -> Result<String> {

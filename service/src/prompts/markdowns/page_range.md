@@ -16,9 +16,7 @@ Textbooks have front matter (cover, roman-numeral pages, preface, etc.) before p
 
 ## What to return
 
-First, write your reasoning: show the printed page numbers you found in the TOC, the offset calculation, and the final PDF page numbers. Then, on its own line, return the JSON.
-
-Return valid JSON (no markdown fences):
+Return **only** valid JSON — no explanation, no reasoning, no markdown fences:
 
 {
   "chapter_start": <pdf page number>,

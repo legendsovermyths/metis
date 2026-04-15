@@ -19,7 +19,7 @@ use crate::{
         llm_client::LLMClient,
     },
     prompts::get_prompt_provider,
-    utils::{cmd::execute_python, format::strip_json_block},
+    utils::{cmd::execute_python, format::{fix_json_escapes, strip_json_block}},
 };
 
 use super::NarratorOutput;
@@ -79,9 +79,11 @@ impl Illustrator {
 
                 let raw = response.text();
                 let json_str = strip_json_block(&raw);
-                let parsed: IllustratorOutput = match serde_json::from_str(json_str) {
+                let fixed = fix_json_escapes(json_str);
+                let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
                     Ok(v) => v,
-                    Err(_) => {
+                    Err(e) => {
+                        log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
                         return Ok(Blackboard::empty());
                     }
                 };
@@ -91,12 +93,17 @@ impl Illustrator {
                 match execute_python(&code) {
                     Ok(()) => {
                         if Path::new(&output_path).exists() {
+                            log::info!("[illustrator] figure saved to {output_path}");
                             Ok(Blackboard::new(instructions.into(), Some(output_path)))
                         } else {
+                            log::error!("[illustrator] python ran but no file at {output_path}");
                             Ok(Blackboard::empty())
                         }
                     }
-                    Err(_) => Ok(Blackboard::empty()),
+                    Err(e) => {
+                        log::error!("[illustrator] python execution failed: {e}");
+                        Ok(Blackboard::empty())
+                    }
                 }
             }
         }
