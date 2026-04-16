@@ -1,44 +1,24 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::journey::blackboard::Blackboard;
+use crate::{app::journey::{blackboard::Blackboard, dialogue::Dialogues}, db::persistence::Persistent};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JourneyProgress {
+    pub journey_id: i64,
     pub arc_idx: usize,
-    pub arcs: Vec<ArcProgress>,
+    pub topic_idx: usize,
+    pub dialogues: Persistent<Dialogues>,
     pub is_journey_complete: bool,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ArcProgress {
-    pub topic_idx: usize,
-    pub dialogues: Vec<Dialogue>,
-    pub completed: bool,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Dialogue {
-    pub content: String,
-    pub blackboard: Blackboard,
-}
-
-impl Dialogue {
-    pub fn new(content: String, blackboard: Blackboard) -> Self {
-        Self {
-            content,
-            blackboard,
-        }
-    }
-}
-impl Default for JourneyProgress {
-    fn default() -> Self {
-        Self {
+impl JourneyProgress {
+    pub fn new(journey_id: i64) -> Self {
+        JourneyProgress {
+            journey_id,
             arc_idx: 0,
-            arcs: vec![ArcProgress {
-                topic_idx: 0,
-                dialogues: Vec::new(),
-                completed: false,
-            }],
+            topic_idx: 0,
+            dialogues: Persistent::new(Dialogues::new()),
             is_journey_complete: false,
         }
     }

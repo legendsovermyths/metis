@@ -45,6 +45,23 @@ export default function JourneyDetailPage() {
       .finally(() => setLoading(false));
   }, [numericId]);
 
+  const completedTopics = row?.completed_topics ?? 0;
+  const totalTopics = row?.total_topics ?? 0;
+
+  const completedSet = useMemo(() => {
+    const set = new Set<string>();
+    if (!row) return set;
+    let remaining = completedTopics;
+    for (let a = 0; a < row.journey.arcs.length && remaining > 0; a++) {
+      const arc = row.journey.arcs[a];
+      for (let t = 0; t < arc.topics.length && remaining > 0; t++) {
+        set.add(`${a}-${t}`);
+        remaining--;
+      }
+    }
+    return set;
+  }, [row, completedTopics]);
+
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-57px)] items-center justify-center paper-texture">
@@ -69,12 +86,8 @@ export default function JourneyDetailPage() {
 
   const title = row.journey.journey_title || row.chapter_title || "Untitled journey";
   const description = row.chapter_title ? `Chapter · ${row.chapter_title}` : "Your learning path";
-  const totalTopics = row.journey.arcs.reduce((n, a) => n + a.topics.length, 0);
-
-  const progress = row.progress;
-  const completedTopics = progress.arcs.reduce((n, a) => n + a.topic_idx, 0);
   const progressPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
-  const allDone = progress.is_journey_complete;
+  const allDone = completedTopics >= totalTopics && totalTopics > 0;
 
   const toggleArc = (arcKey: string) => {
     setExpandedArcs((prev) => {
@@ -98,7 +111,7 @@ export default function JourneyDetailPage() {
   };
 
   return (
-    <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-8 pb-24 md:pb-8">
+    <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-8 pb-28">
       <div className="mx-auto max-w-2xl">
         <Link
           to="/journeys"
@@ -140,10 +153,9 @@ export default function JourneyDetailPage() {
           <div className="space-y-3">
             {row.journey.arcs.map((arc, i) => {
               const arcKey = `arc-${i}`;
-              const ap = progress.arcs[i];
-              const completed = ap?.topic_idx ?? 0;
+              const arcCompleted = arc.topics.filter((_, t) => completedSet.has(`${i}-${t}`)).length;
               const total = arc.topics.length;
-              const isDone = ap?.completed ?? false;
+              const arcDone = arcCompleted === total && total > 0;
               const isExpanded = expandedArcs.has(arcKey);
 
               return (
@@ -161,9 +173,9 @@ export default function JourneyDetailPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-medium text-foreground">{arc.arc_title}</h3>
                         <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                          {completed}/{total}
+                          {arcCompleted}/{total}
                         </span>
-                        {isDone && <Check className="h-3.5 w-3.5 text-green-500" />}
+                        {arcDone && <Check className="h-3.5 w-3.5 text-green-500" />}
                       </div>
                     </div>
                     <ChevronDown
@@ -178,7 +190,7 @@ export default function JourneyDetailPage() {
                     <div className="border-t border-border">
                       <div className="px-5 py-3">
                         {arc.topics.map((topic, ti) => {
-                          const topicDone = ti < completed;
+                          const topicDone = completedSet.has(`${i}-${ti}`);
                           return (
                             <div
                               key={`${arcKey}-t-${ti}`}
@@ -207,14 +219,21 @@ export default function JourneyDetailPage() {
           </div>
         )}
 
-        {/* Single Continue / Start button at the bottom */}
-        {row.journey.arcs.length > 0 && (
-          <div className="mt-8 flex justify-center animate-fade-in">
+        {totalTopics === 0 && row.journey.arcs.length > 0 && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">No topics listed in arcs yet.</p>
+        )}
+      </div>
+
+      {row.journey.arcs.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/80 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
+            <span className="text-xs font-medium text-muted-foreground tabular-nums">
+              {completedTopics}/{totalTopics} topics
+            </span>
             <Button
               onClick={handleContinue}
               disabled={starting || allDone}
-              className="rounded-xl px-8 shadow-soft"
-              size="lg"
+              className="rounded-xl px-6 shadow-soft"
             >
               {starting ? (
                 <>
@@ -239,12 +258,8 @@ export default function JourneyDetailPage() {
               )}
             </Button>
           </div>
-        )}
-
-        {totalTopics === 0 && row.journey.arcs.length > 0 && (
-          <p className="mt-4 text-center text-xs text-muted-foreground">No topics listed in arcs yet.</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

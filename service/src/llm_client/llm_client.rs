@@ -13,18 +13,22 @@ pub trait LLMChatClient: Send + Sync {
     async fn generate(&mut self, message: String) -> Result<LLMResponse>;
     fn set_system_prompt(&mut self, prompt: String);
     fn add_tool(&mut self, tool: Box<dyn Tool>);
-    fn get_event_history(&mut self)->EventHistory;
+    fn get_event_history(&self)->EventHistory;
 }
 
 pub struct LLMResponse {
     response: String,
 }
 
-impl LLMResponse {
-    pub fn from(str: impl ToString) -> Self {
-        let str: String = str.to_string();
-        Self { response: str }
+impl<T: ToString> From<T> for LLMResponse {
+    fn from(value: T) -> Self {
+        Self {
+            response: value.to_string(),
+        }
     }
+}
+
+impl LLMResponse {
     pub fn text(&self) -> String {
         self.response.clone()
     }

@@ -1,6 +1,8 @@
 pub mod artifact;
 pub mod blackboard;
 pub mod progress;
+pub mod dialogue;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

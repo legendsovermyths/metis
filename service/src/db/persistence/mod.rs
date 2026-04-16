@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::persistence::gaurd::PersistentGuard, error::Result};
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Persistent<T: DbObject> {
     data: T,
 }
@@ -26,5 +26,5 @@ impl<T: DbObject> Persistent<T> {
 }
 
 pub trait DbObject {
-    fn save(&self) -> Result<()>;
+    fn save(&mut self) -> Result<()>;
 }

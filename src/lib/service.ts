@@ -69,19 +69,26 @@ export interface Blackboard {
 }
 
 export interface Dialogue {
+  journey_id: number;
+  arc_idx: number;
+  topic_idx: number;
+  idx: number;
   content: string;
   blackboard: Blackboard;
+  heading: string;
+  marked_complete: boolean;
 }
 
-export interface ArcProgress {
-  topic_idx: number;
-  dialogues: Dialogue[];
-  completed: boolean;
+export interface Dialogues {
+  data: Dialogue[];
+  dirty: Dialogue[];
 }
 
 export interface JourneyProgress {
+  journey_id: number;
   arc_idx: number;
-  arcs: ArcProgress[];
+  topic_idx: number;
+  dialogues: { data: Dialogues };
   is_journey_complete: boolean;
 }
 
@@ -93,7 +100,8 @@ export interface JourneyRow {
   journey: Journey;
   created_at: number;
   advisor_notes: string;
-  progress: JourneyProgress;
+  completed_topics: number;
+  total_topics: number;
 }
 
 // -- Global context setter (registered by AppContextProvider) --

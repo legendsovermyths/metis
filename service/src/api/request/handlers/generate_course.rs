@@ -77,7 +77,7 @@ pub fn generate_journey_artifacts(
             chapter_dir,
             journey,
             advisor_notes,
-            progress: JourneyProgress::default()
+            progress: JourneyProgress::new(id)
         })
     })
 }
@@ -105,11 +105,6 @@ pub fn generate_course_handler(
     log::info!("[generate_course] starting for chapter: \"{}\"", chapter_title);
     let artifacts = generate_journey_artifacts(&chapter_title, Arc::clone(&context))?;
     log::info!("[generate_course] done — journey id: {:?}", artifacts.id);
-    {
-        let mut ctx = context.lock().unwrap();
-        ctx.chapter_title = artifacts.chapter_title.clone();
-        ctx.chapter_content_dir = Some(artifacts.chapter_dir.clone());
-    }
     Ok(serde_json::to_value(artifacts)?)
 }
 

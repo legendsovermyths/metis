@@ -2,9 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app::journey::{
-        blackboard::Blackboard,
-        progress::{Dialogue, JourneyProgress},
-        ArcTopic, Journey, JourneyArc,
+        blackboard::Blackboard, dialogue::Dialogue, progress::JourneyProgress, ArcTopic, Journey, JourneyArc
     },
     db::{persistence::DbObject, repo::journeys::JourneysRepo},
     error::Result,
@@ -38,21 +36,16 @@ impl JourneyArtifacts {
 
     pub fn step(&mut self) -> bool {
         let arc_idx = self.progress.arc_idx;
-        let next_topic = self.progress.arcs[arc_idx].topic_idx + 1;
+        let next_topic = self.progress.topic_idx + 1;
 
         if self.get_topic(arc_idx, next_topic).is_some() {
-            self.progress.arcs[arc_idx].topic_idx = next_topic;
+            self.progress.topic_idx = next_topic;
             false
         } else {
-            self.progress.arcs[arc_idx].completed = true;
             let next_arc = arc_idx + 1;
             if self.get_topic(next_arc, 0).is_some() {
                 self.progress.arc_idx = next_arc;
-                if self.progress.arcs.len() <= next_arc {
-                    self.progress
-                        .arcs
-                        .push(super::progress::ArcProgress::default());
-                }
+                self.progress.topic_idx = 0;
                 false
             } else {
                 self.progress.is_journey_complete = true;
@@ -60,11 +53,13 @@ impl JourneyArtifacts {
             }
         }
     }
+    
+    pub fn recent_dialogues(&self, n: usize)->Vec<&Dialogue>{
+        self.progress.dialogues.read().get_recent(n)
+    }
 
     pub fn push_dialogue(&mut self, dialogue: Dialogue, topic_complete: bool) -> bool {
-        self.progress.arcs[self.progress.arc_idx]
-            .dialogues
-            .push(dialogue);
+        self.progress.dialogues.write().push(dialogue);
         if topic_complete {
             self.step()
         } else {
@@ -72,26 +67,18 @@ impl JourneyArtifacts {
         }
     }
 
-    pub fn recent_dialogues(&self, n: usize) -> &[Dialogue] {
-        let d = &self.progress.arcs[self.progress.arc_idx].dialogues;
-        let start = d.len().saturating_sub(n);
-        &d[start..]
-    }
-
     pub fn get_current_state(&self) -> Option<(&JourneyArc, &ArcTopic, Blackboard)> {
         let topic = self.get_topic(
             self.progress.arc_idx,
-            self.progress.arcs[self.progress.arc_idx].topic_idx,
+            self.progress.topic_idx,
         );
 
         let arc = self.get_arc(self.progress.arc_idx);
         match (arc, topic) {
             (Some(arc), Some(topic)) => {
-                let dialogue = self.progress.arcs[self.progress.arc_idx].dialogues.last();
-                let mut blackboard = Blackboard::empty();
-                if let Some(dialogue) = dialogue {
-                    blackboard = dialogue.blackboard.clone();
-                }
+                let blackboard = self.progress.dialogues.read().last()
+                    .map(|d| d.blackboard.clone())
+                    .unwrap_or_else(Blackboard::empty);
                 Some((arc, topic, blackboard))
             }
             _ => None,
@@ -99,8 +86,7 @@ impl JourneyArtifacts {
     }
 }
 
-impl DbObject for JourneyArtifacts {
-    fn save(&self) -> Result<()> {
+impl DbObject for JourneyArtifacts { fn save(&mut self) -> Result<()> {
         Ok(JourneysRepo::update(self)?)
     }
 }

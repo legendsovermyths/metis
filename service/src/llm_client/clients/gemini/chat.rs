@@ -24,14 +24,14 @@ pub struct GeminiChat {
     client: Client,
     system_prompt: String,
     model_name: String,
-    tools_map: HashMap<String, Box<dyn Tool + Send>>,
+    tools_map: HashMap<String, Box<dyn Tool>>,
     tool_description: Vec<Value>,
     event_history: EventHistory,
     context: Arc<Mutex<AppContext>>,
     contents: Vec<Value>,
 }
 
-impl<'a> GeminiChat {
+impl GeminiChat {
     pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
         Self::with_model("gemini-3-flash-preview", context)
     }
@@ -121,7 +121,7 @@ impl<'a> GeminiChat {
         None
     }
 
-    fn call_api_and_parse(&self, response: Value) -> Result<Value> {
+    fn parse_response(&self, response: Value) -> Result<Value> {
         let model_content = response
             .get("candidates")
             .and_then(|c| c.get(0))
@@ -154,7 +154,34 @@ impl<'a> GeminiChat {
             return Err(MetisError::HttpError(format!("{status}: {body}")));
         }
         let response: Value = response.json().await?;
-        self.call_api_and_parse(response)
+        self.parse_response(response)
+    }
+
+    fn execute_function_calls(
+        &mut self,
+        function_calls: &[(String, Value)],
+    ) -> Result<Vec<Value>> {
+        let mut response_parts: Vec<Value> = Vec::new();
+
+        for (name, args) in function_calls {
+            let fn_event = Event::new(name, EventType::FunctionCall, &args.to_string());
+            self.event_history.events.push(fn_event);
+
+            let tool = self
+                .tools_map
+                .get(name)
+                .ok_or(MetisError::ToolError(format!("Unknown tool: {name}")))?;
+            let result = tool.execute(args.clone(), Arc::clone(&self.context))?;
+
+            let result_event =
+                Event::new(name, EventType::FunctionResponse, &result.to_string());
+            self.event_history.events.push(result_event);
+
+            response_parts
+                .push(json!({"functionResponse": {"name": name, "response": result}}));
+        }
+
+        Ok(response_parts)
     }
 
     async fn run(&mut self, event: Event) -> Result<LLMResponse> {
@@ -172,31 +199,9 @@ impl<'a> GeminiChat {
 
             if !function_calls.is_empty() {
                 self.contents.push(model_content);
-
-                let mut response_parts: Vec<Value> = Vec::new();
-
-                for (name, args) in &function_calls {
-                    let fn_event =
-                        Event::new(name, EventType::FunctionCall, &args.to_string());
-                    self.event_history.events.push(fn_event);
-
-                    let tool = self
-                        .tools_map
-                        .get(name)
-                        .ok_or(MetisError::ToolError(format!("Unknown tool: {name}")))?;
-                    let result = tool.execute(args.clone(), Arc::clone(&self.context))?;
-
-                    let result_event =
-                        Event::new(name, EventType::FunctionResponse, &result.to_string());
-                    self.event_history.events.push(result_event);
-
-                    response_parts
-                        .push(json!({"functionResponse": {"name": name, "response": result}}));
-                }
-
+                let response_parts = self.execute_function_calls(&function_calls)?;
                 self.contents
                     .push(json!({"role": "user", "parts": response_parts}));
-
                 continue;
             }
 
@@ -235,7 +240,7 @@ impl LLMChatClient for GeminiChat {
         self.system_prompt = prompt;
     }
 
-    fn get_event_history(&mut self) -> EventHistory {
+    fn get_event_history(&self) -> EventHistory {
         self.event_history.clone()
     }
 }

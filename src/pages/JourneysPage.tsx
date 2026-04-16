@@ -6,9 +6,6 @@ import { useJourneyCreation } from "@/context/JourneyCreationContext";
 
 const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
 
-function countTopics(row: JourneyRow): number {
-  return row.journey.arcs.reduce((n, a) => n + a.topics.length, 0);
-}
 
 function journeyGlyph(id: number): string {
   return GLYPHS[Math.abs(id) % GLYPHS.length];
@@ -121,8 +118,8 @@ export default function JourneysPage() {
             ))}
 
             {journeyRows.map((row, i) => {
-              const total = countTopics(row);
-              const completedTopics = row.progress.arcs.reduce((n, a) => n + a.topic_idx, 0);
+              const total = row.total_topics;
+              const completedTopics = row.completed_topics;
               const pct = total > 0 ? Math.round((completedTopics / total) * 100) : 0;
               const title = row.journey.journey_title || row.chapter_title || "Untitled journey";
               const blurb = row.chapter_title ? `Chapter · ${row.chapter_title}` : "Open to continue this path.";

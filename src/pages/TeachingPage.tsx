@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Sun, Moon, Loader2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,8 @@ import "katex/dist/katex.min.css";
 const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
 
 function preprocessMath(md: string): string {
-  // Protect escaped dollars (\$) so they aren't treated as math delimiters
   let result = md.replace(/\\\$/g, ESC_DOLLAR);
 
-  // Display math $$...$$ (may span lines)
   result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
@@ -26,7 +24,6 @@ function preprocessMath(md: string): string {
       return `$$${tex}$$`;
     }
   });
-  // Inline math $...$
   result = result.replace(/(?<!\$)\$(?!\$)((?:[^$\n\\]|\\.){1,200}?)\$(?!\$)/g, (_, tex) => {
     try {
       return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
@@ -35,7 +32,6 @@ function preprocessMath(md: string): string {
     }
   });
 
-  // Restore escaped dollars as literal $
   result = result.split(ESC_DOLLAR).join("$");
   return result;
 }
@@ -52,31 +48,52 @@ export default function TeachingPage() {
 
   const artifacts = ts?.artifacts?.data;
   const journeyId = artifacts?.id;
-  const arcIndex = artifacts?.progress.arc_idx ?? 0;
-  const arc = artifacts?.journey.arcs[arcIndex];
-  const arcProgress = artifacts?.progress.arcs[arcIndex];
-  const dialogues = arcProgress?.dialogues ?? [];
-  const currentTopicIndex = arcProgress?.topic_idx ?? 0;
-  const arcDone = arcProgress?.completed ?? false;
-  const topicsTotal = arc?.topics.length ?? 0;
-  const currentTopic = arc?.topics[currentTopicIndex]?.name ?? "";
-  const progressPct = topicsTotal > 0 ? (currentTopicIndex / topicsTotal) * 100 : 0;
+  const progress = artifacts?.progress;
+  const journey = artifacts?.journey;
+
+  const allDialogues = useMemo<Dialogue[]>(() => {
+    if (!progress?.dialogues?.data) return [];
+    const d = progress.dialogues.data;
+    return [...(d.data ?? []), ...(d.dirty ?? [])];
+  }, [progress?.dialogues]);
+
+  const currentArcIdx = progress?.arc_idx ?? 0;
+  const currentTopicIdx = progress?.topic_idx ?? 0;
+  const currentArc = journey?.arcs[currentArcIdx];
+  const isJourneyComplete = progress?.is_journey_complete ?? false;
+
+  const totalTopics = useMemo(() => {
+    if (!journey) return 0;
+    return journey.arcs.reduce((sum, arc) => sum + arc.topics.length, 0);
+  }, [journey]);
+
+  const completedTopics = useMemo(() => {
+    if (!journey) return 0;
+    let count = 0;
+    for (let a = 0; a < currentArcIdx; a++) {
+      count += journey.arcs[a]?.topics.length ?? 0;
+    }
+    count += currentTopicIdx;
+    return count;
+  }, [journey, currentArcIdx, currentTopicIdx]);
+
+  const progressPct = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
 
   useEffect(() => {
-    if (dialogues.length > 0) {
-      setPageIndex(dialogues.length - 1);
+    if (allDialogues.length > 0) {
+      setPageIndex(allDialogues.length - 1);
     }
-  }, [dialogues.length]);
+  }, [allDialogues.length]);
 
   const handleNext = useCallback(async () => {
     if (isLoading) return;
 
-    if (pageIndex < dialogues.length - 1) {
+    if (pageIndex < allDialogues.length - 1) {
       setPageIndex((p) => p + 1);
       return;
     }
 
-    if (arcDone) return;
+    if (isJourneyComplete) return;
     setIsLoading(true);
     setError(null);
 
@@ -87,13 +104,13 @@ export default function TeachingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, pageIndex, dialogues.length, arcDone]);
+  }, [isLoading, pageIndex, allDialogues.length, isJourneyComplete]);
 
   const handlePrev = useCallback(() => {
     if (pageIndex > 0) setPageIndex((p) => p - 1);
   }, [pageIndex]);
 
-  if (!ts || !artifacts || !arc) {
+  if (!ts || !artifacts || !journey) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 paper-texture px-6">
         <p className="text-muted-foreground">No active teaching session.</p>
@@ -107,45 +124,48 @@ export default function TeachingPage() {
     );
   }
 
-  const totalPages = dialogues.length;
+  const totalPages = allDialogues.length;
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
-  const currentDialogue: Dialogue | undefined = dialogues[pageIndex];
+  const currentDialogue: Dialogue | undefined = allDialogues[pageIndex];
+  const displayHeading = currentDialogue?.heading || currentArc?.topics[0]?.name || "Starting...";
+  const displayArc = currentDialogue
+    ? journey.arcs[currentDialogue.arc_idx]?.arc_title
+    : currentArc?.arc_title;
 
   return (
     <div className="flex min-h-screen flex-col">
       {/* Top bar */}
-      <div className="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-card/80 px-4 py-2 backdrop-blur-xl">
-        <Link
-          to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
-          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-xs font-medium hidden sm:inline">Back</span>
-        </Link>
-        <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground">
-          <BookOpen className="h-3.5 w-3.5" />
-          Teaching
-        </div>
-        <button
-          onClick={toggle}
-          className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </button>
-      </div>
+      <div className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-4 py-2">
+          <Link
+            to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-xs font-medium hidden sm:inline">Back</span>
+          </Link>
 
-      {/* Subtle progress bar */}
-      <div className="h-[2px] bg-surface">
-        <div
-          className="h-full bg-foreground/30 transition-all duration-700 ease-out"
-          style={{ width: `${progressPct}%` }}
-        />
+          <button
+            onClick={toggle}
+            className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-[2px] bg-surface">
+          <div
+            className="h-full bg-foreground/30 transition-all duration-700 ease-out"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
       {/* Content area */}
@@ -154,10 +174,10 @@ export default function TeachingPage() {
           {/* Arc + topic heading */}
           <header className="mb-10 animate-fade-in">
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 mb-2">
-              {arc.arc_title}
+              {displayArc}
             </p>
             <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground md:text-3xl">
-              {currentTopic || arc.topics[0]?.name || "Starting..."}
+              {displayHeading}
             </h1>
             <div className="mt-4 flex items-center gap-3">
               <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
@@ -167,7 +187,7 @@ export default function TeachingPage() {
                 />
               </div>
               <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                {currentTopicIndex}/{topicsTotal}
+                {completedTopics}/{totalTopics}
               </span>
             </div>
           </header>
@@ -227,12 +247,12 @@ export default function TeachingPage() {
             </div>
           )}
 
-          {arcDone && isOnLastPage && (
+          {isJourneyComplete && isOnLastPage && (
             <div className="mt-12 text-center animate-fade-in">
               <div className="inline-block rounded-xl border border-border bg-card p-8 shadow-soft">
-                <p className="text-base font-medium text-foreground mb-2">Arc complete</p>
+                <p className="text-base font-medium text-foreground mb-2">Journey complete</p>
                 <p className="text-sm text-muted-foreground mb-6">
-                  You've finished all topics in {arc.arc_title}.
+                  You've finished all topics. Well done.
                 </p>
                 <Button
                   onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
@@ -247,7 +267,7 @@ export default function TeachingPage() {
         </div>
       </div>
 
-      {/* Bottom bar: page navigation */}
+      {/* Bottom bar */}
       <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-xl px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <Button
@@ -267,7 +287,7 @@ export default function TeachingPage() {
             </span>
           )}
 
-          {arcDone && isOnLastPage ? (
+          {isJourneyComplete && isOnLastPage ? (
             <Button
               size="sm"
               onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
@@ -276,7 +296,7 @@ export default function TeachingPage() {
               Finish
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
-          ) : (
+          ) : isOnLastPage || hasNoPages ? (
             <Button
               size="sm"
               onClick={handleNext}
@@ -295,10 +315,21 @@ export default function TeachingPage() {
                 </>
               ) : (
                 <>
-                  Next
-                  <ChevronRight className="ml-1 h-4 w-4" />
+                  Continue
+                  <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               )}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPageIndex((p) => Math.min(p + 1, totalPages - 1))}
+              disabled={pageIndex >= totalPages - 1}
+              className="rounded-xl"
+            >
+              Next
+              <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           )}
         </div>
