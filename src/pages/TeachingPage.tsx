@@ -203,20 +203,10 @@ export default function TeachingPage() {
 
           {!hasNoPages && (
             <div key={pageIndex} className="animate-fade-in">
-              {currentDialogue?.blackboard?.image_url && (
-                <div className="mb-8 flex justify-center">
-                  <img
-                    src={convertFileSrc(currentDialogue.blackboard.image_url)}
-                    alt="Blackboard figure"
-                    className={cn(
-                      "max-w-full h-auto rounded-lg",
-                      "dark:invert"
-                    )}
-                  />
-                </div>
-              )}
-              <article
-                className={cn(
+              {(() => {
+                const raw = currentDialogue?.content ?? "";
+                const imageUrl = currentDialogue?.blackboard?.image_url;
+                const proseClasses = cn(
                   "prose prose-neutral dark:prose-invert max-w-none",
                   "prose-headings:font-serif prose-headings:tracking-tight",
                   "prose-p:leading-[1.8] prose-p:text-foreground/90",
@@ -225,12 +215,47 @@ export default function TeachingPage() {
                   "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
                   "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
                   "[&_.katex]:text-foreground"
-                )}
-              >
-                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                  {preprocessMath(currentDialogue?.content ?? "")}
-                </ReactMarkdown>
-              </article>
+                );
+
+                if (!imageUrl) {
+                  return (
+                    <article className={proseClasses}>
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                        {preprocessMath(raw)}
+                      </ReactMarkdown>
+                    </article>
+                  );
+                }
+
+                const paragraphs = raw.split(/\n{2,}/);
+                const mid = Math.ceil(paragraphs.length / 2);
+                const before = paragraphs.slice(0, mid).join("\n\n");
+                const after = paragraphs.slice(mid).join("\n\n");
+
+                return (
+                  <>
+                    <article className={proseClasses}>
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                        {preprocessMath(before)}
+                      </ReactMarkdown>
+                    </article>
+                    <div className="my-8 flex justify-center">
+                      <img
+                        src={convertFileSrc(imageUrl)}
+                        alt="Blackboard figure"
+                        className={cn("max-w-full h-auto rounded-lg", "dark:invert")}
+                      />
+                    </div>
+                    {after && (
+                      <article className={proseClasses}>
+                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                          {preprocessMath(after)}
+                        </ReactMarkdown>
+                      </article>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
