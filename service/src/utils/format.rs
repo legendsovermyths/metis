@@ -2,13 +2,16 @@
 /// In JSON, only `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\uXXXX` are valid.
 /// LLMs often emit raw LaTeX like `\epsilon` which contains `\e` — not a valid escape.
 /// This function doubles any lone `\` that isn't part of a valid JSON escape.
+///
+/// We intentionally exclude `\b` and `\f` from the "valid" list because LLMs
+/// never mean backspace/form-feed — they mean LaTeX (`\frac`, `\binom`, etc.).
 pub fn fix_json_escapes(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut chars = raw.chars().peekable();
     while let Some(ch) = chars.next() {
         if ch == '\\' {
             match chars.peek() {
-                Some(&next) if matches!(next, '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' | 'u') => {
+                Some(&next) if matches!(next, '"' | '\\' | '/' | 'n' | 'r' | 't' | 'u') => {
                     out.push('\\');
                     out.push(chars.next().unwrap());
                 }
@@ -22,6 +25,41 @@ pub fn fix_json_escapes(raw: &str) -> String {
         }
     }
     out
+}
+
+/// Replace LaTeX shorthands that matplotlib's mathtext parser doesn't support.
+pub fn fix_mathtext_shorthands(code: &str) -> String {
+    const REPLACEMENTS: &[(&str, &str)] = &[
+        (r"\\ge ", r"\\geq "),
+        (r"\\ge}", r"\\geq}"),
+        (r"\\ge$", r"\\geq$"),
+        (r"\\ge\\", r"\\geq\\"),
+        (r"\\le ", r"\\leq "),
+        (r"\\le}", r"\\leq}"),
+        (r"\\le$", r"\\leq$"),
+        (r"\\le\\", r"\\leq\\"),
+        (r"\\ne ", r"\\neq "),
+        (r"\\ne}", r"\\neq}"),
+        (r"\\ne$", r"\\neq$"),
+        (r"\\ne\\", r"\\neq\\"),
+        (r"\ge ", r"\geq "),
+        (r"\ge}", r"\geq}"),
+        (r"\ge$", r"\geq$"),
+        (r"\ge\}", r"\geq\}"),
+        (r"\le ", r"\leq "),
+        (r"\le}", r"\leq}"),
+        (r"\le$", r"\leq$"),
+        (r"\le\}", r"\leq\}"),
+        (r"\ne ", r"\neq "),
+        (r"\ne}", r"\neq}"),
+        (r"\ne$", r"\neq$"),
+        (r"\ne\}", r"\neq\}"),
+    ];
+    let mut s = code.to_string();
+    for &(from, to) in REPLACEMENTS {
+        s = s.replace(from, to);
+    }
+    s
 }
 
 pub fn strip_json_block(text: &str) -> &str {

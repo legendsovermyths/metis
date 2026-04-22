@@ -1,14 +1,16 @@
-use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
-use serde_json::Value;
 
-use crate::{app::AppContext, error::Result};
+use crate::{
+    api::request::handler::BoxFuture, app::AppContext,
+};
 
 #[derive(Deserialize)]
 pub struct GetContextParams;
 
-pub fn get_context(_: GetContextParams, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-    let app_context = context.lock().unwrap().clone();
-    Ok(serde_json::to_value(app_context)?)
+pub fn get_context(_: GetContextParams, context: &AppContext) -> BoxFuture {
+    Box::pin(async move {
+        let ctx = context.value().await?;
+        Ok(serde_json::to_value(&ctx)?)
+    })
 }

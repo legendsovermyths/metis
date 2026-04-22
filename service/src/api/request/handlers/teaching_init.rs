@@ -1,11 +1,10 @@
-use std::sync::{Arc, Mutex};
-
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
+    api::request::handler::BoxFuture,
     app::{
-        state::{MetisPhase, TeachingState},
+        state::{MetisPhase, TeachingContext},
         AppContext,
     },
     db::{persistence::Persistent, repo::journeys::JourneysRepo},
@@ -17,19 +16,22 @@ pub struct TeachingInitParams {
     pub journey_id: i64,
 }
 
-pub fn teaching_init(params: TeachingInitParams, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-    let artifacts = JourneysRepo::get_artifacts(params.journey_id)?.ok_or(
-        MetisError::MetisError("Journey id was not found in the database".into()),
-    )?;
+pub fn teaching_init(params: TeachingInitParams, context: &AppContext) -> BoxFuture {
+    Box::pin(async move {
+        let artifacts = JourneysRepo::get_artifacts(params.journey_id)?.ok_or(
+            MetisError::NotFound(format!("journey artifacts {}", params.journey_id)),
+        )?;
 
-    let teaching_state = TeachingState {
-        artifacts: Persistent::new(artifacts),
-    };
+        let teaching_state = TeachingContext {
+            artifacts: Some(Persistent::new(artifacts)),
+        };
 
-    let mut ctx = context.lock().unwrap();
-    ctx.teaching_state = Some(teaching_state);
-    ctx.chat_state.phase = MetisPhase::Teaching;
-    ctx.chat_state.is_done = false;
+        let mut ctx = context.teaching.lock().await;
+        *ctx = teaching_state;
+        let mut ctx = context.chat.lock().await;
+        ctx.phase = MetisPhase::Teaching;
+        ctx.is_done = false;
 
-    Ok(json!({ "ok": true }))
+        Ok(json!({ "success": true }))
+    })
 }

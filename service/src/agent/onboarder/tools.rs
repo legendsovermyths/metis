@@ -1,20 +1,25 @@
 use std::sync::{Arc, Mutex};
 
-use serde_json::{Value, json};
+use async_trait::async_trait;
+use serde_json::{json, Value};
 
 use crate::{
-    app::AppContext, db::repo::appdata::{self, AppDataRepo}, error::Result, llm_client::tool::{Parameter, Parameters, Tool}
+    app::AppContext,
+    db::repo::appdata::{self, AppDataRepo},
+    error::Result,
+    llm_client::tool::{Parameter, Parameters, Tool},
 };
 
 pub struct SetNotesTool;
 
+#[async_trait]
 impl Tool for SetNotesTool {
-    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value> {
         let notes = value.get("notes").and_then(|v| v.as_str()).ok_or_else(|| {
             crate::error::MetisError::ToolError("missing required parameter: notes".into())
         })?;
-        context.lock().unwrap().chat_state.notes = Some(notes.to_string());
-        appdata::AppDataRepo::set("user_profile", &notes)?; 
+        context.chat.lock().await.notes = Some(notes.to_string());
+        appdata::AppDataRepo::set("user_profile", &notes)?;
 
         Ok(json!({ "status": "ok" }))
     }
@@ -38,9 +43,10 @@ impl Tool for SetNotesTool {
 
 pub struct GetNotesTool;
 
+#[async_trait]
 impl Tool for GetNotesTool {
-    fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let notes = context.lock().unwrap().chat_state.notes.clone();
+    async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
+        let notes = context.chat.lock().await.notes.clone();
         if notes.is_none() {
             return Ok(json!({ "notes": "No notes yet." }));
         }
@@ -62,18 +68,18 @@ impl Tool for GetNotesTool {
 
 pub struct SetDoneTool;
 
+#[async_trait]
 impl Tool for SetDoneTool {
-    fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let mut ctx = context.lock().unwrap();
-        if ctx.chat_state.notes.is_none() {
+    async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
+        let mut ctx = context.chat.lock().await;
+        if ctx.notes.is_none() {
             return Ok(
                 json!({ "status": "error", "message": "Cannot finish without notes. Call set_notes first." }),
             );
         }
-        let user_profile = ctx.chat_state.notes.clone().unwrap();
-        AppDataRepo::set("user_profile", &user_profile)?; 
-        ctx.onboarded = true;
-        ctx.chat_state.set_done();
+        let user_profile = ctx.notes.clone().unwrap();
+        AppDataRepo::set("user_profile", &user_profile)?;
+        ctx.set_done();
         Ok(json!({ "status": "done", "message": "Onboarding complete." }))
     }
 

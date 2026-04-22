@@ -20,7 +20,7 @@ pub struct LLMResponse {
     response: String,
 }
 
-impl<T: ToString> From<T> for LLMResponse {
+impl<T: ToString + Send + Sync> From<T> for LLMResponse {
     fn from(value: T) -> Self {
         Self {
             response: value.to_string(),

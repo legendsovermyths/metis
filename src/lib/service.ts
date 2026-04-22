@@ -23,20 +23,26 @@ export interface EventHistory {
   events: ChatEvent[];
 }
 
-export interface ChatState {
+export interface ChatContext {
   phase: MetisPhase;
   notes: string | null;
   is_done: boolean;
   event_history: EventHistory;
 }
 
-export interface AppContext {
+export interface SessionContext {
   chapter_title: string;
-  selected_book_id: number | null;
-  chapter_content_dir: string | null;
-  onboarded: boolean;
-  chat_state: ChatState;
-  teaching_state: TeachingState | null;
+  book_id: number | null;
+}
+
+export interface TeachingContext {
+  artifacts: { data: JourneyArtifacts } | null;
+}
+
+export interface AppContext {
+  session: SessionContext;
+  chat: ChatContext;
+  teaching: TeachingContext;
 }
 
 export interface Journey {
@@ -217,16 +223,32 @@ export async function getContext(): Promise<AppContext> {
   return data as AppContext;
 }
 
-export async function setContext(context: AppContext): Promise<void> {
+export async function setChat(chat: ChatContext): Promise<void> {
   await callService({
     api_type: "Service",
-    request_type: "SetContext",
-    params: { context },
+    request_type: "SetChat",
+    params: chat as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setSession(session: SessionContext): Promise<void> {
+  await callService({
+    api_type: "Service",
+    request_type: "SetSession",
+    params: session as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setTeaching(teaching: TeachingContext): Promise<void> {
+  await callService({
+    api_type: "Service",
+    request_type: "SetTeaching",
+    params: teaching as unknown as Record<string, unknown>,
   });
 }
 
 export interface AgentResponse {
-  message: string;
+  content: { message: string } | Dialogue;
   message_type: "Chat" | "Dialogue";
 }
 
@@ -236,10 +258,6 @@ export async function sendMessage(message?: string): Promise<AgentResponse> {
     params: { message: message ?? null },
   });
   return data as AgentResponse;
-}
-
-export interface TeachingState {
-  artifacts: { data: JourneyArtifacts };
 }
 
 export async function teachingInit(journeyId: number): Promise<void> {

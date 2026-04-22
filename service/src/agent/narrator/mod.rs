@@ -1,17 +1,15 @@
 pub mod illustrator;
-use std::sync::{Arc, Mutex};
 
+use async_trait::async_trait;
 use serde::Deserialize;
 
 use crate::{
     agent::{narrator::illustrator::Illustrator, Agent, AgentResponse},
-    api::request::handler::runtime,
     app::{
         journey::{
             blackboard::{Blackboard, BlackboardInstructions},
             dialogue::Dialogue,
         },
-        state::TeachingState,
         AppContext,
     },
     db::repo::appdata::AppDataRepo,
@@ -37,14 +35,14 @@ pub struct NarratorOutput {
     pub blackboard_instructions: BlackboardInstructions,
 }
 
-pub struct Narrator {
-    client: Arc<tokio::sync::Mutex<dyn LLMClient>>,
-    context: Arc<Mutex<AppContext>>,
+pub struct Narrator<'a> {
+    client: Box<dyn LLMClient>,
+    context: &'a AppContext,
     illustrator: Illustrator,
 }
 
-impl Narrator {
-    pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
+impl<'a> Narrator<'a> {
+    pub fn new(context: &'a AppContext) -> Self {
         let client = LLMClientFactory::get_client(ClientType::GeminiPro);
         let illustrator = Illustrator::with();
         Self {
@@ -55,16 +53,17 @@ impl Narrator {
     }
 }
 
-impl Agent for Narrator {
-    fn generate(&mut self, _message: Option<String>) -> Result<AgentResponse> {
+#[async_trait]
+impl<'a> Agent for Narrator<'a> {
+    async fn generate(&mut self, _message: Option<String>) -> Result<AgentResponse> {
         let mut artifacts_guard = self
             .context
+            .teaching
             .lock()
-            .unwrap()
-            .teaching_state
+            .await
+            .artifacts
             .clone()
-            .ok_or(MetisError::AgentError("No teaching state set".into()))?
-            .artifacts;
+            .ok_or(MetisError::AgentError("No teaching state set".into()))?;
         let artifacts = artifacts_guard.read();
         let (arc, topic, blackboard) = artifacts.get_current_state().ok_or(
             MetisError::AgentError("Cannot generate dialgoue for finished artifact".into()),
@@ -96,13 +95,11 @@ impl Agent for Narrator {
             &blackboard.description,
         );
 
-        let response = runtime().block_on(async {
-            let mut client = self.client.lock().await;
-            client.set_system_prompt(prompt);
-            client
-                .generate("Generate the next dialogue chunk.".to_string())
-                .await
-        })?;
+        self.client.set_system_prompt(prompt);
+        let response = self
+            .client
+            .generate("Generate the next dialogue chunk.".to_string())
+            .await?;
 
         let raw = response.text();
         let json_str = strip_json_block(&raw);
@@ -110,21 +107,25 @@ impl Agent for Narrator {
         let parsed: NarratorOutput = serde_json::from_str(&fixed)?;
         let blackboard = self
             .illustrator
-            .from(&parsed, &blackboard, &artifacts, &topic)?;
+            .from(&parsed, &blackboard, &artifacts, &topic)
+            .await?;
 
-        let dialogue = Dialogue::build(&artifacts, parsed.dialogue, blackboard, parsed.topic_complete);
+        let dialogue = Dialogue::build(
+            &artifacts,
+            parsed.dialogue,
+            blackboard,
+            parsed.topic_complete,
+        );
         {
             let mut artifacts = artifacts_guard.write();
             artifacts.push_dialogue(dialogue.clone(), parsed.topic_complete);
         }
-        self.context.lock().unwrap().teaching_state = Some(TeachingState {
-            artifacts: artifacts_guard,
-        });
+        self.context.teaching.lock().await.artifacts = Some(artifacts_guard);
 
-        Ok(AgentResponse::dialogue(dialogue.content))
+        Ok(AgentResponse::dialogue(dialogue)?)
     }
 
-    fn get_event_history(&mut self) -> EventHistory {
+    async fn get_event_history(&mut self) -> EventHistory {
         EventHistory::new()
     }
 }

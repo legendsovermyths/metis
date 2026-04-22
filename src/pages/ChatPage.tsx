@@ -48,9 +48,9 @@ export default function ChatPage() {
   const { theme, toggle } = useTheme();
   const { context } = useAppContext();
   const navigate = useNavigate();
-  const phase = context?.chat_state?.phase;
+  const phase = context?.chat.phase;
   const mode = phaseToMode(phase);
-  const chatDone = context?.chat_state?.is_done ?? false;
+  const chatDone = context?.chat.is_done ?? false;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
@@ -66,7 +66,7 @@ export default function ChatPage() {
   // Seed messages from backend event history exactly once when context first arrives
   useEffect(() => {
     if (seededRef.current || !context) return;
-    const events = context.chat_state?.event_history?.events ?? [];
+    const events = context.chat.event_history?.events ?? [];
     if (events.length > 0) {
       setMessages(historyToMessages(events));
     }
@@ -118,7 +118,11 @@ export default function ChatPage() {
       await new Promise((r) => setTimeout(r, 0));
       const response = await sendMessage(text);
       setIsWaiting(false);
-      streamText(response.message);
+      const text_out =
+        response.message_type === "Chat"
+          ? (response.content as { message: string }).message
+          : "";
+      streamText(text_out);
     } catch (err) {
       setIsWaiting(false);
       const errorMsg: Message = {
@@ -228,10 +232,10 @@ export default function ChatPage() {
           {chatDone && messages.length > 0 && !isBusy && phase === "Advising" && (
             <div className="flex justify-center pt-4 animate-fade-in">
               <Button
-                disabled={!context?.chapter_title?.trim()}
+                disabled={!context?.session.chapter_title?.trim()}
                 onClick={() => {
-                  if (!context?.chapter_title?.trim()) return;
-                  startJourneyCreation(context.chapter_title, (errMsg) => {
+                  if (!context?.session.chapter_title?.trim()) return;
+                  startJourneyCreation(context.session.chapter_title, (errMsg) => {
                     const msg: Message = {
                       id: (Date.now() + 1).toString(),
                       role: "assistant",
@@ -253,7 +257,7 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Input area — hidden while chat_state.is_done */}
+      {/* Input area — hidden while chat.is_done */}
       {context && !chatDone && (
         <div className="border-t border-border bg-card/50 px-4 py-4 backdrop-blur-sm">
           <div className="mx-auto flex max-w-2xl items-center gap-2">

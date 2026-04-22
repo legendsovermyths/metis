@@ -14,8 +14,10 @@ pub enum RequestType {
     GetAllJourneys,
     GetContext,
     GetJourney,
-    SetContext,
     TeachingInit,
+    SetTeaching,
+    SetSession,
+    SetChat,
 }
 
 impl std::fmt::Display for RequestType {
@@ -27,8 +29,10 @@ impl std::fmt::Display for RequestType {
             RequestType::GetAllJourneys => "get_all_journeys",
             RequestType::GetContext => "get_context",
             RequestType::GetJourney => "get_journey",
-            RequestType::SetContext => "set_context",
             RequestType::TeachingInit => "teaching_init",
+            RequestType::SetChat => "set_chat",
+            RequestType::SetSession => "set_session",
+            RequestType::SetTeaching => "set_teaching",
         };
         write!(f, "{}", variant)
     }

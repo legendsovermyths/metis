@@ -2,7 +2,7 @@ use std::env::VarError;
 
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, MetisError>;
+pub type Result<T: Send + Sync> = std::result::Result<T, MetisError>;
 
 #[derive(Error, Debug)]
 pub enum MetisError{
@@ -28,12 +28,16 @@ pub enum MetisError{
     JsonConversionError(#[from] serde_json::Error),
     #[error("Utils error: {0}")]
     UtilsError(String),
-    #[error("Agent errror: {0}")]
+    #[error("Agent error: {0}")]
     AgentError(String),
     #[error("Invaid Request: the request type doesn't exist")]
     InvalidRequest,
     #[error("Request type not found")]
     RequestTypeMissing,
-    #[error("Metis error: {0}")]
-    MetisError(String)
+    #[error["Once lock error: {0}"]]
+    OnceLockError(String),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Internal error: {0}")]
+    InternalError(String),
 }

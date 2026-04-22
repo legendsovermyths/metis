@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     env,
-    sync::{Arc, Mutex},
 };
 
 use async_trait::async_trait;
@@ -19,7 +18,7 @@ use crate::{
     logs::{Event, EventHistory, EventType},
 };
 
-pub struct GeminiChat {
+pub struct GeminiChat<'a> {
     base_url: String,
     client: Client,
     system_prompt: String,
@@ -27,16 +26,16 @@ pub struct GeminiChat {
     tools_map: HashMap<String, Box<dyn Tool>>,
     tool_description: Vec<Value>,
     event_history: EventHistory,
-    context: Arc<Mutex<AppContext>>,
+    context: &'a AppContext,
     contents: Vec<Value>,
 }
 
-impl GeminiChat {
-    pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
+impl<'a> GeminiChat<'a> {
+    pub fn new(context: &'a AppContext) -> Self {
         Self::with_model("gemini-3-flash-preview", context)
     }
 
-    pub fn with_model(model: &str, context: Arc<Mutex<AppContext>>) -> Self {
+    pub fn with_model(model: &str, context: &'a AppContext) -> Self {
         Self {
             base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
@@ -157,7 +156,7 @@ impl GeminiChat {
         self.parse_response(response)
     }
 
-    fn execute_function_calls(
+    async fn execute_function_calls(
         &mut self,
         function_calls: &[(String, Value)],
     ) -> Result<Vec<Value>> {
@@ -171,7 +170,7 @@ impl GeminiChat {
                 .tools_map
                 .get(name)
                 .ok_or(MetisError::ToolError(format!("Unknown tool: {name}")))?;
-            let result = tool.execute(args.clone(), Arc::clone(&self.context))?;
+            let result = tool.execute(args.clone(), &self.context).await?;
 
             let result_event =
                 Event::new(name, EventType::FunctionResponse, &result.to_string());
@@ -199,7 +198,7 @@ impl GeminiChat {
 
             if !function_calls.is_empty() {
                 self.contents.push(model_content);
-                let response_parts = self.execute_function_calls(&function_calls)?;
+                let response_parts = self.execute_function_calls(&function_calls).await?;
                 self.contents
                     .push(json!({"role": "user", "parts": response_parts}));
                 continue;
@@ -225,7 +224,7 @@ impl GeminiChat {
 }
 
 #[async_trait]
-impl LLMChatClient for GeminiChat {
+impl<'a> LLMChatClient for GeminiChat<'a> {
     async fn generate(&mut self, message: String) -> Result<LLMResponse> {
         self.run(Event::new("user", EventType::UserMessage, &message))
             .await

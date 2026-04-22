@@ -72,6 +72,7 @@ Produce **black-and-white, minimal** figures. The app handles dark/light theme a
 7. Do NOT call `plt.show()`.
 8. Do NOT use any colors. All visual elements must be black on transparent. Use line styles and weights to distinguish elements.
 9. Handle edge cases: if the instruction asks for something that cannot be drawn (e.g., a 3D object with no 3D context), produce a clear 2D representation and annotate accordingly.
+10. **Matplotlib mathtext is NOT full LaTeX.** Many shorthand commands are unsupported. You MUST use the long forms: `\geq` not `\ge`, `\leq` not `\le`, `\neq` not `\ne`, `\rightarrow` not `\to`, `\leftarrow` not `\gets`. When in doubt, prefer the verbose form of any symbol.
 
 ## Output Format
 

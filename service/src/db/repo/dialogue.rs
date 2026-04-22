@@ -1,4 +1,4 @@
-use crate::{app::journey::{blackboard::Blackboard, dialogue::Dialogue}, db::get_database, error::{MetisError, Result}};
+use crate::{app::journey::{blackboard::Blackboard, dialogue::Dialogue}, db::get_database, error::Result};
 
 pub struct DialoguesRepo;
 
@@ -59,7 +59,7 @@ impl DialoguesRepo {
              WHERE journey_id = ?1 AND marked_complete = 1",
             rusqlite::params![journey_id],
             |row| row.get(0),
-        ).map_err(|e| MetisError::MetisError(e.to_string()))?;
+        )?;
         Ok(count as usize)
     }
 }

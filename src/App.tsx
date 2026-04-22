@@ -15,6 +15,10 @@ import LibraryPage from "./pages/LibraryPage";
 import JourneysPage from "./pages/JourneysPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
 import TeachingPage from "./pages/TeachingPage";
+import QuizPage from "./pages/QuizPage";
+import PracticePage from "./pages/PracticePage";
+import PracticeIndexPage from "./pages/PracticeIndexPage";
+import ArcCompletePage from "./pages/ArcCompletePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,8 +28,11 @@ function AppLayout() {
   const { context, loading } = useAppContext();
   const isChatPage = location.pathname === "/chat";
   const isTeachPage = location.pathname === "/teach";
-  const onboarded = !!context?.onboarded;
-  const showNav = onboarded && !isChatPage && !isTeachPage;
+  const isAssessmentPage =
+    /\/journeys\/[^/]+\/arc\/[^/]+\/(quiz|complete)$/.test(location.pathname) ||
+    /\/journeys\/[^/]+\/practice(\/[^/]+)?$/.test(location.pathname);
+  const onboarded = context ? context.chat.phase !== "Onboarding" : false;
+  const showNav = onboarded && !isChatPage && !isTeachPage && !isAssessmentPage;
 
   if (loading) {
     return (
@@ -45,6 +52,10 @@ function AppLayout() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/journeys" element={<JourneysPage />} />
           <Route path="/journeys/:id" element={<JourneyDetailPage />} />
+          <Route path="/journeys/:id/arc/:arcIdx/complete" element={<ArcCompletePage />} />
+          <Route path="/journeys/:id/arc/:arcIdx/quiz" element={<QuizPage />} />
+          <Route path="/journeys/:id/practice" element={<PracticeIndexPage />} />
+          <Route path="/journeys/:id/practice/:arcIdx" element={<PracticePage />} />
           <Route path="/teach" element={<TeachingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

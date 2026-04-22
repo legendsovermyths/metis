@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::{
     api::{request::Request, response::Response},
-    app::App,
+    app::{init_context, App},
 };
 
 pub mod agent;
@@ -18,9 +18,10 @@ pub mod utils;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app = App::new().expect("failed to initialize App");
+    let context = init_context().expect("failed to initialize context");
+    let app = App::new(context).expect("failed to initialize App");
     tauri::Builder::default()
-        .manage(Arc::new(Mutex::new(app)))
+        .manage(Arc::new(app))
         .invoke_handler(tauri::generate_handler![handle_request])
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -41,19 +42,16 @@ pub fn run() {
 }
 
 #[tauri::command]
-async fn handle_request(app: tauri::State<'_, Arc<Mutex<App>>>, request: Request) -> Result<Response, String> {
-    let app = Arc::clone(&app);
-    let result = tokio::task::spawn_blocking(move || {
-        let mut guard = app.lock().unwrap();
-        let response = guard.handle_request(request);
-        let mut response = match response {
-            Ok(val) => Response::ok(val),
-            Err(err) => Response::err(err.to_string()),
-        };
-        response.context = Some(guard.context.lock().unwrap().clone());
-        response
-    })
-    .await
-    .map_err(|e| e.to_string())?;
-    Ok(result)
+async fn handle_request(
+    app: tauri::State<'_, Arc<App<'_>>>,
+    request: Request,
+) -> Result<Response, String> {
+    let response = app.handle_request(request).await;
+    let mut response = match response {
+        Ok(val) => Response::ok(val),
+        Err(err) => Response::err(err.to_string()),
+    };
+    let context = app.context.value().await.unwrap();
+    response.context = Some(context);
+    Ok(response)
 }

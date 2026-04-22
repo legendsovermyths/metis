@@ -6,7 +6,7 @@ use std::{
 use crate::{
     constants::GEMINI_BASE_URL,
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client, llm_client::{LLMClient, LLMResponse}}, logs::Event,
+    llm_client::{llm_client::{LLMClient, LLMResponse}}, logs::Event,
 };
 use async_trait::async_trait;
 use reqwest::Client;

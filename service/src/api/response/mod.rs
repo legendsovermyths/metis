@@ -1,13 +1,14 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::app::AppContext;
+use crate::app::AppContextValue;
+
 
 #[derive(Serialize)]
 pub struct Response {
     response: Option<Value>,
     status: Status,
-    pub context: Option<AppContext>,
+    pub context: Option<AppContextValue>,
 }
 
 #[derive(Serialize)]

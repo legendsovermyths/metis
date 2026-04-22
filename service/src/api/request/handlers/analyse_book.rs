@@ -6,12 +6,12 @@ use std::{
 };
 
 use crate::{
-    app::{AppContext, book::Chapter},
+    api::request::handler::BoxFuture,
+    app::{book::Chapter, AppContext},
     db::repo::books::BooksRepo,
     error::Result,
     llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
     prompts::get_prompt_provider,
-    api::request::handler::runtime,
     utils::{
         format::strip_json_block,
         pdf::{copy_pdf, truncated_copy},
@@ -31,8 +31,11 @@ struct AnalyseBookResponse {
     table_of_content: Vec<Chapter>,
 }
 
-pub fn analyse_book_handler(payload: AnalyseBookPayload, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-    runtime().block_on(async move {
+pub fn analyse_book_handler(
+    payload: AnalyseBookPayload,
+    context: &AppContext,
+) -> BoxFuture<'_> {
+    Box::pin(async move {
         let book_path = copy_pdf(&payload.path)?;
         let upload_path = truncated_copy(&book_path)?;
         let mut client = GeminiClient::new();

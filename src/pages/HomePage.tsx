@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, MessageCircle, BookOpen, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
-import { setContext as setBackendContext } from "@/lib/service";
+import { setChat } from "@/lib/service";
 
 const quickLinks = [
   {
@@ -28,38 +28,25 @@ const quickLinks = [
 export default function HomePage() {
   const { context } = useAppContext();
   const navigate = useNavigate();
-  const onboarded = context?.onboarded;
+  const onboarded = context ? context.chat.phase !== "Onboarding" : false;
 
   const goToChatFresh = async () => {
     if (context) {
-      await setBackendContext({
-        ...context,
-        chat_state: { ...context.chat_state, is_done: false },
-      });
+      await setChat({ ...context.chat, is_done: false });
     }
     navigate("/chat");
   };
 
   const createJourney = async () => {
     if (context) {
-      await setBackendContext({
-        ...context,
-        chat_state: {
-          ...context.chat_state,
-          phase: "Advising",
-          is_done: false,
-        },
-      });
+      await setChat({ ...context.chat, phase: "Advising", is_done: false });
     }
     navigate("/chat");
   };
 
   const handleGetStarted = async () => {
     if (context) {
-      await setBackendContext({
-        ...context,
-        chat_state: { ...context.chat_state, phase: "Onboarding", is_done: false },
-      });
+      await setChat({ ...context.chat, phase: "Onboarding", is_done: false });
     }
     navigate("/chat");
   };

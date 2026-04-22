@@ -1,13 +1,11 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, Once},
 };
 
 use serde::Deserialize;
 
 use crate::{
-    api::request::handler::runtime,
     app::journey::{
         artifact::JourneyArtifacts,
         blackboard::{Blackboard, BlackboardInstructions},
@@ -19,7 +17,10 @@ use crate::{
         llm_client::LLMClient,
     },
     prompts::get_prompt_provider,
-    utils::{cmd::execute_python, format::{fix_json_escapes, strip_json_block}},
+    utils::{
+        cmd::execute_python,
+        format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
+    },
 };
 
 use super::NarratorOutput;
@@ -30,7 +31,7 @@ struct IllustratorOutput {
 }
 
 pub struct Illustrator {
-    client: Arc<tokio::sync::Mutex<dyn LLMClient>>,
+    client: Box<dyn LLMClient>,
 }
 
 impl Illustrator {
@@ -39,8 +40,8 @@ impl Illustrator {
         Self { client }
     }
 
-    pub fn from(
-        &self,
+    pub async fn from(
+        &mut self,
         narration: &NarratorOutput,
         previous: &Blackboard,
         artifact: &JourneyArtifacts,
@@ -69,13 +70,11 @@ impl Illustrator {
                     &previous.description,
                 );
 
-                let response = runtime().block_on(async {
-                    let mut client = self.client.lock().await;
-                    client.set_system_prompt(prompt);
-                    client
-                        .generate("Produce the figure code.".to_string())
-                        .await
-                })?;
+                self.client.set_system_prompt(prompt);
+                let response = self
+                    .client
+                    .generate("Produce the figure code.".to_string())
+                    .await?;
 
                 let raw = response.text();
                 let json_str = strip_json_block(&raw);
@@ -88,7 +87,8 @@ impl Illustrator {
                     }
                 };
 
-                let code = parsed.code.replace("{output_path}", &output_path);
+                let code = fix_mathtext_shorthands(&parsed.code)
+                    .replace("{output_path}", &output_path);
 
                 match execute_python(&code) {
                     Ok(()) => {

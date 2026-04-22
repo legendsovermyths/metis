@@ -1,9 +1,10 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Circle, Loader2, Play } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Circle, Loader2, Play, Dumbbell, PenSquare } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getJourney, teachingInit, type JourneyRow } from "@/lib/service";
+import { getArcAssessmentMeta, loadQuizResult } from "@/lib/mockAssessment";
 
 const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
 
@@ -141,6 +142,22 @@ export default function JourneyDetailPage() {
             </div>
             <span className="text-sm font-medium text-muted-foreground tabular-nums">{progressPct}%</span>
           </div>
+
+          {row.journey.arcs.length > 0 && (
+            <div className="mt-4 flex items-center gap-2">
+              <Link
+                to={`/journeys/${numericId}/practice`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-soft transition-colors hover:border-foreground/20 hover:text-foreground"
+              >
+                <Dumbbell className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Practice problems
+                <span className="text-muted-foreground">·</span>
+                <span className="text-muted-foreground">
+                  {row.journey.arcs.length} sheet{row.journey.arcs.length === 1 ? "" : "s"}
+                </span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {row.journey.arcs.length === 0 ? (
@@ -157,6 +174,15 @@ export default function JourneyDetailPage() {
               const total = arc.topics.length;
               const arcDone = arcCompleted === total && total > 0;
               const isExpanded = expandedArcs.has(arcKey);
+
+              const meta = getArcAssessmentMeta(i, arc.arc_title);
+              const lastQuiz = meta.has_quiz ? loadQuizResult(numericId, i) : null;
+              const showAssessmentRow = meta.has_quiz;
+              const quizScoreText = lastQuiz
+                ? Number.isInteger(lastQuiz.score)
+                  ? `${lastQuiz.score}`
+                  : lastQuiz.score.toFixed(1)
+                : null;
 
               return (
                 <div
@@ -176,6 +202,20 @@ export default function JourneyDetailPage() {
                           {arcCompleted}/{total}
                         </span>
                         {arcDone && <Check className="h-3.5 w-3.5 text-green-500" />}
+                        {meta.has_quiz && (
+                          <span
+                            title="Check-in available"
+                            className="flex h-4 items-center gap-1 rounded-full border border-border/70 bg-surface/70 px-1.5 text-[9px] font-medium uppercase tracking-widest text-muted-foreground"
+                          >
+                            <PenSquare className="h-2.5 w-2.5" strokeWidth={2} />
+                            check-in
+                          </span>
+                        )}
+                        {lastQuiz && (
+                          <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+                            · {quizScoreText}/{lastQuiz.total}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <ChevronDown
@@ -211,6 +251,32 @@ export default function JourneyDetailPage() {
                           );
                         })}
                       </div>
+
+                      {showAssessmentRow && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-surface/30 px-4 py-3">
+                          {meta.has_quiz && (
+                            <Link
+                              to={`/journeys/${numericId}/arc/${i}/quiz`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:border-foreground/20 hover:text-foreground"
+                            >
+                              <PenSquare className="h-3.5 w-3.5" strokeWidth={1.75} />
+                              Check-in
+                              {lastQuiz && (
+                                <span className="ml-1 text-muted-foreground tabular-nums">
+                                  · last {quizScoreText}/{lastQuiz.total}
+                                </span>
+                              )}
+                            </Link>
+                          )}
+                          <Link
+                            to={`/journeys/${numericId}/arc/${i}/complete`}
+                            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            End-of-arc page
+                            <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

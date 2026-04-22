@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use serde_json::{Value, json};
+use async_trait::async_trait;
+use serde_json::{json, Value};
 
 use crate::{
     app::{book::Book, state::MetisPhase, AppContext},
@@ -11,8 +12,9 @@ use crate::{
 
 pub struct GetStudentProfileTool;
 
+#[async_trait]
 impl Tool for GetStudentProfileTool {
-    fn execute(&self, _value: Value, _context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, _value: Value, _context: &AppContext) -> Result<Value> {
         let profile = AppDataRepo::get("user_profile")?;
         if profile.is_none() {
             return Ok(json!({ "profile": "No student profile available yet." }));
@@ -35,8 +37,9 @@ impl Tool for GetStudentProfileTool {
 
 pub struct GetAvailableBooksTool;
 
+#[async_trait]
 impl Tool for GetAvailableBooksTool {
-    fn execute(&self, _value: Value, _context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, _value: Value, _context: &AppContext) -> Result<Value> {
         let books: Vec<Value> = BooksRepo::list()?
             .iter()
             .map(|b| json!({ "id": b.id, "title": b.title }))
@@ -64,8 +67,9 @@ impl Tool for GetAvailableBooksTool {
 
 pub struct GetBookInfoTool;
 
+#[async_trait]
 impl Tool for GetBookInfoTool {
-    fn execute(&self, value: Value, _context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, value: Value, _context: &AppContext) -> Result<Value> {
         let id = value.get("id").and_then(|v| v.as_i64()).ok_or_else(|| {
             crate::error::MetisError::ToolError("missing required parameter: id".into())
         })?;
@@ -98,8 +102,9 @@ impl Tool for GetBookInfoTool {
 
 pub struct SetChapterTool;
 
+#[async_trait]
 impl Tool for SetChapterTool {
-    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value> {
         let chapter_name = value
             .get("chapter_name")
             .and_then(|v| v.as_str())
@@ -108,7 +113,7 @@ impl Tool for SetChapterTool {
                     "missing required parameter: chapter_name".into(),
                 )
             })?;
-        context.lock().unwrap().chapter_title = chapter_name.to_string();
+        context.session.lock().await.chapter_title = chapter_name.to_string();
 
         Ok(json!({
             "status": "ok",
@@ -135,15 +140,13 @@ impl Tool for SetChapterTool {
 
 pub struct SetNotesTool;
 
+#[async_trait]
 impl Tool for SetNotesTool {
-    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let notes = value
-            .get("notes")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                crate::error::MetisError::ToolError("missing required parameter: notes".into())
-            })?;
-        context.lock().unwrap().chat_state.notes = Some(notes.to_string());
+    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value> {
+        let notes = value.get("notes").and_then(|v| v.as_str()).ok_or_else(|| {
+            crate::error::MetisError::ToolError("missing required parameter: notes".into())
+        })?;
+        context.chat.lock().await.notes = Some(notes.to_string());
 
         Ok(json!({ "status": "ok" }))
     }
@@ -167,9 +170,10 @@ impl Tool for SetNotesTool {
 
 pub struct GetNotesTool;
 
+#[async_trait]
 impl Tool for GetNotesTool {
-    fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let notes = context.lock().unwrap().chat_state.notes.clone();
+    async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
+        let notes = context.chat.lock().await.notes.clone();
         if notes.is_none() {
             return Ok(json!({ "notes": "No notes yet." }));
         }
@@ -191,26 +195,27 @@ impl Tool for GetNotesTool {
 
 pub struct SetBookTool;
 
+#[async_trait]
 impl Tool for SetBookTool {
-    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
+    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value> {
         let id = value
             .get("book_id")
             .and_then(|v| v.as_i64())
             .ok_or_else(|| {
-                crate::error::MetisError::ToolError(
-                    "missing required parameter: book_id".into(),
-                )
+                crate::error::MetisError::ToolError("missing required parameter: book_id".into())
             })?;
 
         match BooksRepo::get(id)? {
             Some(row) => {
-                context.lock().unwrap().selected_book_id = Some(id);
+                context.session.lock().await.book_id = Some(id);
                 Ok(json!({
                     "status": "ok",
                     "message": format!("Book \"{}\" selected.", row.title),
                 }))
             }
-            None => Ok(json!({ "status": "error", "message": format!("No book found with id {}", id) })),
+            None => {
+                Ok(json!({ "status": "error", "message": format!("No book found with id {}", id) }))
+            }
         }
     }
 
@@ -233,19 +238,27 @@ impl Tool for SetBookTool {
 
 pub struct SetDoneTool;
 
+#[async_trait]
 impl Tool for SetDoneTool {
-    fn execute(&self, _value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value> {
-        let mut ctx = context.lock().unwrap();
-        if ctx.chat_state.notes.is_none() {
-            return Ok(json!({ "status": "error", "message": "Cannot finish without notes. Call set_notes first." }));
+    async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
+        let mut chat = context.chat.lock().await;
+        let session = context.session.lock().await;
+        if chat.notes.is_none() {
+            return Ok(
+                json!({ "status": "error", "message": "Cannot finish without notes. Call set_notes first." }),
+            );
         }
-        if ctx.chapter_title.is_empty() {
-            return Ok(json!({ "status": "error", "message": "Cannot finish without a chapter selected. Call set_chapter first." }));
+        if session.chapter_title.is_empty() {
+            return Ok(
+                json!({ "status": "error", "message": "Cannot finish without a chapter selected. Call set_chapter first." }),
+            );
         }
-        if ctx.selected_book_id.is_none() {
-            return Ok(json!({ "status": "error", "message": "Cannot finish without a book selected. Call set_book first." }));
+        if session.book_id.is_none() {
+            return Ok(
+                json!({ "status": "error", "message": "Cannot finish without a book selected. Call set_book first." }),
+            );
         }
-        ctx.chat_state.set_done();
+        chat.set_done();
         Ok(json!({ "status": "done", "message": "Advising complete. Ready for the professor." }))
     }
 

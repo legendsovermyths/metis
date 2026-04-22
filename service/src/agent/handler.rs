@@ -1,14 +1,13 @@
-use std::{
-    collections::HashMap, sync::{Arc, Mutex}
-};
+use std::collections::HashMap;
 
 use serde::Deserialize;
 use serde_json::Value;
+use tokio::sync::Mutex;
 
 use crate::{
-    agent::{advisor::Advisor, narrator::Narrator, onboarder::Onboarder, Agent, AgentResponse},
+    agent::{advisor::Advisor, narrator::Narrator, onboarder::Onboarder, Agent},
     app::{state::MetisPhase, AppContext},
-    error::Result,
+    error::{MetisError, Result},
 };
 
 #[derive(Deserialize)]
@@ -16,53 +15,43 @@ pub struct AgentRequestParams {
     message: Option<String>,
 }
 
-pub struct AgentHandler {
-    agents: HashMap<MetisPhase, Box<dyn Agent>>,
-    context: Arc<Mutex<AppContext>>,
+pub struct AgentHandler<'a> {
+    agents: HashMap<MetisPhase, Mutex<Box<dyn Agent + 'a>>>,
+    context: &'a AppContext,
 }
 
-impl AgentHandler {
-    pub fn with(context: Arc<Mutex<AppContext>>) -> Self {
-        Self {
-            agents: HashMap::new(),
-            context,
-        }
-    }
-    fn ensure_agent(&mut self) {
-        let active_phase = self.context.lock().unwrap().chat_state.phase;
-        if !self.agents.contains_key(&active_phase) {
-            let agent = self.create_agent(active_phase);
-            self.agents.insert(active_phase, agent);
-        }
-    }
-
-    fn create_agent(&self, phase: MetisPhase) -> Box<dyn Agent> {
-        match phase {
-            MetisPhase::Onboarding => Box::new(Onboarder::new(Arc::clone(&self.context))),
-            MetisPhase::Advising => Box::new(Advisor::new(Arc::clone(&self.context))),
-            MetisPhase::Idle => Box::new(Advisor::new(Arc::clone(&self.context))),
-            MetisPhase::Teaching => Box::new(Narrator::new(Arc::clone(&self.context))),
-        }
+impl<'a> AgentHandler<'a> {
+    pub fn with(context: &'a AppContext) -> Self {
+        let mut agents: HashMap<MetisPhase, Mutex<Box<dyn Agent + 'a>>> = HashMap::new();
+        agents.insert(
+            MetisPhase::Onboarding,
+            Mutex::new(Box::new(Onboarder::new(context))),
+        );
+        agents.insert(
+            MetisPhase::Advising,
+            Mutex::new(Box::new(Advisor::new(context))),
+        );
+        agents.insert(
+            MetisPhase::Idle,
+            Mutex::new(Box::new(Advisor::new(context))),
+        );
+        agents.insert(
+            MetisPhase::Teaching,
+            Mutex::new(Box::new(Narrator::new(context))),
+        );
+        Self { agents, context }
     }
 
-    fn get_agent(&mut self) -> &mut Box<dyn Agent> {
-        self.ensure_agent();
-        self.agents
-            .get_mut(&self.context.lock().unwrap().chat_state.phase)
-            .unwrap()
-    }
-
-    pub fn generate(&mut self, message: Option<String>)->Result<AgentResponse> {
-        let agent = self.get_agent();
-        let response = agent.generate(message);
-        response
-    }
-
-    pub fn handle(&mut self, params: Value) -> Result<Value> {
+    pub async fn handle(&self, params: Value) -> Result<Value> {
         let params: AgentRequestParams = serde_json::from_value(params)?;
-        let response = self.generate(params.message)?;
-        self.context.lock().unwrap().chat_state.event_history = self.get_agent().get_event_history();
-        Ok(serde_json::to_value(response)?)
+        let phase = self.context.chat.lock().await.phase;
+        let agent_slot = self.agents.get(&phase).ok_or_else(|| {
+            MetisError::AgentError(format!("no agent registered for phase {:?}", phase))
+        })?;
 
+        let mut agent = agent_slot.lock().await;
+        let response = agent.generate(params.message).await?;
+        self.context.chat.lock().await.event_history = agent.get_event_history().await;
+        Ok(serde_json::to_value(response)?)
     }
 }

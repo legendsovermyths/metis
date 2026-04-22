@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Sun, Moon, Loader2, BookOpen } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Sun, Moon, Loader2, BookOpen, Hand, X, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
@@ -40,11 +40,73 @@ export default function TeachingPage() {
   const { theme, toggle } = useTheme();
   const { context } = useAppContext();
   const navigate = useNavigate();
-  const ts = context?.teaching_state;
+  const ts = context?.teaching;
 
   const [pageIndex, setPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  type Exchange = { question: string; answer: string };
+  const [isAsking, setIsAsking] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
+  const exchangesEndRef = useRef<HTMLDivElement>(null);
+
+  const mockAnswers = useMemo(
+    () => [
+      "Good question — and actually a subtle one. When we shrink the interval toward zero, we're not dividing by zero; we're asking what the ratio *approaches*. That distinction is the whole point of the limit. 'At zero' is undefined, but 'arbitrarily close to zero' has a perfectly well-defined answer. Hold onto that feeling — it's the same move we'll use over and over.",
+      "Right, so the wobble matters because within any finite interval the speed can genuinely vary. The trick isn't to eliminate the wobble — it's to make the interval small enough that the wobble becomes *irrelevant*. That's why we take the limit rather than just 'pick a small number.'",
+      "Yes, exactly — you're putting your finger on why calculus was controversial for two centuries. Newton and Leibniz were a bit hand-wavy about this. It took Cauchy and Weierstrass to make it rigorous. But the intuition you have now is the same one they had; you're just catching up to the formalism.",
+    ],
+    []
+  );
+
+  const openAside = useCallback(() => {
+    setIsAsking(true);
+  }, []);
+
+  const dismissAside = useCallback(() => {
+    if (isThinking) return;
+    setIsAsking(false);
+    setTimeout(() => {
+      setQuestion("");
+      setExchanges([]);
+      setPendingQuestion(null);
+    }, 200);
+  }, [isThinking]);
+
+  const handleAsk = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = question.trim();
+    if (!q || isThinking) return;
+    setPendingQuestion(q);
+    setQuestion("");
+    setIsThinking(true);
+    await new Promise((r) => setTimeout(r, 1400));
+    setExchanges((prev) => {
+      const answer = mockAnswers[prev.length % mockAnswers.length];
+      return [...prev, { question: q, answer }];
+    });
+    setPendingQuestion(null);
+    setIsThinking(false);
+  }, [question, isThinking, mockAnswers]);
+
+  useEffect(() => {
+    if (isAsking) {
+      exchangesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [exchanges.length, pendingQuestion, isAsking]);
+
+  useEffect(() => {
+    if (!isAsking) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismissAside();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isAsking, dismissAside]);
 
   const artifacts = ts?.artifacts?.data;
   const journeyId = artifacts?.id;
@@ -134,10 +196,15 @@ export default function TeachingPage() {
     : currentArc?.arc_title;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div
+      className={cn(
+        "flex min-h-screen flex-col transition-[margin] duration-300 ease-out",
+        isAsking && "md:mr-[420px]"
+      )}
+    >
       {/* Top bar */}
       <div className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-2">
+        <div className="relative flex items-center justify-between px-4 py-2">
           <Link
             to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -146,17 +213,32 @@ export default function TeachingPage() {
             <span className="text-xs font-medium hidden sm:inline">Back</span>
           </Link>
 
-          <button
-            onClick={toggle}
-            className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
-          </button>
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            <GraduationCap className="h-3.5 w-3.5" />
+            Teaching
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={openAside}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Raise hand to ask a question"
+            >
+              <Hand className="h-4 w-4" />
+              <span className="hidden sm:inline">Raise hand</span>
+            </button>
+            <button
+              onClick={toggle}
+              className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -359,6 +441,117 @@ export default function TeachingPage() {
           )}
         </div>
       </div>
+
+      {isAsking && (
+        <aside
+          className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[420px] flex-col border-l border-border bg-card shadow-soft animate-in slide-in-from-right duration-300"
+        >
+          <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+              Professor Metis pauses
+            </p>
+            <button
+              onClick={dismissAside}
+              disabled={isThinking}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {exchanges.length === 0 && !pendingQuestion && (
+              <div className="pt-2">
+                <p className="mb-3 font-serif text-lg font-medium tracking-tight text-foreground">
+                  What would you like to ask?
+                </p>
+                <p className="text-xs italic leading-relaxed text-muted-foreground">
+                  The lecture stays beside you — refer to it as needed.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              {exchanges.map((ex, i) => (
+                <div key={i}>
+                  <div className="mb-3 border-l-2 border-foreground/15 pl-3">
+                    <p className="text-sm italic text-muted-foreground">"{ex.question}"</p>
+                  </div>
+                  <article className="font-serif text-[15px] italic leading-[1.8] text-foreground/90">
+                    {ex.answer}
+                  </article>
+                  {i < exchanges.length - 1 && (
+                    <div className="mt-8 flex justify-center">
+                      <span className="text-muted-foreground/30 text-xs tracking-[0.4em]">···</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {pendingQuestion && (
+                <div>
+                  <div className="mb-3 border-l-2 border-foreground/15 pl-3">
+                    <p className="text-sm italic text-muted-foreground">"{pendingQuestion}"</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-xs italic text-muted-foreground">
+                      Professor Metis is thinking...
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div ref={exchangesEndRef} />
+            </div>
+          </div>
+
+          <div className="border-t border-border/60 px-6 py-4">
+            <form onSubmit={handleAsk}>
+              <textarea
+                autoFocus
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handleAsk(e as unknown as React.FormEvent);
+                  }
+                }}
+                rows={exchanges.length === 0 ? 3 : 2}
+                disabled={isThinking}
+                className="w-full resize-none rounded-xl border border-border bg-surface p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-foreground/30 focus:outline-none disabled:opacity-50"
+                placeholder={
+                  exchanges.length === 0
+                    ? "Anything about what we just covered..."
+                    : "A follow-up..."
+                }
+              />
+              <div className="mt-3 flex items-center justify-between">
+                {exchanges.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={dismissAside}
+                    disabled={isThinking}
+                    className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                  >
+                    Back to lecture
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/60">⌘↵ to ask</span>
+                )}
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!question.trim() || isThinking}
+                  className="rounded-xl shadow-soft"
+                >
+                  Ask
+                </Button>
+              </div>
+            </form>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }

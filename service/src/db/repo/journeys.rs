@@ -138,7 +138,7 @@ impl JourneysRepo {
 
     pub fn update(artifacts: &JourneyArtifacts) -> Result<()> {
         let id = artifacts.id.ok_or_else(|| {
-            MetisError::MetisError("Artifacts passed without id to update".to_string())
+            MetisError::InternalError("Artifacts passed without id to update".to_string())
         })?;
         let journey_json = serde_json::to_string(&artifacts.journey)?;
         let conn = get_database().conn.lock().unwrap();
@@ -158,9 +158,10 @@ impl JourneysRepo {
             ],
         )?;
         if rows_affected == 0 {
-            return Err(MetisError::MetisError(
-                "No id found in database for the artifact, update failed".to_string(),
-            ));
+            return Err(MetisError::NotFound(format!(
+                "journey {} — update affected zero rows",
+                id
+            )));
         }
         Ok(())
     }

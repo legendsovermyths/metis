@@ -4,5 +4,7 @@ pub mod get_all_books;
 pub mod get_all_journeys;
 pub mod get_context;
 pub mod get_journey;
-pub mod set_context;
 pub mod teaching_init;
+pub mod set_chat;
+pub mod set_session;
+pub mod set_teaching;
