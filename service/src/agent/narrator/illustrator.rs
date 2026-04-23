@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use serde::Deserialize;
@@ -18,7 +18,7 @@ use crate::{
     },
     prompts::get_prompt_provider,
     utils::{
-        cmd::execute_python,
+        cmd::{execute_latex, execute_python},
         format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
     },
 };
@@ -27,6 +27,7 @@ use super::NarratorOutput;
 
 #[derive(Deserialize)]
 struct IllustratorOutput {
+    library: String,
     code: String,
 }
 
@@ -87,21 +88,30 @@ impl Illustrator {
                     }
                 };
 
-                let code = fix_mathtext_shorthands(&parsed.code)
-                    .replace("{output_path}", &output_path);
+                let exec_result = match parsed.library.as_str() {
+                    "tikz" => {
+                        log::info!("[illustrator] rendering TikZ figure");
+                        execute_latex(&parsed.code, &output_path)
+                    }
+                    _ => {
+                        let code = fix_mathtext_shorthands(&parsed.code)
+                            .replace("{output_path}", &output_path);
+                        execute_python(&code)
+                    }
+                };
 
-                match execute_python(&code) {
+                match exec_result {
                     Ok(()) => {
                         if Path::new(&output_path).exists() {
                             log::info!("[illustrator] figure saved to {output_path}");
                             Ok(Blackboard::new(instructions.into(), Some(output_path)))
                         } else {
-                            log::error!("[illustrator] python ran but no file at {output_path}");
+                            log::error!("[illustrator] ran but no file at {output_path}");
                             Ok(Blackboard::empty())
                         }
                     }
                     Err(e) => {
-                        log::error!("[illustrator] python execution failed: {e}");
+                        log::error!("[illustrator] execution failed: {e}");
                         Ok(Blackboard::empty())
                     }
                 }
