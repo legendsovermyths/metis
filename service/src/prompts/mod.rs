@@ -19,6 +19,8 @@ pub struct PromptProvider {
     content_to_topics_prompt: String,
     narrator_system_prompt: String,
     blackboard_system_prompt: String,
+    annotator_system_prompt: String,
+    animator_system_prompt: String,
 }
 
 impl PromptProvider {
@@ -34,6 +36,8 @@ impl PromptProvider {
             content_to_topics_prompt: include_str!("markdowns/content_to_topics.md").to_string(),
             narrator_system_prompt: include_str!("markdowns/narrator.md").to_string(),
             blackboard_system_prompt: include_str!("markdowns/blackboard.md").to_string(),
+            annotator_system_prompt: include_str!("markdowns/annotator.md").to_string(),
+            animator_system_prompt: include_str!("markdowns/animator.md").to_string(),
         })
     }
 
@@ -103,5 +107,25 @@ impl PromptProvider {
             .replace("{topic}", topic)
             .replace("{dialogue}", dialogue)
             .replace("{description}", description)
+    }
+
+    pub fn get_annotator_prompt(
+        &self,
+        instruction: &str,
+        dialogue: &str,
+        source_code: &str,
+        tree: &str,
+    ) -> String {
+        self.annotator_system_prompt
+            .replace("{instruction}", instruction)
+            .replace("{dialogue}", dialogue)
+            .replace("{source_code}", source_code)
+            .replace("{tree}", tree)
+    }
+
+    pub fn get_animator_prompt(&self, dialogue: &str, elements: &str) -> String {
+        self.animator_system_prompt
+            .replace("{dialogue}", dialogue)
+            .replace("{elements}", elements)
     }
 }

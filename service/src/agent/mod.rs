@@ -2,7 +2,14 @@ use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::{app::journey::dialogue::Dialogue, error::Result, logs::EventHistory};
+use crate::{
+    app::journey::{
+        blackboard::{ElementDescriptor, Segment},
+        dialogue::Dialogue,
+    },
+    error::Result,
+    logs::EventHistory,
+};
 
 pub mod advisor;
 pub mod handler;
@@ -38,6 +45,13 @@ pub enum MessageType {
     Dialogue,
 }
 
+#[derive(Serialize)]
+struct AnimatedDialogue {
+    dialogue: Dialogue,
+    elements: Vec<ElementDescriptor>,
+    segments: Vec<Segment>,
+}
+
 impl AgentResponse {
     pub fn with(message: String) -> Result<Self> {
         Ok(Self {
@@ -47,8 +61,17 @@ impl AgentResponse {
     }
 
     pub fn dialogue(dialogue: Dialogue) -> Result<Self> {
+        Self::animated_dialogue(dialogue, Vec::new(), Vec::new())
+    }
+
+    pub fn animated_dialogue(
+        dialogue: Dialogue,
+        elements: Vec<ElementDescriptor>,
+        segments: Vec<Segment>,
+    ) -> Result<Self> {
+        let payload = AnimatedDialogue { dialogue, elements, segments };
         Ok(Self {
-            content: serde_json::to_value(dialogue)?,
+            content: serde_json::to_value(payload)?,
             message_type: MessageType::Dialogue,
         })
     }

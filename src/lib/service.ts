@@ -74,6 +74,17 @@ export interface Blackboard {
   image_url?: string | null;
 }
 
+export interface ElementDescriptor {
+  id: string;
+  desc: string;
+}
+
+export interface Segment {
+  text: string;
+  reveals: string[];
+  focus: string[];
+}
+
 export interface Dialogue {
   journey_id: number;
   arc_idx: number;
@@ -83,6 +94,12 @@ export interface Dialogue {
   blackboard: Blackboard;
   heading: string;
   marked_complete: boolean;
+}
+
+export interface AnimatedDialogue {
+  dialogue: Dialogue;
+  elements: ElementDescriptor[];
+  segments: Segment[];
 }
 
 export interface Dialogues {
@@ -248,7 +265,7 @@ export async function setTeaching(teaching: TeachingContext): Promise<void> {
 }
 
 export interface AgentResponse {
-  content: { message: string } | Dialogue;
+  content: { message: string } | AnimatedDialogue;
   message_type: "Chat" | "Dialogue";
 }
 

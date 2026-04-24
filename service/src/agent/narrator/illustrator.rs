@@ -31,6 +31,12 @@ struct IllustratorOutput {
     code: String,
 }
 
+pub struct IllustrationResult {
+    pub blackboard: Blackboard,
+    pub source_code: Option<String>,
+    pub library: Option<String>,
+}
+
 pub struct Illustrator {
     client: Box<dyn LLMClient>,
 }
@@ -47,10 +53,18 @@ impl Illustrator {
         previous: &Blackboard,
         artifact: &JourneyArtifacts,
         topic: &ArcTopic,
-    ) -> Result<Blackboard> {
+    ) -> Result<IllustrationResult> {
         match &narration.blackboard_instructions {
-            BlackboardInstructions::Clear => Ok(Blackboard::empty()),
-            BlackboardInstructions::Persist => Ok(previous.clone()),
+            BlackboardInstructions::Clear => Ok(IllustrationResult {
+                blackboard: Blackboard::empty(),
+                source_code: None,
+                library: None,
+            }),
+            BlackboardInstructions::Persist => Ok(IllustrationResult {
+                blackboard: previous.clone(),
+                source_code: None,
+                library: None,
+            }),
             BlackboardInstructions::Detailed(instructions) => {
                 let illustrations_dir = Path::new(&artifact.chapter_dir).join("illustrations");
                 fs::create_dir_all(&illustrations_dir).map_err(|e| {
@@ -72,6 +86,7 @@ impl Illustrator {
                 );
 
                 self.client.set_system_prompt(prompt);
+                self.client.set_json_mode(true);
                 let response = self
                     .client
                     .generate("Produce the figure code.".to_string())
@@ -84,18 +99,27 @@ impl Illustrator {
                     Ok(v) => v,
                     Err(e) => {
                         log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
-                        return Ok(Blackboard::empty());
+                        return Ok(IllustrationResult {
+                            blackboard: Blackboard::empty(),
+                            source_code: None,
+                            library: None,
+                        });
                     }
                 };
 
+                let library = parsed.library.clone();
+
+                let executed_code: String;
                 let exec_result = match parsed.library.as_str() {
                     "tikz" => {
                         log::info!("[illustrator] rendering TikZ figure");
+                        executed_code = parsed.code.clone();
                         execute_latex(&parsed.code, &output_path)
                     }
                     _ => {
                         let code = fix_mathtext_shorthands(&parsed.code)
                             .replace("{output_path}", &output_path);
+                        executed_code = code.clone();
                         execute_python(&code)
                     }
                 };
@@ -104,15 +128,27 @@ impl Illustrator {
                     Ok(()) => {
                         if Path::new(&output_path).exists() {
                             log::info!("[illustrator] figure saved to {output_path}");
-                            Ok(Blackboard::new(instructions.into(), Some(output_path)))
+                            Ok(IllustrationResult {
+                                blackboard: Blackboard::new(instructions.into(), Some(output_path)),
+                                source_code: Some(executed_code),
+                                library: Some(library),
+                            })
                         } else {
                             log::error!("[illustrator] ran but no file at {output_path}");
-                            Ok(Blackboard::empty())
+                            Ok(IllustrationResult {
+                                blackboard: Blackboard::empty(),
+                                source_code: None,
+                                library: None,
+                            })
                         }
                     }
                     Err(e) => {
                         log::error!("[illustrator] execution failed: {e}");
-                        Ok(Blackboard::empty())
+                        Ok(IllustrationResult {
+                            blackboard: Blackboard::empty(),
+                            source_code: None,
+                            library: None,
+                        })
                     }
                 }
             }

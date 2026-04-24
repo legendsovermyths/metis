@@ -85,31 +85,34 @@ pub fn execute_python(code: &str) -> Result<()> {
     Ok(())
 }
 
-/// Wraps TikZ code in a standalone LaTeX document, compiles to PDF, converts to SVG.
+/// Wraps TikZ code in a standalone LaTeX document, compiles to DVI, converts to SVG.
+/// The \gid{id}{body} macro lets TikZ wrap regions with preserved SVG ids via dvisvgm specials.
 pub fn execute_latex(tikz_code: &str, output_path: &str) -> Result<()> {
-    let pdflatex = find_latex_binary("pdflatex")?;
-    let pdf2svg = find_latex_binary("pdf2svg")?;
+    let latex = find_latex_binary("latex")?;
+    let dvisvgm = find_latex_binary("dvisvgm")?;
 
     let tmp_dir = tempfile::tempdir()
         .map_err(|e| MetisError::AgentError(format!("Failed to create temp dir: {e}")))?;
 
     let tex_path = tmp_dir.path().join("figure.tex");
-    let pdf_path = tmp_dir.path().join("figure.pdf");
+    let dvi_path = tmp_dir.path().join("figure.dvi");
 
     let document = format!(
-        r#"\documentclass[tikz,border=10pt]{{standalone}}
+        r##"\documentclass[border=10pt]{{standalone}}
+\def\pgfsysdriver{{pgfsys-dvisvgm.def}}
 \usepackage{{amsmath,amssymb,amsfonts}}
 \usepackage{{tikz}}
 \usetikzlibrary{{arrows.meta,positioning,calc,decorations.pathreplacing,shapes}}
+\newcommand{{\gid}}[2]{{\special{{dvisvgm:raw <g id="#1">}}#2\special{{dvisvgm:raw </g>}}}}
 \begin{{document}}
 {tikz_code}
-\end{{document}}"#
+\end{{document}}"##
     );
 
     fs::write(&tex_path, &document)
         .map_err(|e| MetisError::AgentError(format!("Failed to write .tex file: {e}")))?;
 
-    let pdf_result = Command::new(&pdflatex)
+    let dvi_result = Command::new(&latex)
         .args([
             "-interaction=nonstopmode",
             "-halt-on-error",
@@ -118,9 +121,9 @@ pub fn execute_latex(tikz_code: &str, output_path: &str) -> Result<()> {
             &tex_path.to_string_lossy(),
         ])
         .output()
-        .map_err(|e| MetisError::AgentError(format!("Failed to run pdflatex: {e}")))?;
+        .map_err(|e| MetisError::AgentError(format!("Failed to run latex: {e}")))?;
 
-    if !pdf_result.status.success() {
+    if !dvi_result.status.success() {
         let log_path = tmp_dir.path().join("figure.log");
         let log_tail = fs::read_to_string(&log_path)
             .unwrap_or_default()
@@ -133,25 +136,29 @@ pub fn execute_latex(tikz_code: &str, output_path: &str) -> Result<()> {
             .collect::<Vec<_>>()
             .join("\n");
         return Err(MetisError::AgentError(format!(
-            "pdflatex compilation failed:\n{log_tail}"
+            "latex compilation failed:\n{log_tail}"
         )));
     }
 
-    if !pdf_path.exists() {
+    if !dvi_path.exists() {
         return Err(MetisError::AgentError(
-            "pdflatex ran but no PDF was produced".into(),
+            "latex ran but no DVI was produced".into(),
         ));
     }
 
-    let svg_result = Command::new(&pdf2svg)
-        .args([&pdf_path.to_string_lossy().to_string(), &output_path.to_string()])
+    let svg_result = Command::new(&dvisvgm)
+        .args([
+            "--no-fonts",
+            &format!("--output={}", output_path),
+            &dvi_path.to_string_lossy(),
+        ])
         .output()
-        .map_err(|e| MetisError::AgentError(format!("Failed to run pdf2svg: {e}")))?;
+        .map_err(|e| MetisError::AgentError(format!("Failed to run dvisvgm: {e}")))?;
 
     if !svg_result.status.success() {
         let stderr = String::from_utf8_lossy(&svg_result.stderr);
         return Err(MetisError::AgentError(format!(
-            "pdf2svg conversion failed: {stderr}"
+            "dvisvgm conversion failed: {stderr}"
         )));
     }
 
@@ -172,6 +179,6 @@ fn find_latex_binary(name: &str) -> Result<PathBuf> {
     }
     which::which(name)
         .map_err(|_| MetisError::AgentError(format!(
-            "{name} not found. Install BasicTeX: brew install --cask basictex && brew install pdf2svg"
+            "{name} not found. Install BasicTeX and dvisvgm: brew install --cask basictex && brew install dvisvgm"
         )))
 }

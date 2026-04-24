@@ -6,6 +6,19 @@ pub struct Blackboard {
     pub image_url: Option<String>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ElementDescriptor {
+    pub id: String,
+    pub desc: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Segment {
+    pub text: String,
+    pub reveals: Vec<String>,
+    pub focus: Vec<String>,
+}
+
 impl Blackboard {
     pub fn empty() -> Self {
         Self {

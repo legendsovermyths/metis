@@ -111,4 +111,7 @@ impl LLMClient for ClaudeClient {
     fn set_system_prompt(&mut self, prompt: String) {
         self.system_prompt = prompt;
     }
+    fn set_json_mode(&mut self, enabled: bool) {
+        self.json_mode = enabled;
+    }
 }

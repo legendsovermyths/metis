@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
-import { sendMessage, type Dialogue } from "@/lib/service";
+import { sendMessage, type Dialogue, type ElementDescriptor, type Segment } from "@/lib/service";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Link, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import gsap from "gsap";
 
 const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
 
@@ -36,6 +37,169 @@ function preprocessMath(md: string): string {
   return result;
 }
 
+/// Slices `text` to `len` chars, but never lands inside an unclosed math
+/// expression — if the cut would fall inside `$...$` or `$$...$$`, retreat
+/// to just before the opening delimiter so partial LaTeX is never rendered.
+function safeTypedSlice(text: string, len: number): string {
+  const slice = text.slice(0, len);
+  const re = /\\\$|\$\$|\$/g;
+  let inDouble = false;
+  let inSingle = false;
+  let openIdx = -1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(slice)) !== null) {
+    if (m[0] === "\\$") continue;
+    if (m[0] === "$$") {
+      if (inDouble) { inDouble = false; openIdx = -1; }
+      else if (!inSingle) { inDouble = true; openIdx = m.index; }
+    } else {
+      if (inSingle) { inSingle = false; openIdx = -1; }
+      else if (!inDouble) { inSingle = true; openIdx = m.index; }
+    }
+  }
+  if ((inDouble || inSingle) && openIdx >= 0) return text.slice(0, openIdx);
+  return slice;
+}
+
+type RevealState = {
+  dialogueCount: number;
+  elements: ElementDescriptor[];
+  segments: Segment[];
+  segmentIndex: number;
+  typedLen: number;
+};
+
+function AnimatedBlackboard({
+  svgUrl,
+  elements,
+  revealed,
+  focused,
+  justRevealed,
+  revealing,
+  settled,
+}: {
+  svgUrl: string;
+  elements: ElementDescriptor[];
+  revealed: Set<string>;
+  focused: Set<string>;
+  justRevealed: Set<string>;
+  revealing: boolean;
+  settled: boolean;
+}) {
+  const [svgText, setSvgText] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(convertFileSrc(svgUrl))
+      .then((r) => r.text())
+      .then((text) => {
+        if (!cancelled) setSvgText(text);
+      })
+      .catch(() => {
+        if (!cancelled) setSvgText(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [svgUrl]);
+
+  useEffect(() => {
+    if (!svgText || !rootRef.current) return;
+    const root = rootRef.current;
+
+    if (!revealing) return;
+    for (const el of elements) {
+      const node = root.querySelector(`#${CSS.escape(el.id)}`) as SVGElement | null;
+      if (!node) continue;
+      gsap.set(node, { opacity: 0 });
+      node.querySelectorAll("path").forEach((p) => {
+        const path = p as SVGPathElement;
+        let len = 0;
+        try {
+          len = path.getTotalLength();
+        } catch {
+          len = 0;
+        }
+        if (len > 0 && isFinite(len)) {
+          path.style.strokeDasharray = String(len);
+          path.style.strokeDashoffset = String(len);
+          path.setAttribute("data-dash-len", String(len));
+        }
+      });
+    }
+  }, [svgText, elements, revealing]);
+
+  useEffect(() => {
+    if (!svgText || !rootRef.current || !revealing) return;
+    const root = rootRef.current;
+    const hasFocus = focused.size > 0;
+
+    const tl = gsap.timeline();
+    ((): void => {
+
+      // 1. Newly-revealed elements this segment — stagger fade-in + stroke draw.
+      const freshNodes: SVGElement[] = [];
+      for (const el of elements) {
+        if (!justRevealed.has(el.id)) continue;
+        const node = root.querySelector(`#${CSS.escape(el.id)}`) as SVGElement | null;
+        if (node) freshNodes.push(node);
+      }
+      if (freshNodes.length > 0) {
+        tl.to(freshNodes, { opacity: 1, duration: 0.5, stagger: 0.15, ease: "power2.out" }, 0);
+        freshNodes.forEach((node, i) => {
+          const paths = Array.from(node.querySelectorAll("path")) as SVGPathElement[];
+          const drawables = paths.filter((p) => p.getAttribute("data-dash-len"));
+          if (drawables.length > 0) {
+            tl.to(
+              drawables,
+              { strokeDashoffset: 0, duration: 1.6, ease: "power2.out" },
+              i * 0.15
+            );
+          }
+        });
+      }
+
+      // 2. Previously-revealed (not fresh) elements — snap-show, then settle opacity.
+      for (const el of elements) {
+        const node = root.querySelector(`#${CSS.escape(el.id)}`) as SVGElement | null;
+        if (!node) continue;
+        const shown = revealed.has(el.id);
+        const isFresh = justRevealed.has(el.id);
+        if (!shown) {
+          tl.to(node, { opacity: 0, duration: 0.3 }, 0);
+          continue;
+        }
+        if (isFresh) continue; // handled above
+        const isFocused = focused.has(el.id);
+        const target = settled ? 1 : isFocused ? 1 : hasFocus ? 0.4 : 1;
+        tl.to(node, { opacity: target, duration: 0.5, ease: "power2.out" }, 0);
+        const paths = Array.from(node.querySelectorAll("path")) as SVGPathElement[];
+        paths.forEach((p) => {
+          if (p.getAttribute("data-dash-len")) {
+            gsap.set(p, { strokeDashoffset: 0 });
+          }
+        });
+      }
+
+    })();
+
+    return () => {
+      tl.kill();
+    };
+  }, [svgText, elements, revealed, focused, justRevealed, revealing, settled]);
+
+  if (!svgText) return null;
+
+  return (
+    <div
+      ref={rootRef}
+      className="w-full h-full dark:invert [&_svg]:block [&_svg]:w-full [&_svg]:h-full"
+      dangerouslySetInnerHTML={{ __html: svgText }}
+    />
+  );
+}
+
 export default function TeachingPage() {
   const { theme, toggle } = useTheme();
   const { context } = useAppContext();
@@ -45,6 +209,7 @@ export default function TeachingPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<RevealState | null>(null);
 
   type Exchange = { question: string; answer: string };
   const [isAsking, setIsAsking] = useState(false);
@@ -147,8 +312,68 @@ export default function TeachingPage() {
     }
   }, [allDialogues.length]);
 
+  const segIdx = reveal?.segmentIndex ?? -1;
+  const segsRef = reveal?.segments;
+
+  useEffect(() => {
+    if (segIdx < 0 || !segsRef) return;
+    const id = window.setInterval(() => {
+      setReveal((r) => {
+        if (!r) return r;
+        const cur = r.segments[r.segmentIndex];
+        if (!cur || r.typedLen >= cur.text.length) return r;
+        return { ...r, typedLen: Math.min(cur.text.length, r.typedLen + 2) };
+      });
+    }, 14);
+    return () => window.clearInterval(id);
+  }, [segIdx, segsRef]);
+
+  const currentImageUrl = allDialogues[pageIndex]?.blackboard?.image_url ?? null;
+
+  const dialogueScrollRef = useRef<HTMLDivElement>(null);
+
+  const typedLen = reveal?.typedLen ?? 0;
+
+  useEffect(() => {
+    const el = dialogueScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < 200) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [typedLen, segIdx]);
+
+  const revealFocusSets = useMemo(() => {
+    const revealed = new Set<string>();
+    const focused = new Set<string>();
+    const justRevealed = new Set<string>();
+    if (reveal) {
+      for (let i = 0; i <= reveal.segmentIndex; i++) {
+        for (const id of reveal.segments[i]?.reveals ?? []) revealed.add(id);
+      }
+      for (const id of reveal.segments[reveal.segmentIndex]?.focus ?? []) focused.add(id);
+      for (const id of reveal.segments[reveal.segmentIndex]?.reveals ?? []) justRevealed.add(id);
+    }
+    return { revealed, focused, justRevealed };
+  }, [reveal?.segmentIndex, reveal?.segments]);
+
   const handleNext = useCallback(async () => {
     if (isLoading) return;
+
+    const isRevealActive =
+      reveal && reveal.dialogueCount === allDialogues.length && pageIndex === allDialogues.length - 1;
+
+    if (isRevealActive && reveal) {
+      const currentText = reveal.segments[reveal.segmentIndex]?.text ?? "";
+      if (reveal.typedLen < currentText.length) {
+        setReveal({ ...reveal, typedLen: currentText.length });
+        return;
+      }
+      if (reveal.segmentIndex < reveal.segments.length - 1) {
+        setReveal({ ...reveal, segmentIndex: reveal.segmentIndex + 1, typedLen: 0 });
+        return;
+      }
+    }
 
     if (pageIndex < allDialogues.length - 1) {
       setPageIndex((p) => p + 1);
@@ -160,13 +385,31 @@ export default function TeachingPage() {
     setError(null);
 
     try {
-      await sendMessage();
+      const response = await sendMessage();
+      if (response.message_type === "Dialogue") {
+        const payload = response.content as {
+          dialogue: Dialogue;
+          elements: ElementDescriptor[];
+          segments: Segment[];
+        };
+        if (payload.segments && payload.segments.length > 0) {
+          setReveal({
+            dialogueCount: allDialogues.length + 1,
+            elements: payload.elements ?? [],
+            segments: payload.segments,
+            segmentIndex: 0,
+            typedLen: 0,
+          });
+        } else {
+          setReveal(null);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, pageIndex, allDialogues.length, isJourneyComplete]);
+  }, [isLoading, pageIndex, allDialogues.length, isJourneyComplete, reveal]);
 
   const handlePrev = useCallback(() => {
     if (pageIndex > 0) setPageIndex((p) => p - 1);
@@ -198,7 +441,7 @@ export default function TeachingPage() {
   return (
     <div
       className={cn(
-        "flex min-h-screen flex-col transition-[margin] duration-300 ease-out",
+        "flex h-screen flex-col transition-[margin] duration-300 ease-out",
         isAsking && "md:mr-[420px]"
       )}
     >
@@ -250,129 +493,164 @@ export default function TeachingPage() {
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-6 py-10 md:px-8">
-          {/* Arc + topic heading */}
-          <header className="mb-10 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 mb-2">
-              {displayArc}
-            </p>
-            <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground md:text-3xl">
-              {displayHeading}
-            </h1>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
+      {/* Content area — two-pane on lg+, stacked on mobile */}
+      {(() => {
+        const proseClasses = cn(
+          "prose prose-neutral dark:prose-invert max-w-none",
+          "prose-headings:font-serif prose-headings:tracking-tight",
+          "prose-p:leading-[1.8] prose-p:text-foreground/90",
+          "prose-blockquote:border-foreground/20 prose-blockquote:text-foreground/70",
+          "prose-strong:text-foreground prose-strong:font-semibold",
+          "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
+          "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
+          "[&_.katex]:text-foreground"
+        );
+
+        const isRevealing =
+          reveal &&
+          reveal.dialogueCount === allDialogues.length &&
+          pageIndex === allDialogues.length - 1;
+
+        const isSettled = Boolean(
+          isRevealing &&
+            reveal &&
+            reveal.segmentIndex === reveal.segments.length - 1 &&
+            reveal.typedLen >= (reveal.segments[reveal.segmentIndex]?.text.length ?? 0)
+        );
+
+        const { revealed, focused, justRevealed } = revealFocusSets;
+
+        return (
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+            {/* Board pane */}
+            <div className="relative lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden">
+              {currentImageUrl && (
                 <div
-                  className="h-full rounded-full bg-foreground/40 transition-all duration-700 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                {completedTopics}/{totalTopics}
-              </span>
+                  key={currentImageUrl}
+                  className="w-full h-full animate-fade-in"
+                >
+                  {isRevealing && reveal ? (
+                    <AnimatedBlackboard
+                      svgUrl={currentImageUrl}
+                      elements={reveal.elements}
+                      revealed={revealed}
+                      focused={focused}
+                      justRevealed={justRevealed}
+                      revealing
+                      settled={isSettled}
+                    />
+                  ) : (
+                    <AnimatedBlackboard
+                      svgUrl={currentImageUrl}
+                      elements={[]}
+                      revealed={new Set()}
+                      focused={new Set()}
+                      justRevealed={new Set()}
+                      revealing={false}
+                      settled={false}
+                    />
+                  )}
+                </div>
+              )}
             </div>
-          </header>
 
-          {hasNoPages && !isLoading && (
-            <div className="text-center py-20 animate-fade-in">
-              <p className="text-sm text-muted-foreground mb-6">
-                Ready to begin. Press <span className="font-medium text-foreground">Begin</span> to
-                start the lecture.
-              </p>
-            </div>
-          )}
-
-          {!hasNoPages && (
-            <div key={pageIndex} className="animate-fade-in">
-              {(() => {
-                const raw = currentDialogue?.content ?? "";
-                const imageUrl = currentDialogue?.blackboard?.image_url;
-                const proseClasses = cn(
-                  "prose prose-neutral dark:prose-invert max-w-none",
-                  "prose-headings:font-serif prose-headings:tracking-tight",
-                  "prose-p:leading-[1.8] prose-p:text-foreground/90",
-                  "prose-blockquote:border-foreground/20 prose-blockquote:text-foreground/70",
-                  "prose-strong:text-foreground prose-strong:font-semibold",
-                  "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
-                  "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
-                  "[&_.katex]:text-foreground"
-                );
-
-                if (!imageUrl) {
-                  return (
-                    <article className={proseClasses}>
-                      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                        {preprocessMath(raw)}
-                      </ReactMarkdown>
-                    </article>
-                  );
-                }
-
-                const paragraphs = raw.split(/\n{2,}/);
-                const mid = Math.ceil(paragraphs.length / 2);
-                const before = paragraphs.slice(0, mid).join("\n\n");
-                const after = paragraphs.slice(mid).join("\n\n");
-
-                return (
-                  <>
-                    <article className={proseClasses}>
-                      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                        {preprocessMath(before)}
-                      </ReactMarkdown>
-                    </article>
-                    <div className="my-8 flex justify-center">
-                      <img
-                        src={convertFileSrc(imageUrl)}
-                        alt="Blackboard figure"
-                        className={cn("max-w-full h-auto rounded-lg", "dark:invert")}
+            {/* Dialogue pane */}
+            <div ref={dialogueScrollRef} className="flex-1 lg:w-1/2 overflow-y-auto">
+              <div className="mx-auto max-w-2xl px-6 py-10 md:px-8">
+                <header className="mb-10 animate-fade-in">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 mb-2">
+                    {displayArc}
+                  </p>
+                  <h1 className="text-2xl font-serif font-semibold tracking-tight text-foreground md:text-3xl">
+                    {displayHeading}
+                  </h1>
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-foreground/40 transition-all duration-700 ease-out"
+                        style={{ width: `${progressPct}%` }}
                       />
                     </div>
-                    {after && (
+                    <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+                      {completedTopics}/{totalTopics}
+                    </span>
+                  </div>
+                </header>
+
+                {hasNoPages && !isLoading && (
+                  <div className="text-center py-20 animate-fade-in">
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Ready to begin. Press <span className="font-medium text-foreground">Begin</span> to
+                      start the lecture.
+                    </p>
+                  </div>
+                )}
+
+                {!hasNoPages && (
+                  <div key={pageIndex} className="animate-fade-in">
+                    {isRevealing && reveal ? (
+                      <div className="space-y-5">
+                        {reveal.segments.slice(0, reveal.segmentIndex + 1).map((seg, i) => {
+                          const isCurrent = i === reveal.segmentIndex;
+                          const text = isCurrent ? safeTypedSlice(seg.text, reveal.typedLen) : seg.text;
+                          return (
+                            <article
+                              key={i}
+                              className={cn(proseClasses, "animated-dialogue transition-opacity duration-500")}
+                              style={{ opacity: isSettled || isCurrent ? 1 : 0.4 }}
+                            >
+                              <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                {preprocessMath(text)}
+                              </ReactMarkdown>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : (
                       <article className={proseClasses}>
                         <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                          {preprocessMath(after)}
+                          {preprocessMath(currentDialogue?.content ?? "")}
                         </ReactMarkdown>
                       </article>
                     )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
+                  </div>
+                )}
 
-          {isLoading && (
-            <div className="mt-8 flex items-center gap-2 animate-fade-in">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Composing next section...</span>
-            </div>
-          )}
+                {isLoading && (
+                  <div className="mt-8 flex items-center gap-2 animate-fade-in">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Composing next section...</span>
+                  </div>
+                )}
 
-          {error && (
-            <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+                {error && (
+                  <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
 
-          {isJourneyComplete && isOnLastPage && (
-            <div className="mt-12 text-center animate-fade-in">
-              <div className="inline-block rounded-xl border border-border bg-card p-8 shadow-soft">
-                <p className="text-base font-medium text-foreground mb-2">Journey complete</p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  You've finished all topics. Well done.
-                </p>
-                <Button
-                  onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
-                  className="rounded-xl px-6 shadow-soft"
-                >
-                  Back to journey
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+                {isJourneyComplete && isOnLastPage && (
+                  <div className="mt-12 text-center animate-fade-in">
+                    <div className="inline-block rounded-xl border border-border bg-card p-8 shadow-soft">
+                      <p className="text-base font-medium text-foreground mb-2">Journey complete</p>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        You've finished all topics. Well done.
+                      </p>
+                      <Button
+                        onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
+                        className="rounded-xl px-6 shadow-soft"
+                      >
+                        Back to journey
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Bottom bar */}
       <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-xl px-4 py-3">

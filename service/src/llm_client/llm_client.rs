@@ -6,6 +6,7 @@ use async_trait::async_trait;
 pub trait LLMClient: Send + Sync{
     async fn generate(&self, prompt: String) -> Result<LLMResponse>;
     fn set_system_prompt(&mut self, prompt: String);
+    fn set_json_mode(&mut self, enabled: bool);
 }
 
 #[async_trait]

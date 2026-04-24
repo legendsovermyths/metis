@@ -164,3 +164,19 @@
 .chat-latex .katex-display {
   margin: 0.75em 0;
 }
+
+/* Formula flourish — math pops in when it first lands in the DOM during reveal */
+@keyframes math-pop {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animated-dialogue .katex {
+  animation: math-pop 320ms ease-out both;
+  transform-origin: left center;
+  display: inline-block;
+}
+.animated-dialogue .katex-display {
+  animation: math-pop 320ms ease-out both;
+  transform-origin: center center;
+}
+
