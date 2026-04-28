@@ -3,7 +3,7 @@ use std::{fs, sync::Arc};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-     api::request::handlers::generate_course::PageRange, app::journey::artifact::TopicRange, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, utils::{
+     api::request::handlers::generate_course::PageRange, app::journey::{artifact::TopicRange, Journey}, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, utils::{
         format::{clean_page_output, strip_json_block},
         pdf::{extract_page_range, truncated_copy},
     }
@@ -219,4 +219,53 @@ pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>
         ))
     })?;
     Ok(topics)
+}
+
+pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
+    log::info!(
+        "[generate_journey] {} topics — calling LLM to generate arc structure",
+        topics.len()
+    );
+    let topic_list = topics.join("\n");
+    let prompt = get_prompt_provider().get_architect_prompt(&topic_list);
+    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
+    client.set_system_prompt(prompt);
+
+    let response = client.generate("Generate the journey.".to_string()).await?;
+    let text = response.text();
+    let text = strip_json_block(&text);
+
+    let journey: Journey =
+        serde_json::from_str(text).map_err(|e| MetisError::JsonError(e.to_string()))?;
+    log::info!(
+        "[generate_journey] parsed journey: {} arcs",
+        journey.arcs.len()
+    );
+    Ok(journey)
+}
+
+pub async fn create_topic_map(chapter_dir: &str, journey: &Journey) -> Result<()> {
+    let topic_names: Vec<String> = journey
+        .arcs
+        .iter()
+        .flat_map(|arc| arc.topics.iter().map(|t| t.name.clone()))
+        .collect();
+    log::info!("[create_topic_map] mapping {} topics", topic_names.len());
+
+    let content_md = fs::read_to_string(format!("{}/content.md", chapter_dir))
+        .map_err(|err| MetisError::FileReadError(err.to_string()))?;
+
+    let topic_map = map_topics(&content_md, &topic_names).await?;
+    log::info!("[create_topic_map] got {} mappings", topic_map.len());
+
+    let topic_map_path = format!("{}/topic_map.json", chapter_dir);
+    let topic_map_json = serde_json::to_string_pretty(&topic_map)
+        .map_err(|e| MetisError::JsonError(e.to_string()))?;
+    fs::write(&topic_map_path, &topic_map_json)
+        .map_err(|e| MetisError::UtilsError(e.to_string()))?;
+    log::info!(
+        "[create_topic_map] saved topic_map.json ({} mappings)",
+        topic_map.len()
+    );
+    Ok(())
 }

@@ -1,16 +1,9 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use serde::Deserialize;
 
 use crate::{
-    app::journey::{
-        artifact::JourneyArtifacts,
-        blackboard::{Blackboard, BlackboardInstructions},
-        ArcTopic,
-    },
+    app::journey::blackboard::{Blackboard, ElementDescriptor},
     error::{MetisError, Result},
     llm_client::{
         factory::{ClientType, LLMClientFactory},
@@ -22,8 +15,6 @@ use crate::{
         format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
     },
 };
-
-use super::NarratorOutput;
 
 #[derive(Deserialize)]
 struct IllustratorOutput {
@@ -37,121 +28,136 @@ pub struct IllustrationResult {
     pub library: Option<String>,
 }
 
+impl IllustrationResult {
+    pub fn empty() -> Self {
+        Self {
+            blackboard: Blackboard::empty(),
+            source_code: None,
+            library: None,
+        }
+    }
+}
+
+pub struct IllustrationRequest<'a> {
+    pub dialogue: &'a str,
+    pub instruction: &'a str,
+    pub previous_instruction: &'a str,
+    pub chapter_dir: &'a str,
+    pub topic: &'a str,
+    pub parts: &'a [ElementDescriptor],
+}
+
 pub struct Illustrator {
     client: Box<dyn LLMClient>,
 }
 
-impl Illustrator {
+impl<'a> Illustrator {
     pub fn with() -> Self {
-        let client = LLMClientFactory::get_client(ClientType::GeminiPro);
+        let mut client = LLMClientFactory::get_client(ClientType::GeminiPro);
+        client.set_json_mode(true);
         Self { client }
     }
 
-    pub async fn from(
-        &mut self,
-        narration: &NarratorOutput,
-        previous: &Blackboard,
-        artifact: &JourneyArtifacts,
-        topic: &ArcTopic,
+    fn prepare_prompt(&self, request: &IllustrationRequest) -> String {
+        let parts_json = if request.parts.is_empty() {
+            "(No parts were pre-designed — default to sensible semantic ids.)".to_string()
+        } else {
+            serde_json::to_string_pretty(request.parts).unwrap_or_else(|_| "[]".to_string())
+        };
+
+        get_prompt_provider().get_blackboard_prompt(
+            request.instruction,
+            request.topic,
+            request.dialogue,
+            request.previous_instruction,
+            &parts_json,
+        )
+    }
+
+    pub fn get_output_path(&self, request: &IllustrationRequest) -> Result<String> {
+        let illustrations_dir = Path::new(request.chapter_dir).join("illustrations");
+        fs::create_dir_all(&illustrations_dir).map_err(|e| {
+            MetisError::AgentError(format!("Failed to create illustrations dir: {}", e))
+        })?;
+        let illustrations_dir = fs::canonicalize(&illustrations_dir).map_err(|e| {
+            MetisError::AgentError(format!("Failed to resolve illustrations path: {}", e))
+        })?;
+
+        let filename = format!("fig_{}.svg", chrono::Utc::now().format("%Y%m%d_%H%M%S_%3f"));
+        let output_path = illustrations_dir.join(&filename);
+        let output_path = output_path.to_string_lossy().to_string();
+        Ok(output_path)
+    }
+
+    pub fn execute_illustrator_output(
+        &self,
+        output: IllustratorOutput,
+        request: &IllustrationRequest,
     ) -> Result<IllustrationResult> {
-        match &narration.blackboard_instructions {
-            BlackboardInstructions::Clear => Ok(IllustrationResult {
-                blackboard: Blackboard::empty(),
-                source_code: None,
-                library: None,
-            }),
-            BlackboardInstructions::Persist => Ok(IllustrationResult {
-                blackboard: previous.clone(),
-                source_code: None,
-                library: None,
-            }),
-            BlackboardInstructions::Detailed(instructions) => {
-                let illustrations_dir = Path::new(&artifact.chapter_dir).join("illustrations");
-                fs::create_dir_all(&illustrations_dir).map_err(|e| {
-                    MetisError::AgentError(format!("Failed to create illustrations dir: {}", e))
-                })?;
-                let illustrations_dir = fs::canonicalize(&illustrations_dir).map_err(|e| {
-                    MetisError::AgentError(format!("Failed to resolve illustrations path: {}", e))
-                })?;
-                let filename =
-                    format!("fig_{}.svg", chrono::Utc::now().format("%Y%m%d_%H%M%S_%3f"));
-                let output_path = illustrations_dir.join(&filename);
-                let output_path = output_path.to_string_lossy().to_string();
+        let output_path = self.get_output_path(request)?;
+        let library = output.library.clone();
 
-                let prompt = get_prompt_provider().get_blackboard_prompt(
-                    &instructions,
-                    &topic.name,
-                    &narration.dialogue,
-                    &previous.description,
-                );
+        let executed_code: String;
+        let exec_result = match output.library.as_str() {
+            "tikz" => {
+                log::info!("[illustrator] rendering TikZ figure");
+                executed_code = output.code.clone();
+                execute_latex(&output.code, &output_path)
+            }
+            _ => {
+                let code =
+                    fix_mathtext_shorthands(&output.code).replace("{output_path}", &output_path);
+                executed_code = code.clone();
+                execute_python(&code)
+            }
+        };
 
-                self.client.set_system_prompt(prompt);
-                self.client.set_json_mode(true);
-                let response = self
-                    .client
-                    .generate("Produce the figure code.".to_string())
-                    .await?;
-
-                let raw = response.text();
-                let json_str = strip_json_block(&raw);
-                let fixed = fix_json_escapes(json_str);
-                let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
-                        return Ok(IllustrationResult {
-                            blackboard: Blackboard::empty(),
-                            source_code: None,
-                            library: None,
-                        });
-                    }
-                };
-
-                let library = parsed.library.clone();
-
-                let executed_code: String;
-                let exec_result = match parsed.library.as_str() {
-                    "tikz" => {
-                        log::info!("[illustrator] rendering TikZ figure");
-                        executed_code = parsed.code.clone();
-                        execute_latex(&parsed.code, &output_path)
-                    }
-                    _ => {
-                        let code = fix_mathtext_shorthands(&parsed.code)
-                            .replace("{output_path}", &output_path);
-                        executed_code = code.clone();
-                        execute_python(&code)
-                    }
-                };
-
-                match exec_result {
-                    Ok(()) => {
-                        if Path::new(&output_path).exists() {
-                            log::info!("[illustrator] figure saved to {output_path}");
-                            Ok(IllustrationResult {
-                                blackboard: Blackboard::new(instructions.into(), Some(output_path)),
-                                source_code: Some(executed_code),
-                                library: Some(library),
-                            })
-                        } else {
-                            log::error!("[illustrator] ran but no file at {output_path}");
-                            Ok(IllustrationResult {
-                                blackboard: Blackboard::empty(),
-                                source_code: None,
-                                library: None,
-                            })
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("[illustrator] execution failed: {e}");
-                        Ok(IllustrationResult {
-                            blackboard: Blackboard::empty(),
-                            source_code: None,
-                            library: None,
-                        })
-                    }
+        match exec_result {
+            Ok(()) => {
+                if Path::new(&output_path).exists() {
+                    log::info!("[illustrator] figure saved to {output_path}");
+                    Ok(IllustrationResult {
+                        blackboard: Blackboard::new(
+                            request.instruction.into(),
+                            Some(output_path),
+                        ),
+                        source_code: Some(executed_code),
+                        library: Some(library),
+                    })
+                } else {
+                    log::error!("[illustrator] ran but no file at {output_path}");
+                    Ok(IllustrationResult::empty())
                 }
             }
+            Err(e) => {
+                log::error!("[illustrator] execution failed: {e}");
+                Ok(IllustrationResult::empty())
+            }
         }
+    }
+
+    pub async fn illustrate(
+        &mut self,
+        request: IllustrationRequest<'a>,
+    ) -> Result<IllustrationResult> {
+        let prompt = self.prepare_prompt(&request);
+
+        self.client.set_system_prompt(prompt);
+        let response = self
+            .client
+            .generate("Produce the figure code.".to_string())
+            .await?;
+
+        let raw = response.text();
+        let json_str = strip_json_block(&raw);
+        let fixed = fix_json_escapes(json_str);
+        let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
+            Ok(v) => v,
+            Err(e) => {
+                log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
+                return Ok(IllustrationResult::empty());
+            }
+        };
+        self.execute_illustrator_output(parsed, &request)
     }
 }

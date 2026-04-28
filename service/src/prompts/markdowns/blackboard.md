@@ -78,6 +78,15 @@ Produce **black-and-white, minimal** figures. The app handles dark/light theme a
 9. Handle edge cases: if the instruction asks for something that cannot be drawn (e.g., a 3D object with no 3D context), produce a clear 2D representation and annotate accordingly.
 10. **Matplotlib mathtext is NOT full LaTeX.** Many shorthand commands are unsupported. You MUST use the long forms: `\geq` not `\ge`, `\leq` not `\le`, `\neq` not `\ne`, `\rightarrow` not `\to`, `\leftarrow` not `\gets`. When in doubt, prefer the verbose form of any symbol.
 11. **`ax.plot()` marker styling** uses `markerfacecolor` (or `mfc`) and `markeredgecolor` (or `mec`), NOT `facecolor`/`edgecolor`. The bare `facecolor`/`edgecolor` kwargs are only for patches and fills. Using them in `plot()` will crash.
+12. **Every Required Part (see below) MUST have a matching `set_gid("id")` call on the matplotlib artist that represents it.** Matplotlib's SVG backend honors `set_gid` and emits a real `<g id="...">` around that artist — this is how the animation system addresses the part later. Examples:
+    ```python
+    line, = ax.plot(x, y); line.set_gid("main-curve")
+    tangent, = ax.plot(xs, ys, linestyle='--'); tangent.set_gid("tangent-a")
+    ax.annotate("a", xy=(1, 1)).set_gid("label-a")
+    region = ax.fill_between(x, y, alpha=0.15); region.set_gid("shaded-region")
+    heading = ax.text(0.5, 1.05, "Derivative at a point", transform=ax.transAxes); heading.set_gid("heading")
+    ```
+    If a part is a `Line2D`, `Text`, `Annotation`, `Patch`, `PolyCollection`, or `LineCollection`, `.set_gid()` works. Every id listed in Required Parts must appear in your code this way — do not skip any.
 
 ## Code Rules (tikz)
 
@@ -101,6 +110,16 @@ The `library` field must be one of: `"matplotlib"`, `"seaborn"`, `"tikz"`.
 For matplotlib/seaborn, `code` is a complete executable Python script.
 For tikz, `code` is the `\begin{tikzpicture}...\end{tikzpicture}` block only.
 
+## Required Parts
+
+The experience director has designed the following semantic parts for this figure. **Every id below MUST appear in your rendered SVG as a real `<g id="...">` group** — via `\gid{id}{...}` for tikz, or `artist.set_gid("id")` for matplotlib. The animation system addresses these ids to reveal, focus, and animate each piece. Missing ids break the choreography.
+
+**Morph endpoint pairs (ids ending in `-before` / `-after`):** when the parts list contains paired ids with `-before` and `-after` suffixes on an otherwise identical stem (e.g., `parabola-before` and `parabola-after`), draw BOTH as separate path elements at their respective shapes. Style them identically — same stroke width, same line style, same fill. Both must exist in the final SVG for the morph to work. The frontend automatically hides every `-before` element on static render, so only the `-after` shape is visible outside the animation — you just draw both normally.
+
+**Trace targets (ids ending in `-point`):** when a part id ends in `-point`, draw it as a small filled circle marker (radius ~4pt) at its initial position — typically the start of the curve it will traverse. The animation system slides it along the associated curve at runtime.
+
+{parts}
+
 ## Professor's Instruction
 
 {instruction}
@@ -113,9 +132,9 @@ For tikz, `code` is the `\begin{tikzpicture}...\end{tikzpicture}` block only.
 
 {dialogue}
 
-## Current Blackboard Visual Description
+## Previous Blackboard Instruction
 
-{description}
+{previous_instruction}
 
 ## Generate
 

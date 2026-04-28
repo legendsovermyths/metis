@@ -34,6 +34,8 @@ pub enum MetisError{
     InvalidRequest,
     #[error("Request type not found")]
     RequestTypeMissing,
+    #[error("Params error: {0}")]
+    ParamsError(String),
     #[error["Once lock error: {0}"]]
     OnceLockError(String),
     #[error("Not found: {0}")]

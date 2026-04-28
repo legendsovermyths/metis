@@ -4,3 +4,4 @@ pub mod pdf;
 pub mod journey;
 pub mod cmd;
 pub mod narrator;
+pub mod svg;

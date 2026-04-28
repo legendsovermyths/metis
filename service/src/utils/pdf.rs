@@ -1,4 +1,3 @@
-
 use std::{fs, path::Path};
 
 use lopdf::Document;
@@ -12,7 +11,9 @@ pub fn copy_pdf(src: &str) -> Result<String> {
         .file_name()
         .ok_or(MetisError::FileNotFound)?
         .to_str()
-        .ok_or(MetisError::UtilsError("File name not supported".to_string()))?;
+        .ok_or(MetisError::UtilsError(
+            "File name not supported".to_string(),
+        ))?;
 
     fs::create_dir_all("../books").map_err(|e| MetisError::UtilsError(e.to_string()))?;
     let dest = format!("../books/{}", file_name);
@@ -33,7 +34,8 @@ pub fn truncated_copy(src: &str) -> Result<String> {
     doc.delete_pages(&pages_to_remove);
 
     let truncated_path = format!("{}.truncated.pdf", src.trim_end_matches(".pdf"));
-    doc.save(&truncated_path).map_err(|e| MetisError::UtilsError(e.to_string()))?;
+    doc.save(&truncated_path)
+        .map_err(|e| MetisError::UtilsError(e.to_string()))?;
     Ok(truncated_path)
 }
 
@@ -55,7 +57,7 @@ pub fn extract_page_range(src: &str, start: u32, end: u32, dest: &str) -> Result
     if let Some(parent) = Path::new(dest).parent() {
         fs::create_dir_all(parent).map_err(|e| MetisError::UtilsError(e.to_string()))?;
     }
-    doc.save(dest).map_err(|e| MetisError::UtilsError(e.to_string()))?;
+    doc.save(dest)
+        .map_err(|e| MetisError::UtilsError(e.to_string()))?;
     Ok(dest.to_string())
 }
-

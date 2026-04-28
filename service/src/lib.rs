@@ -15,6 +15,7 @@ pub mod llm_client;
 pub mod logs;
 pub mod prompts;
 pub mod utils;
+pub mod task;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

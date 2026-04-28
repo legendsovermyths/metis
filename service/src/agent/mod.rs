@@ -69,7 +69,11 @@ impl AgentResponse {
         elements: Vec<ElementDescriptor>,
         segments: Vec<Segment>,
     ) -> Result<Self> {
-        let payload = AnimatedDialogue { dialogue, elements, segments };
+        let payload = AnimatedDialogue {
+            dialogue,
+            elements,
+            segments,
+        };
         Ok(Self {
             content: serde_json::to_value(payload)?,
             message_type: MessageType::Dialogue,

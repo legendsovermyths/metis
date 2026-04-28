@@ -1,10 +1,6 @@
-use std::{
-    fs,
-    sync::{Arc, Mutex},
-};
+use std::fs;
 
-use serde::Deserialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     api::request::handler::BoxFuture,
@@ -19,14 +15,13 @@ use crate::{
     utils::{
         format::{sanitize_name, strip_json_block},
         journey::{
-            convert_to_markdown, detect_page_range, extract_topics_from_content,
-            find_book_for_chapter, map_topics,
+            convert_to_markdown, create_topic_map, detect_page_range, extract_topics_from_content, find_book_for_chapter, generate_journey, map_topics
         },
         pdf::extract_page_range,
     },
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct PageRange {
     pub chapter_start: u32,
     pub chapter_end: u32,
@@ -114,28 +109,6 @@ pub fn generate_course_handler(params: GenerateCourseParams, context: &AppContex
     })
 }
 
-pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
-    log::info!(
-        "[generate_journey] {} topics — calling LLM to generate arc structure",
-        topics.len()
-    );
-    let topic_list = topics.join("\n");
-    let prompt = get_prompt_provider().get_architect_prompt(&topic_list);
-    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
-    client.set_system_prompt(prompt);
-
-    let response = client.generate("Generate the journey.".to_string()).await?;
-    let text = response.text();
-    let text = strip_json_block(&text);
-
-    let journey: Journey =
-        serde_json::from_str(text).map_err(|e| MetisError::JsonError(e.to_string()))?;
-    log::info!(
-        "[generate_journey] parsed journey: {} arcs",
-        journey.arcs.len()
-    );
-    Ok(journey)
-}
 
 /// Returns `(chapter_dir, content_md)`.
 pub async fn generate_artifacts(
@@ -200,28 +173,3 @@ pub async fn generate_artifacts(
     Ok((chapter_dir, content_md))
 }
 
-pub async fn create_topic_map(chapter_dir: &str, journey: &Journey) -> Result<()> {
-    let topic_names: Vec<String> = journey
-        .arcs
-        .iter()
-        .flat_map(|arc| arc.topics.iter().map(|t| t.name.clone()))
-        .collect();
-    log::info!("[create_topic_map] mapping {} topics", topic_names.len());
-
-    let content_md = fs::read_to_string(format!("{}/content.md", chapter_dir))
-        .map_err(|err| MetisError::FileReadError(err.to_string()))?;
-
-    let topic_map = map_topics(&content_md, &topic_names).await?;
-    log::info!("[create_topic_map] got {} mappings", topic_map.len());
-
-    let topic_map_path = format!("{}/topic_map.json", chapter_dir);
-    let topic_map_json = serde_json::to_string_pretty(&topic_map)
-        .map_err(|e| MetisError::JsonError(e.to_string()))?;
-    fs::write(&topic_map_path, &topic_map_json)
-        .map_err(|e| MetisError::UtilsError(e.to_string()))?;
-    log::info!(
-        "[create_topic_map] saved topic_map.json ({} mappings)",
-        topic_map.len()
-    );
-    Ok(())
-}

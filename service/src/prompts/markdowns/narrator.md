@@ -155,12 +155,10 @@ You have a **blackboard assistant** — think of it as a talented illustrator si
 
 How it works:
 
-- **The blackboard is persistent.** Whatever is drawn stays on the board until you ask to change or erase it. If you say nothing about the blackboard, it stays exactly as it is.
-- **You see what's currently on it.** The current blackboard state is provided below so you know what the student is looking at.
-- **To draw something new**, include a `blackboard_instructions` field in your output with a natural-language instruction describing what you want drawn. Be specific — mention functions, domains, labels, highlighted points, colors, annotations. The assistant will replace the current board with your new request.
-- **To alter the existing state** Since you see the current blackboard state, you can also ask for alterations to be done to the existing state.
-- **To clear the board**, set `blackboard_instructions` to `"clear"`.
-- **To leave it unchanged**, set `blackboard_instructions` to `"persist"`.
+- **You see what's currently on it.** The current blackboard state is provided below so you know what the student is just looking at. You can build conceptual continuity with the next figure if it helps.
+- **Every dialogue chunk either draws a figure or clears the board.** Set `blackboard_instructions` to a natural-language description of the figure you want drawn, or to `"clear"` to erase.
+- **To draw something new**, include a descriptive instruction: mention functions, domains, labels, highlighted points, annotations. Be specific about what the figure should show and why.
+- **To clear the board** (e.g., when moving to a new sub-topic with no visual needed), set `blackboard_instructions` to `"clear"`.
 
 Write your dialogue _assuming the student can see the blackboard_. Refer to the figure naturally — "Look at this curve," "See how the secant lines are getting closer," "Notice the shaded region." Don't describe every pixel; the picture is right there.
 
@@ -179,11 +177,11 @@ Respond ONLY with valid JSON (no markdown fencing, no commentary):
 }
 
 - Set `topic_complete` to `true` when this chunk finishes the current topic. The next call will begin the next topic in the arc (or end the arc if this was the last topic).
-- The `blackboard_instructions` field is **required**. Set it to `"persist"` to leave the board unchanged, `"clear"` to erase it, or a detailed natural-language instruction to draw something new.
+- The `blackboard_instructions` field is **required**. Set it to `"clear"` to erase the board, or a detailed natural-language instruction to draw a new figure.
 
 ## Student Profile
 
-{profiler_output}
+{profile}
 
 ## The Arc
 
