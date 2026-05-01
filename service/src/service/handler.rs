@@ -4,14 +4,15 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use crate::{
-    api::request::RequestType,
+    api::request::ServiceRequestType,
     app::AppContext,
     error::{MetisError, Result},
     service::handlers::{
         get_all_books::get_all_books, get_all_dialogues::get_all_dialogues,
         get_all_journeys::get_all_journeys, get_context::get_context,
-        get_journey::get_journey, get_next_dialogue::get_next_dialogue, set_chat::set_chat,
-        set_session::set_session, set_teaching::set_teaching, teaching_init::teaching_init,
+        get_journey::get_journey, get_next_dialogue::get_next_dialogue,
+        list_tasks::list_tasks, set_chat::set_chat, set_session::set_session,
+        set_teaching::set_teaching, teaching_init::teaching_init,
     },
     task::{task_type::TaskType, TaskRequest},
 };
@@ -20,7 +21,7 @@ pub type BoxFuture<'a> = Pin<Box<dyn Future<Output = Result<ServiceResponse>> + 
 type HandlerFn = Box<dyn for<'a> Fn(Value, &'a AppContext) -> BoxFuture<'a> + Send + Sync>;
 
 pub struct ServiceHandler<'a> {
-    handlers: HashMap<RequestType, HandlerFn>,
+    handlers: HashMap<ServiceRequestType, HandlerFn>,
     context: &'a AppContext,
 }
 
@@ -36,19 +37,20 @@ impl<'a> ServiceHandler<'a> {
             context,
         };
 
-        handler.register(RequestType::GetAllBooks, get_all_books);
-        handler.register(RequestType::GetAllDialogues, get_all_dialogues);
-        handler.register(RequestType::GetAllJourneys, get_all_journeys);
-        handler.register(RequestType::GetJourney, get_journey);
-        handler.register(RequestType::GetNextDialogue, get_next_dialogue);
-        handler.register(RequestType::GetContext, get_context);
-        handler.register(RequestType::TeachingInit, teaching_init);
-        handler.register(RequestType::SetChat, set_chat);
-        handler.register(RequestType::SetSession, set_session);
-        handler.register(RequestType::SetTeaching, set_teaching);
+        handler.register(ServiceRequestType::GetAllBooks, get_all_books);
+        handler.register(ServiceRequestType::GetAllDialogues, get_all_dialogues);
+        handler.register(ServiceRequestType::GetAllJourneys, get_all_journeys);
+        handler.register(ServiceRequestType::GetJourney, get_journey);
+        handler.register(ServiceRequestType::GetNextDialogue, get_next_dialogue);
+        handler.register(ServiceRequestType::GetContext, get_context);
+        handler.register(ServiceRequestType::ListTasks, list_tasks);
+        handler.register(ServiceRequestType::TeachingInit, teaching_init);
+        handler.register(ServiceRequestType::SetChat, set_chat);
+        handler.register(ServiceRequestType::SetSession, set_session);
+        handler.register(ServiceRequestType::SetTeaching, set_teaching);
         handler
     }
-    fn register<T, F>(&mut self, request: RequestType, func: F)
+    fn register<T, F>(&mut self, request: ServiceRequestType, func: F)
     where
         F: for<'b> Fn(T, &'b AppContext) -> BoxFuture<'b> + Send + Sync + 'static,
         T: DeserializeOwned + 'static,
@@ -61,7 +63,7 @@ impl<'a> ServiceHandler<'a> {
         self.handlers.insert(request, handler);
     }
 
-    pub async fn handle(&self, request: RequestType, params: Value) -> Result<ServiceResponse> {
+    pub async fn handle(&self, request: ServiceRequestType, params: Value) -> Result<ServiceResponse> {
         let handler = self
             .handlers
             .get(&request)

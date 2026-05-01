@@ -40,8 +40,8 @@ export default function LibraryPage() {
     <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-8 pb-24 md:pb-8">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 animate-fade-in">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Library</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your collection of books and references</p>
+          <h1 className="font-display text-3xl italic tracking-tight text-foreground">Library</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">Your collection of books and references</p>
         </div>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-fade-in [animation-delay:100ms] opacity-0">
@@ -91,7 +91,7 @@ export default function LibraryPage() {
 
         {booksLoading && pendingUploads.length === 0 && (
           <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin opacity-40" />
             <span className="text-sm">Loading your library…</span>
           </div>
         )}
@@ -101,13 +101,13 @@ export default function LibraryPage() {
           <div
             className={cn(
               "animate-fade-in-up opacity-0 [animation-delay:200ms]",
-              view === "grid" ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-2"
+              view === "grid" ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-4" : "flex flex-col gap-2"
             )}
           >
             {/* Pending upload skeletons */}
             {pendingUploads.map((u) =>
               view === "grid" ? (
-                <div key={u.tempId} className="rounded-xl border border-border bg-card p-5 shadow-soft">
+                <div key={u.tempId} className="rounded-xl bg-card p-5 border border-border/60">
                   <div className="mb-4 flex h-24 items-center justify-center rounded-lg bg-surface">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
@@ -116,7 +116,7 @@ export default function LibraryPage() {
                   <div className="mt-3 h-5 w-16 animate-pulse rounded-full bg-surface" />
                 </div>
               ) : (
-                <div key={u.tempId} className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-soft">
+                <div key={u.tempId} className="flex items-center gap-4 rounded-xl bg-card p-4 border border-border/60">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
@@ -132,9 +132,12 @@ export default function LibraryPage() {
               view === "grid" ? (
                 <div
                   key={book.id}
-                  className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-soft transition-all duration-200 hover:shadow-medium hover:border-border/80"
+                  className="group cursor-pointer rounded-xl bg-card p-5 transition-all duration-200 hover:bg-surface border border-border/60 hover:border-border"
                 >
-                  <div className="mb-4 flex h-24 items-center justify-center rounded-lg bg-surface text-4xl font-serif text-foreground">
+                  <div
+                    className="mb-4 flex h-24 items-center justify-center rounded-lg font-display text-4xl italic"
+                    style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}
+                  >
                     {book.cover}
                   </div>
                   <h3 className="text-sm font-medium text-foreground leading-snug line-clamp-2">{book.title}</h3>
@@ -146,9 +149,12 @@ export default function LibraryPage() {
               ) : (
                 <div
                   key={book.id}
-                  className="group flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-soft transition-all duration-200 hover:shadow-medium"
+                  className="group flex cursor-pointer items-center gap-4 rounded-xl bg-card p-4 transition-all duration-200 hover:bg-surface border border-border/60 hover:border-border"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface text-2xl font-serif text-foreground">
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg font-display text-2xl italic"
+                    style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}
+                  >
                     {book.cover}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -165,9 +171,12 @@ export default function LibraryPage() {
         )}
 
         {!booksLoading && !booksError && filtered.length === 0 && pendingUploads.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex flex-col items-center py-20 text-center animate-fade-in">
+            <span className="font-display text-8xl italic text-muted-foreground/20 select-none leading-none mb-6">∑</span>
             <p className="text-sm text-muted-foreground">
-              {books.length === 0 ? "Your library is empty — upload a PDF to get started" : "No books match your search"}
+              {books.length === 0
+                ? "Your library is empty — upload a PDF to get started"
+                : "No books match your search"}
             </p>
           </div>
         )}

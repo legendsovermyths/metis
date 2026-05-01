@@ -8,13 +8,16 @@ import { AppContextProvider } from "@/context/AppContext";
 import { useAppContext } from "@/context/AppContext";
 import { BookUploadProvider } from "@/context/UploadContext";
 import { JourneyCreationProvider } from "@/context/JourneyCreationContext";
+import { TasksProvider } from "@/context/TasksContext";
 import { AppNav } from "@/components/AppNav";
+import { BackgroundTasksPanel } from "@/components/BackgroundTasksPanel";
 import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
 import JourneysPage from "./pages/JourneysPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
 import TeachingPage from "./pages/TeachingPage";
+import TasksPage from "./pages/TasksPage";
 import QuizPage from "./pages/QuizPage";
 import PracticePage from "./pages/PracticePage";
 import PracticeIndexPage from "./pages/PracticeIndexPage";
@@ -37,7 +40,7 @@ function AppLayout() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-4xl font-serif tracking-tighter text-foreground animate-pulse">Metis</div>
+        <div className="font-display text-5xl italic tracking-tight text-foreground animate-pulse">Metis</div>
       </div>
     );
   }
@@ -45,6 +48,7 @@ function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       {showNav && <AppNav />}
+      {onboarded && <BackgroundTasksPanel />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -57,6 +61,7 @@ function AppLayout() {
           <Route path="/journeys/:id/practice" element={<PracticeIndexPage />} />
           <Route path="/journeys/:id/practice/:arcIdx" element={<PracticePage />} />
           <Route path="/teach" element={<TeachingPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -68,6 +73,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AppContextProvider>
+        <TasksProvider>
         <BookUploadProvider>
         <JourneyCreationProvider>
         <TooltipProvider>
@@ -79,6 +85,7 @@ const App = () => {
         </TooltipProvider>
         </JourneyCreationProvider>
         </BookUploadProvider>
+        </TasksProvider>
       </AppContextProvider>
     </QueryClientProvider>
   );

@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, BookOpen, Compass, Sun, Moon } from "lucide-react";
+import { Home, BookOpen, Compass, Activity, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/library", label: "Library", icon: BookOpen },
   { path: "/journeys", label: "Journeys", icon: Compass },
+  { path: "/tasks", label: "Tasks", icon: Activity },
 ];
 
 export function AppNav() {
@@ -18,7 +19,7 @@ export function AppNav() {
       <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 md:px-8">
         {/* Logo - desktop only */}
         <Link to="/" className="hidden items-center gap-2 md:flex">
-          <span className="text-lg font-semibold tracking-tight text-foreground">Metis</span>
+          <span className="font-display text-xl italic text-foreground">Metis</span>
         </Link>
 
         {/* Nav items */}
@@ -30,16 +31,33 @@ export function AppNav() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-3 text-xs font-medium transition-colors duration-200 md:flex-row md:gap-2 md:rounded-lg md:px-4 md:py-2 md:text-sm",
-                  isActive
-                    ? "text-foreground"
-                    : "text-text-tertiary hover:text-foreground"
+                  "relative flex flex-col items-center gap-1 px-3 py-3 text-xs font-medium transition-colors duration-200 md:flex-row md:gap-2 md:rounded-lg md:px-4 md:py-2 md:text-sm",
+                  isActive ? "text-foreground" : "text-text-tertiary hover:text-foreground"
                 )}
               >
-                <item.icon className={cn("h-5 w-5 md:h-4 md:w-4", isActive && "text-foreground")} strokeWidth={isActive ? 2 : 1.5} />
-                <span>{item.label}</span>
+                <item.icon
+                  className="h-5 w-5 md:h-4 md:w-4"
+                  strokeWidth={isActive ? 2 : 1.5}
+                  style={isActive ? { color: "hsl(var(--amber))" } : undefined}
+                />
+                <span style={isActive ? { color: "hsl(var(--amber))" } : undefined}>
+                  {item.label}
+                </span>
+
+                {/* Mobile — amber underline at bottom of bar */}
                 {isActive && (
-                  <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-foreground md:hidden" />
+                  <span
+                    className="absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full md:hidden"
+                    style={{ backgroundColor: "hsl(var(--amber))" }}
+                  />
+                )}
+
+                {/* Desktop — amber underline below nav */}
+                {isActive && (
+                  <span
+                    className="absolute -bottom-px left-0 right-0 hidden h-px md:block"
+                    style={{ backgroundColor: "hsl(var(--amber))", opacity: 0.8 }}
+                  />
                 )}
               </Link>
             );

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Loader2, Check, PenSquare, Dumbbell, SkipForward } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   getArcAssessmentMeta,
@@ -48,7 +47,7 @@ export default function ArcCompletePage() {
   if (loading) {
     return (
       <div className="paper-texture flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground opacity-40" />
       </div>
     );
   }
@@ -77,7 +76,7 @@ export default function ArcCompletePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Top bar — mirrors TeachingPage */}
+      {/* Top bar */}
       <div className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 py-2">
           <Link
@@ -90,25 +89,26 @@ export default function ArcCompletePage() {
           <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
             Arc complete
           </span>
+          <div className="w-16" />
         </div>
         <div className="h-[2px] bg-surface">
-          <div className="h-full w-full bg-foreground/30" />
+          <div className="h-full w-full" style={{ backgroundColor: "hsl(var(--amber))", opacity: 0.5 }} />
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-6 py-16 md:px-8">
+        <div className="mx-auto max-w-2xl px-6 py-16 md:px-8">
           <header className="mb-10 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 mb-2">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60 mb-3">
               {arc.arc_title}
             </p>
-            <h1 className="text-3xl font-serif font-semibold tracking-tight text-foreground md:text-4xl">
+            <h1 className="font-display text-4xl italic tracking-tight text-foreground md:text-5xl">
               That's the arc.
             </h1>
           </header>
 
-          <article className="prose prose-neutral dark:prose-invert max-w-none mb-10 animate-fade-in prose-p:font-serif prose-p:text-[1.15rem] prose-p:leading-[1.85] prose-p:text-foreground/90">
+          <article className="prose prose-neutral dark:prose-invert max-w-none mb-10 animate-fade-in prose-p:text-[1.05rem] prose-p:leading-[1.85] prose-p:text-foreground/90">
             <p>
               Nicely done. We've come all the way from a car video and a nagging
               question about speedometers to a real, precise definition of the
@@ -130,17 +130,17 @@ export default function ArcCompletePage() {
             )}
           </article>
 
-          <div className="space-y-3 animate-fade-in-up opacity-0" style={{ animationDelay: "120ms" }}>
+          <div className="space-y-2 animate-fade-in-up opacity-0" style={{ animationDelay: "120ms" }}>
             {meta.has_practice && (
               <button
                 onClick={() => navigate(`/journeys/${id}/arc/${arcIdx}/practice`)}
-                className={cn(
-                  "group flex w-full items-center gap-4 rounded-2xl border border-border bg-card px-6 py-5 text-left shadow-soft transition-all",
-                  "hover:border-foreground/20 hover:shadow-medium"
-                )}
+                className="group flex w-full items-center gap-4 rounded-xl bg-surface px-6 py-5 text-left transition-colors hover:bg-surface-hover"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
-                  <Dumbbell className="h-5 w-5 text-foreground/70" strokeWidth={1.75} />
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: "hsl(var(--amber-soft))" }}
+                >
+                  <Dumbbell className="h-5 w-5" strokeWidth={1.75} style={{ color: "hsl(var(--amber))" }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">Practice first</p>
@@ -155,13 +155,13 @@ export default function ArcCompletePage() {
             {meta.has_quiz && (
               <button
                 onClick={() => navigate(`/journeys/${id}/arc/${arcIdx}/quiz`)}
-                className={cn(
-                  "group flex w-full items-center gap-4 rounded-2xl border border-border bg-card px-6 py-5 text-left shadow-soft transition-all",
-                  "hover:border-foreground/20 hover:shadow-medium"
-                )}
+                className="group flex w-full items-center gap-4 rounded-xl bg-surface px-6 py-5 text-left transition-colors hover:bg-surface-hover"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
-                  <PenSquare className="h-5 w-5 text-foreground/70" strokeWidth={1.75} />
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: "hsl(var(--amber-soft))" }}
+                >
+                  <PenSquare className="h-5 w-5" strokeWidth={1.75} style={{ color: "hsl(var(--amber))" }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -184,22 +184,22 @@ export default function ArcCompletePage() {
             <button
               onClick={() => navigate(nextArcExists ? `/journeys/${id}` : `/journeys/${id}`)}
               className={cn(
-                "group flex w-full items-center gap-4 rounded-2xl border border-border/60 bg-transparent px-6 py-5 text-left transition-all",
-                "hover:bg-card hover:border-border"
+                "group flex w-full items-center gap-4 rounded-xl px-6 py-5 text-left transition-colors",
+                "text-muted-foreground hover:text-foreground hover:bg-surface"
               )}
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface/60">
-                <SkipForward className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface">
+                <SkipForward className="h-5 w-5" strokeWidth={1.75} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground/80">
+                <p className="text-sm font-medium">
                   {nextArcExists ? "Skip for now — next arc" : "Skip for now — back to journey"}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs opacity-70">
                   You can always come back to these from the journey page.
                 </p>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
         </div>

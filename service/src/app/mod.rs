@@ -7,7 +7,6 @@ use tokio::sync::Mutex;
 
 use crate::agent::handler::AgentHandler;
 use crate::api::request::Request;
-use crate::api::ApiType;
 use crate::app::state::{MetisPhase, TeachingContext};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
@@ -50,24 +49,16 @@ impl App<'_> {
     }
 
     pub async fn handle_request(&self, request: Request) -> Result<Value> {
-        match request.api_type {
-            ApiType::Service => {
-                let request_type = request.request_type.ok_or(MetisError::RequestTypeMissing)?;
-                let service_response = self
-                    .request_handler
-                    .handle(request_type, request.params)
-                    .await?;
+        match request {
+            Request::Service { request_type, params } => {
+                let service_response = self.request_handler.handle(request_type, params).await?;
                 let _ = self.dispatch_tasks(service_response.task_request).await;
                 Ok(service_response.response)
             }
-            ApiType::UserMessage => self.agent_handler.handle(request.params).await,
-            ApiType::Task => {
-                let request_type = request.request_type.ok_or(MetisError::RequestTypeMissing)?;
-                let task_id = self
-                    .task_manager
-                    .dispatch(request_type.into(), request.params)
-                    .await?;
-                Ok(json!({"task_id": task_id}))
+            Request::UserMessage { params } => self.agent_handler.handle(params).await,
+            Request::Task { task_type, params } => {
+                let task_id = self.task_manager.dispatch(task_type, params).await?;
+                Ok(json!({ "task_id": task_id }))
             }
         }
     }

@@ -4,6 +4,7 @@ pub mod get_all_journeys;
 pub mod get_context;
 pub mod get_journey;
 pub mod get_next_dialogue;
+pub mod list_tasks;
 pub mod set_chat;
 pub mod set_session;
 pub mod set_teaching;

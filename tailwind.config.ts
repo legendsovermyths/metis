@@ -14,9 +14,15 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['Lora', 'Georgia', 'Times New Roman', 'serif'],
       },
       colors: {
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          soft: "hsl(var(--amber-soft))",
+          muted: "hsl(var(--amber-muted))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

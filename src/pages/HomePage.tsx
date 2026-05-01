@@ -55,17 +55,19 @@ export default function HomePage() {
     return (
       <div className="paper-texture flex min-h-screen flex-col items-center justify-center px-6">
         <div className="animate-fade-in mx-auto max-w-2xl text-center">
-          <h1 className="mb-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-            <span className="block text-5xl md:text-6xl font-serif tracking-tighter mb-4">Metis</span>
+          <span className="block font-display text-6xl italic tracking-tight text-foreground md:text-7xl mb-6">
+            Metis
+          </span>
+          <h1 className="mb-3 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
             Welcome to your personal tutor
           </h1>
-          <p className="mx-auto max-w-md text-base text-muted-foreground">
+          <p className="mx-auto max-w-md text-base text-muted-foreground leading-relaxed">
             Metis guides you through ideas using questions, not answers. Let's start by getting to know you.
           </p>
           <Button
             size="lg"
             onClick={handleGetStarted}
-            className="mt-8 rounded-xl px-8 font-medium shadow-soft transition-shadow hover:shadow-medium"
+            className="mt-8 rounded-xl px-8 font-medium"
           >
             Get Started
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -79,17 +81,19 @@ export default function HomePage() {
     <div className="paper-texture flex min-h-[calc(100vh-57px)] flex-col items-center justify-center px-6 pb-24 md:pb-6">
       {/* Hero */}
       <div className="animate-fade-in mx-auto max-w-2xl text-center">
-        <h1 className="mb-3 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-          <span className="block text-5xl md:text-6xl font-serif tracking-tighter mb-4">Metis</span>
+        <span className="block font-display text-6xl italic tracking-tight text-foreground md:text-7xl mb-6">
+          Metis
+        </span>
+        <h1 className="mb-3 text-2xl font-medium tracking-tight text-foreground md:text-3xl">
           What would you like to rediscover today?
         </h1>
-        <p className="mx-auto max-w-md text-base text-muted-foreground">
+        <p className="mx-auto max-w-md text-base text-muted-foreground leading-relaxed">
           Metis guides you through ideas using questions, not answers. Learn by thinking.
         </p>
 
         <Button
           size="lg"
-          className="mt-8 rounded-xl px-8 font-medium shadow-soft transition-shadow hover:shadow-medium"
+          className="mt-8 rounded-xl px-8 font-medium"
           onClick={() => void createJourney()}
         >
           Create a journey
@@ -98,7 +102,7 @@ export default function HomePage() {
       </div>
 
       {/* Quick links */}
-      <div className="mt-16 grid w-full max-w-2xl gap-3 opacity-0 animate-fade-in-up [animation-delay:200ms] md:grid-cols-3">
+      <div className="mt-16 grid w-full max-w-2xl gap-2 opacity-0 animate-fade-in-up [animation-delay:200ms] md:grid-cols-3">
         {quickLinks.map((link) => (
           <Link
             key={link.path}
@@ -111,9 +115,13 @@ export default function HomePage() {
                   }
                 : undefined
             }
-            className="group rounded-xl border border-border bg-card p-5 shadow-soft transition-all duration-200 hover:shadow-medium hover:border-border/80"
+            className="group rounded-xl bg-surface p-5 transition-all duration-200 hover:bg-surface-hover"
           >
-            <link.icon className="mb-3 h-5 w-5 text-muted-foreground transition-colors group-hover:text-foreground" strokeWidth={1.5} />
+            <link.icon
+              className="mb-3 h-4 w-4 transition-colors"
+              strokeWidth={1.5}
+              style={{ color: "hsl(var(--amber))" }}
+            />
             <h3 className="mb-1 text-sm font-medium text-foreground">{link.title}</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">{link.description}</p>
           </Link>

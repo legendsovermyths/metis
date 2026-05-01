@@ -73,6 +73,21 @@ impl DialoguesRepo {
         Ok(out)
     }
 
+    pub fn mark_visible(
+        journey_id: i64,
+        arc_idx: usize,
+        topic_idx: usize,
+        idx: usize,
+    ) -> Result<()> {
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "UPDATE dialogues SET visible = 1
+             WHERE journey_id = ?1 AND arc_idx = ?2 AND topic_idx = ?3 AND idx = ?4",
+            rusqlite::params![journey_id, arc_idx as i64, topic_idx as i64, idx as i64],
+        )?;
+        Ok(())
+    }
+
     pub fn get_next_invisible(journey_id: i64) -> Result<Option<Dialogue>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(

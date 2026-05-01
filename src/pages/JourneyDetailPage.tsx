@@ -66,7 +66,7 @@ export default function JourneyDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-[calc(100vh-57px)] items-center justify-center paper-texture">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground opacity-40" />
       </div>
     );
   }
@@ -123,21 +123,24 @@ export default function JourneyDetailPage() {
         </Link>
 
         <div className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface text-xl font-medium text-foreground">
+          <div className="flex items-center gap-4">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl font-display text-2xl italic"
+              style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}
+            >
               {journeyGlyph(row.id)}
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+              <h1 className="font-display text-2xl italic tracking-tight text-foreground">{title}</h1>
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
           </div>
 
           <div className="mt-6 flex items-center gap-3">
-            <div className="h-2 flex-1 rounded-full bg-surface overflow-hidden">
+            <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
               <div
-                className="h-full rounded-full bg-foreground/70 transition-all duration-700"
-                style={{ width: `${progressPct}%` }}
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${progressPct}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.7 }}
               />
             </div>
             <span className="text-sm font-medium text-muted-foreground tabular-nums">{progressPct}%</span>
@@ -161,13 +164,13 @@ export default function JourneyDetailPage() {
         </div>
 
         {row.journey.arcs.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-8 text-center shadow-soft animate-fade-in">
+          <div className="rounded-xl bg-surface p-8 text-center animate-fade-in">
             <p className="text-sm text-muted-foreground">
               This journey has no arcs yet. You can flesh it out in the next phase.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {row.journey.arcs.map((arc, i) => {
               const arcKey = `arc-${i}`;
               const arcCompleted = arc.topics.filter((_, t) => completedSet.has(`${i}-${t}`)).length;
@@ -187,7 +190,7 @@ export default function JourneyDetailPage() {
               return (
                 <div
                   key={arcKey}
-                  className="rounded-xl border border-border bg-card shadow-soft overflow-hidden animate-fade-in-up opacity-0"
+                  className="rounded-xl bg-card overflow-hidden animate-fade-in-up opacity-0 border border-border/60"
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
                   <button

@@ -34,7 +34,7 @@ pub fn run() {
             };
             let app = App::new(context, tauri_app.app_handle().clone())
                 .expect("failed to initialize App");
-            tauri_app.manage(app);
+            tauri_app.manage(Arc::new(app));
             tauri_app.handle().plugin(
                 tauri_plugin_log::Builder::default()
                     .level(log_level)

@@ -1,9 +1,11 @@
-#[derive(Clone, Copy)]
+use serde::Deserialize;
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TaskType {
     CreateJourney,
     AnalyseBook,
     GenerateDialogues,
-    InvalidTask,
 }
 
 impl Into<String> for TaskType {
@@ -12,7 +14,6 @@ impl Into<String> for TaskType {
             Self::CreateJourney => String::from("create_journey"),
             Self::AnalyseBook => String::from("analyse_book"),
             Self::GenerateDialogues => String::from("generate_dialogues"),
-            Self::InvalidTask => String::from("invalid_tasks"),
         }
     }
 }

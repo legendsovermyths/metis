@@ -85,7 +85,7 @@ impl TaskMangager {
             match runner(context).await {
                 Ok(val) => {
                     let _ = TasksRepo::mark_complete(&task_id_value);
-                    let _ = app_handle.emit("task:done", val);
+                    let _ = app_handle.emit("task:done", json!({ "task_id": task_id_value, "result": val }));
                 }
                 Err(err) => {
                     let progress = TaskProgress {
@@ -128,7 +128,6 @@ impl TaskMangager {
                 )
                 .await
             }
-            TaskType::InvalidTask => Ok(task.into()),
         }
     }
 
@@ -143,7 +142,6 @@ impl TaskMangager {
                 TaskType::CreateJourney => create_journey,
                 TaskType::AnalyseBook => analyse_book,
                 TaskType::GenerateDialogues => generate_dialogues,
-                TaskType::InvalidTask => continue,
             };
 
             let (tx, mut rx) = mpsc::channel::<TaskProgress>(100);
@@ -168,7 +166,7 @@ impl TaskMangager {
                 match runner(context).await {
                     Ok(val) => {
                         let _ = TasksRepo::mark_complete(&task_id_value);
-                        let _ = app_handle.emit("task:done", val);
+                        let _ = app_handle.emit("task:done", json!({ "task_id": task_id_value, "result": val }));
                     }
                     Err(err) => {
                         let progress = TaskProgress {

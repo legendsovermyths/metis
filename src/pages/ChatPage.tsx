@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, Route, Sun, Moon, ArrowLeft, ArrowRight, MessageCircle, Loader2 } from "lucide-react";
+import { Send, Sparkles, User, Route, Sun, Moon, ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
@@ -151,7 +151,7 @@ export default function ChatPage() {
           <ArrowLeft className="h-4 w-4" />
           <span className="text-xs font-medium hidden sm:inline">Back</span>
         </Link>
-        <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground" style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}>
           <ModeIcon className="h-3.5 w-3.5" />
           {modeInfo[mode].label}
         </div>
@@ -169,14 +169,14 @@ export default function ChatPage() {
         <div className="mx-auto max-w-2xl space-y-6">
           {messages.length === 0 && (
             <div className="flex h-full min-h-[50vh] flex-col items-center justify-center text-center animate-fade-in">
-              <div className="mb-4 text-4xl font-serif font-semibold tracking-tighter text-foreground">Metis</div>
-              <h2 className="text-lg font-medium text-foreground">
+              <div className="mb-5 font-display text-5xl italic tracking-tight text-foreground">Metis</div>
+              <h2 className="text-base font-medium text-foreground">
                 {mode === "onboarding" && "Tell me about yourself"}
                 {mode === "teaching" && "Let's explore an idea together"}
                 {mode === "advising" && "What would you like to learn next?"}
                 {mode === "idle" && "What's on your mind?"}
               </h2>
-              <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
                 {mode === "onboarding" && "I'll adapt my teaching approach based on your background and preferences."}
                 {mode === "teaching" && "I'll guide you to the answer through questions, not direct explanations."}
                 {mode === "advising" && "Let's figure out the best path for your learning journey."}
@@ -213,9 +213,10 @@ export default function ChatPage() {
 
           {isWaiting && (
             <div className="flex justify-start animate-slide-up">
-              <div className="rounded-2xl bg-surface px-4 py-3 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Thinking…</span>
+              <div className="rounded-2xl bg-surface px-4 py-3.5 flex items-center gap-1.5">
+                <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
+                <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
+                <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
               </div>
             </div>
           )}
@@ -229,29 +230,38 @@ export default function ChatPage() {
             </div>
           )}
 
-          {chatDone && messages.length > 0 && !isBusy && phase === "Advising" && (
-            <div className="flex justify-center pt-4 animate-fade-in">
-              <Button
-                disabled={!context?.session.chapter_title?.trim()}
-                onClick={() => {
-                  if (!context?.session.chapter_title?.trim()) return;
-                  startJourneyCreation(context.session.chapter_title, (errMsg) => {
-                    const msg: Message = {
-                      id: (Date.now() + 1).toString(),
-                      role: "assistant",
-                      content: `Could not create journey: ${errMsg}`,
-                    };
-                    setMessages((prev) => [...prev, msg]);
-                  });
-                  navigate("/journeys");
-                }}
-                className="rounded-xl px-6 shadow-soft"
-              >
-                Create journey
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          {chatDone && messages.length > 0 && !isBusy && phase === "Advising" && (() => {
+            const chapter = context?.session.chapter_title?.trim() ?? "";
+            const bookId = context?.session.book_id ?? null;
+            const notes = context?.chat.notes ?? "";
+            const canCreate = chapter.length > 0 && bookId != null;
+            return (
+              <div className="flex justify-center pt-4 animate-fade-in">
+                <Button
+                  disabled={!canCreate}
+                  onClick={() => {
+                    if (!canCreate || bookId == null) return;
+                    startJourneyCreation(
+                      { chapter_title: chapter, advisor_notes: notes, book_id: bookId },
+                      (errMsg) => {
+                        const msg: Message = {
+                          id: (Date.now() + 1).toString(),
+                          role: "assistant",
+                          content: `Could not create journey: ${errMsg}`,
+                        };
+                        setMessages((prev) => [...prev, msg]);
+                      },
+                    );
+                    navigate("/journeys");
+                  }}
+                  className="rounded-xl px-6 shadow-soft"
+                >
+                  Create journey
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })()}
 
           <div ref={messagesEndRef} />
         </div>
