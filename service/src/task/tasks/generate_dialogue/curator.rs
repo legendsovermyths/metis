@@ -43,7 +43,7 @@ pub struct Curator {
 }
 
 impl<'a> Curator {
-    pub fn with() -> Self {
+    pub fn new() -> Self {
         let client = LLMClientFactory::get_client(ClientType::ClaudeOpus);
         Self { client }
     }
@@ -99,10 +99,6 @@ impl<'a> Curator {
     }
 }
 
-/// Safety net: if the curator left any part un-addressed (not referenced by ANY
-/// action), append the missing ids to the final segment's reveal action. A part
-/// that's used by morph/trace/connect/pulse counts as addressed — its visibility
-/// is governed by that action, not by a plain reveal.
 fn ensure_all_parts_revealed(segments: &mut Vec<Segment>, parts: &[ElementDescriptor]) {
     if segments.is_empty() || parts.is_empty() {
         return;

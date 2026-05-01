@@ -13,7 +13,6 @@ use crate::{
 
 pub mod advisor;
 pub mod handler;
-pub mod narrator;
 pub mod onboarder;
 
 #[async_trait]
@@ -45,13 +44,6 @@ pub enum MessageType {
     Dialogue,
 }
 
-#[derive(Serialize)]
-struct AnimatedDialogue {
-    dialogue: Dialogue,
-    elements: Vec<ElementDescriptor>,
-    segments: Vec<Segment>,
-}
-
 impl AgentResponse {
     pub fn with(message: String) -> Result<Self> {
         Ok(Self {
@@ -69,10 +61,18 @@ impl AgentResponse {
         elements: Vec<ElementDescriptor>,
         segments: Vec<Segment>,
     ) -> Result<Self> {
-        let payload = AnimatedDialogue {
-            dialogue,
+        let payload = Dialogue {
+            idx: dialogue.idx,
+            visible: false,
+            topic_idx: dialogue.topic_idx,
+            heading: dialogue.heading,
+            journey_id: dialogue.journey_id,
+            marked_complete: dialogue.marked_complete,
+            arc_idx: dialogue.arc_idx,
+            blackboard: dialogue.blackboard,
+            content: dialogue.content,
             elements,
-            segments,
+            segments
         };
         Ok(Self {
             content: serde_json::to_value(payload)?,

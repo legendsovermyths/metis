@@ -4,10 +4,9 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    api::request::handler::BoxFuture,
     app::{book::Book, AppContext},
     db::repo::{self, books::BooksRepo},
-    error::Result,
+    error::Result, service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
@@ -18,6 +17,6 @@ pub fn get_all_books(_: GetAllBooksParams, _context: &AppContext) -> BoxFuture {
             .iter()
             .map(|item| Book::new(item.id, item.title.clone(), item.toc.clone()))
             .collect();
-        Ok(serde_json::to_value(books)?)
+        Ok(serde_json::to_value(books)?.into())
     })
 }

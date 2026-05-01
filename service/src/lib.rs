@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use tauri::Manager;
+
 use crate::{
     api::{request::Request, response::Response},
     app::{init_context, App},
@@ -14,24 +16,26 @@ pub mod error;
 pub mod llm_client;
 pub mod logs;
 pub mod prompts;
-pub mod utils;
+pub mod service;
 pub mod task;
+pub mod utils;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = init_context().expect("failed to initialize context");
-    let app = App::new(context).expect("failed to initialize App");
     tauri::Builder::default()
-        .manage(Arc::new(app))
         .invoke_handler(tauri::generate_handler![handle_request])
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(|tauri_app| {
             let log_level = if cfg!(debug_assertions) {
                 log::LevelFilter::Debug
             } else {
                 log::LevelFilter::Info
             };
-            app.handle().plugin(
+            let app = App::new(context, tauri_app.app_handle().clone())
+                .expect("failed to initialize App");
+            tauri_app.manage(app);
+            tauri_app.handle().plugin(
                 tauri_plugin_log::Builder::default()
                     .level(log_level)
                     .build(),

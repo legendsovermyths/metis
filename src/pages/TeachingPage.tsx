@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
-import { sendMessage, type Dialogue, type ElementDescriptor, type Segment } from "@/lib/service";
+import { sendMessage, type Dialogue, type ElementDescriptor, type Segment, type SegmentAction } from "@/lib/service";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Link, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -12,6 +12,10 @@ import rehypeRaw from "rehype-raw";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import gsap from "gsap";
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
+
+gsap.registerPlugin(MotionPathPlugin, MorphSVGPlugin);
 
 const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
 
@@ -69,6 +73,188 @@ type RevealState = {
   typedLen: number;
 };
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/// Finds the first shape element (path/rect/circle/…) inside a group, for morph.
+function firstShape(group: SVGElement): SVGGraphicsElement | null {
+  return group.querySelector("path, rect, circle, ellipse, polygon, polyline") as SVGGraphicsElement | null;
+}
+
+/// Dispatch: morph — transitions `from`'s shape into `to`'s shape. `to` becomes
+/// the visible element at the end (at its natural resting d).
+function dispatchMorph(
+  root: HTMLDivElement,
+  action: Extract<SegmentAction, { type: "morph" }>,
+  tl: gsap.core.Timeline,
+) {
+  const fromGroup = root.querySelector(`#${CSS.escape(action.from)}`) as SVGElement | null;
+  const toGroup = root.querySelector(`#${CSS.escape(action.to)}`) as SVGElement | null;
+  if (!fromGroup || !toGroup) return;
+  const fromShape = firstShape(fromGroup);
+  const toShape = firstShape(toGroup);
+  if (!fromShape || !toShape) return;
+
+  const fromD = fromShape.getAttribute("d") || (fromShape as unknown as { getBBox?: () => DOMRect }).getBBox?.();
+  const toD = toShape.getAttribute("d");
+  if (!fromD || !toD) return;
+
+  // morphSVG is typed for paths; we only run when both elements expose `d` (path-like).
+  const fromPath = fromShape as SVGPathElement;
+  const toPath = toShape as SVGPathElement;
+
+  // Start: to-group visible but shaped like from. from-group hidden.
+  gsap.set(toGroup, { opacity: 1 });
+  gsap.set(fromGroup, { opacity: 0 });
+  tl.fromTo(
+    toPath,
+    { morphSVG: fromPath },
+    { morphSVG: toPath, duration: action.duration_ms / 1000, ease: "power2.inOut" },
+    0,
+  );
+}
+
+/// Dispatch: trace — slides the target along the along-element's path.
+function dispatchTrace(
+  root: HTMLDivElement,
+  action: Extract<SegmentAction, { type: "trace" }>,
+  tl: gsap.core.Timeline,
+) {
+  const target = root.querySelector(`#${CSS.escape(action.target)}`) as SVGElement | null;
+  const along = root.querySelector(`#${CSS.escape(action.along)}`) as SVGElement | null;
+  if (!target || !along) return;
+  const alongPath = along.tagName.toLowerCase() === "path" ? along : firstShape(along);
+  if (!alongPath) return;
+
+  gsap.set(target, { opacity: 1 });
+  tl.to(
+    target,
+    {
+      motionPath: {
+        path: alongPath as SVGPathElement,
+        start: action.from_pct,
+        end: action.to_pct,
+      },
+      duration: action.duration_ms / 1000,
+      ease: "power2.inOut",
+    },
+    0,
+  );
+}
+
+/// Dispatch: pulse — brief scale + glow on target elements.
+function dispatchPulse(
+  root: HTMLDivElement,
+  action: Extract<SegmentAction, { type: "pulse" }>,
+  tl: gsap.core.Timeline,
+) {
+  for (const id of action.targets) {
+    const el = root.querySelector(`#${CSS.escape(id)}`) as SVGElement | null;
+    if (!el) continue;
+    const half = action.duration_ms / 2000;
+    tl.to(
+      el,
+      {
+        scale: 1.12,
+        filter: "drop-shadow(0 0 6px rgba(0,0,0,0.45))",
+        duration: half,
+        yoyo: true,
+        repeat: 1,
+        ease: "power2.inOut",
+        transformOrigin: "center center",
+      },
+      0,
+    );
+  }
+}
+
+/// Ensure a shared `<marker id="metis-arrow">` exists in the SVG for connect arrowheads.
+function ensureArrowMarker(svgRoot: SVGSVGElement) {
+  if (svgRoot.querySelector("#metis-arrow")) return;
+  let defs = svgRoot.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS(SVG_NS, "defs");
+    svgRoot.insertBefore(defs, svgRoot.firstChild);
+  }
+  const marker = document.createElementNS(SVG_NS, "marker");
+  marker.setAttribute("id", "metis-arrow");
+  marker.setAttribute("viewBox", "0 0 10 10");
+  marker.setAttribute("refX", "9");
+  marker.setAttribute("refY", "5");
+  marker.setAttribute("markerWidth", "6");
+  marker.setAttribute("markerHeight", "6");
+  marker.setAttribute("orient", "auto-start-reverse");
+  const arrowPath = document.createElementNS(SVG_NS, "path");
+  arrowPath.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+  arrowPath.setAttribute("fill", "currentColor");
+  marker.appendChild(arrowPath);
+  defs.appendChild(marker);
+}
+
+/// Clears any previously-drawn runtime connects, then redraws all past connects
+/// up to and including the current segment. Idempotent on re-run.
+function rebuildConnects(
+  root: HTMLDivElement,
+  connects: Array<{ from: string; to: string; duration_ms: number }>,
+  tl: gsap.core.Timeline,
+  instant: boolean,
+) {
+  const svgRoot = root.querySelector("svg") as SVGSVGElement | null;
+  if (!svgRoot) return;
+
+  // Remove any existing runtime connects from prior renders.
+  svgRoot.querySelectorAll("[data-metis-connect]").forEach((n) => n.remove());
+  if (connects.length === 0) return;
+
+  ensureArrowMarker(svgRoot);
+
+  for (const { from, to, duration_ms } of connects) {
+    const fromEl = svgRoot.querySelector(`#${CSS.escape(from)}`) as SVGGraphicsElement | null;
+    const toEl = svgRoot.querySelector(`#${CSS.escape(to)}`) as SVGGraphicsElement | null;
+    if (!fromEl || !toEl) continue;
+    let fromBox: DOMRect;
+    let toBox: DOMRect;
+    try {
+      fromBox = fromEl.getBBox();
+      toBox = toEl.getBBox();
+    } catch {
+      continue;
+    }
+    const fx = fromBox.x + fromBox.width / 2;
+    const fy = fromBox.y + fromBox.height / 2;
+    const tx = toBox.x + toBox.width / 2;
+    const ty = toBox.y + toBox.height / 2;
+
+    const arrow = document.createElementNS(SVG_NS, "path");
+    arrow.setAttribute("d", `M ${fx} ${fy} L ${tx} ${ty}`);
+    arrow.setAttribute("stroke", "currentColor");
+    arrow.setAttribute("stroke-width", "1.5");
+    arrow.setAttribute("fill", "none");
+    arrow.setAttribute("marker-end", "url(#metis-arrow)");
+    arrow.setAttribute("data-metis-connect", `${from}--${to}`);
+    svgRoot.appendChild(arrow);
+
+    let len = 0;
+    try {
+      len = arrow.getTotalLength();
+    } catch {
+      len = 0;
+    }
+    if (len > 0 && isFinite(len)) {
+      arrow.style.strokeDasharray = String(len);
+      if (instant) {
+        arrow.style.strokeDashoffset = "0";
+      } else {
+        arrow.style.strokeDashoffset = String(len);
+        tl.to(
+          arrow,
+          { strokeDashoffset: 0, duration: duration_ms / 1000, ease: "power2.out" },
+          0,
+        );
+      }
+    }
+  }
+}
+
 function AnimatedBlackboard({
   svgUrl,
   elements,
@@ -77,6 +263,8 @@ function AnimatedBlackboard({
   justRevealed,
   revealing,
   settled,
+  currentActions,
+  pastConnects,
 }: {
   svgUrl: string;
   elements: ElementDescriptor[];
@@ -85,6 +273,8 @@ function AnimatedBlackboard({
   justRevealed: Set<string>;
   revealing: boolean;
   settled: boolean;
+  currentActions: SegmentAction[];
+  pastConnects: Array<{ from: string; to: string; duration_ms: number }>;
 }) {
   const [svgText, setSvgText] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -104,11 +294,13 @@ function AnimatedBlackboard({
     };
   }, [svgUrl]);
 
+  // Seed stroke-dash for draw animations. Skip when the reveal is already finished; otherwise
+  // revisiting the page re-hides the SVG and replays one-shot actions (e.g. pulse) on the board.
   useEffect(() => {
     if (!svgText || !rootRef.current) return;
     const root = rootRef.current;
 
-    if (!revealing) return;
+    if (!revealing || settled) return;
     for (const el of elements) {
       const node = root.querySelector(`#${CSS.escape(el.id)}`) as SVGElement | null;
       if (!node) continue;
@@ -128,12 +320,44 @@ function AnimatedBlackboard({
         }
       });
     }
-  }, [svgText, elements, revealing]);
+  }, [svgText, elements, revealing, settled]);
 
   useEffect(() => {
     if (!svgText || !rootRef.current || !revealing) return;
     const root = rootRef.current;
     const hasFocus = focused.size > 0;
+
+    // Revisit / finished reveal: show final opacities and static connects only — do not re-run
+    // segment one-shots (pulse, morph, trace) or re-play staggered draws.
+    if (settled) {
+      for (const el of elements) {
+        const node = root.querySelector(`#${CSS.escape(el.id)}`) as SVGElement | null;
+        if (!node) continue;
+        if (!revealed.has(el.id)) {
+          gsap.set(node, { opacity: 0, scale: 1, clearProps: "filter" });
+        } else {
+          gsap.set(node, { opacity: 1, scale: 1, clearProps: "filter" });
+        }
+        const paths = Array.from(node.querySelectorAll("path")) as SVGPathElement[];
+        for (const p of paths) {
+          let len = 0;
+          try {
+            len = p.getTotalLength();
+          } catch {
+            len = 0;
+          }
+          if (len > 0 && isFinite(len)) {
+            p.style.strokeDasharray = String(len);
+            p.style.strokeDashoffset = "0";
+          }
+        }
+      }
+      const tlInstant = gsap.timeline();
+      rebuildConnects(root, pastConnects, tlInstant, true);
+      return () => {
+        tlInstant.kill();
+      };
+    }
 
     const tl = gsap.timeline();
     ((): void => {
@@ -172,7 +396,7 @@ function AnimatedBlackboard({
         }
         if (isFresh) continue; // handled above
         const isFocused = focused.has(el.id);
-        const target = settled ? 1 : isFocused ? 1 : hasFocus ? 0.4 : 1;
+        const target = isFocused ? 1 : hasFocus ? 0.4 : 1;
         tl.to(node, { opacity: target, duration: 0.5, ease: "power2.out" }, 0);
         const paths = Array.from(node.querySelectorAll("path")) as SVGPathElement[];
         paths.forEach((p) => {
@@ -182,19 +406,33 @@ function AnimatedBlackboard({
         });
       }
 
+      // 3. Rebuild all past connects (runtime-injected arrows that persist within a dialogue).
+      rebuildConnects(root, pastConnects, tl, false);
+
+      // 4. Dispatch motion actions for the CURRENT segment (morph, trace, pulse).
+      for (const action of currentActions) {
+        if (action.type === "morph") {
+          dispatchMorph(root, action, tl);
+        } else if (action.type === "trace") {
+          dispatchTrace(root, action, tl);
+        } else if (action.type === "pulse") {
+          dispatchPulse(root, action, tl);
+        }
+      }
+
     })();
 
     return () => {
       tl.kill();
     };
-  }, [svgText, elements, revealed, focused, justRevealed, revealing, settled]);
+  }, [svgText, elements, revealed, focused, justRevealed, revealing, settled, currentActions, pastConnects]);
 
   if (!svgText) return null;
 
   return (
     <div
       ref={rootRef}
-      className="w-full h-full dark:invert [&_svg]:block [&_svg]:w-full [&_svg]:h-full"
+      className="w-full h-full dark:invert [&_svg]:block [&_svg]:w-full [&_svg]:h-full [&_[id$='-before']]:opacity-0"
       dangerouslySetInnerHTML={{ __html: svgText }}
     />
   );
@@ -347,14 +585,30 @@ export default function TeachingPage() {
     const revealed = new Set<string>();
     const focused = new Set<string>();
     const justRevealed = new Set<string>();
+    const currentActions: SegmentAction[] = [];
+    const pastConnects: Array<{ from: string; to: string; duration_ms: number }> = [];
     if (reveal) {
       for (let i = 0; i <= reveal.segmentIndex; i++) {
-        for (const id of reveal.segments[i]?.reveals ?? []) revealed.add(id);
+        for (const action of reveal.segments[i]?.actions ?? []) {
+          if (action.type === "reveal") {
+            for (const id of action.targets) revealed.add(id);
+          }
+          if (action.type === "connect") {
+            pastConnects.push({ from: action.from, to: action.to, duration_ms: action.duration_ms });
+          }
+        }
       }
-      for (const id of reveal.segments[reveal.segmentIndex]?.focus ?? []) focused.add(id);
-      for (const id of reveal.segments[reveal.segmentIndex]?.reveals ?? []) justRevealed.add(id);
+      for (const action of reveal.segments[reveal.segmentIndex]?.actions ?? []) {
+        currentActions.push(action);
+        if (action.type === "focus") {
+          for (const id of action.targets) focused.add(id);
+        }
+        if (action.type === "reveal") {
+          for (const id of action.targets) justRevealed.add(id);
+        }
+      }
     }
-    return { revealed, focused, justRevealed };
+    return { revealed, focused, justRevealed, currentActions, pastConnects };
   }, [reveal?.segmentIndex, reveal?.segments]);
 
   const handleNext = useCallback(async () => {
@@ -518,7 +772,7 @@ export default function TeachingPage() {
             reveal.typedLen >= (reveal.segments[reveal.segmentIndex]?.text.length ?? 0)
         );
 
-        const { revealed, focused, justRevealed } = revealFocusSets;
+        const { revealed, focused, justRevealed, currentActions, pastConnects } = revealFocusSets;
 
         return (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
@@ -538,6 +792,8 @@ export default function TeachingPage() {
                       justRevealed={justRevealed}
                       revealing
                       settled={isSettled}
+                      currentActions={currentActions}
+                      pastConnects={pastConnects}
                     />
                   ) : (
                     <AnimatedBlackboard
@@ -548,6 +804,8 @@ export default function TeachingPage() {
                       justRevealed={new Set()}
                       revealing={false}
                       settled={false}
+                      currentActions={[]}
+                      pastConnects={[]}
                     />
                   )}
                 </div>

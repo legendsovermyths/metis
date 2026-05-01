@@ -2,13 +2,12 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::{
-    api::request::handler::BoxFuture,
     app::{
         state::{MetisPhase, TeachingContext},
         AppContext,
     },
     db::{persistence::Persistent, repo::journeys::JourneysRepo},
-    error::{MetisError, Result},
+    error::{MetisError, Result}, service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
@@ -32,6 +31,6 @@ pub fn teaching_init(params: TeachingInitParams, context: &AppContext) -> BoxFut
         ctx.phase = MetisPhase::Teaching;
         ctx.is_done = false;
 
-        Ok(json!({ "success": true }))
+        Ok(json!({ "success": true }).into())
     })
 }

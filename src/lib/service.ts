@@ -79,10 +79,17 @@ export interface ElementDescriptor {
   desc: string;
 }
 
+export type SegmentAction =
+  | { type: "reveal"; targets: string[] }
+  | { type: "focus"; targets: string[] }
+  | { type: "morph"; from: string; to: string; duration_ms: number }
+  | { type: "trace"; target: string; along: string; duration_ms: number; from_pct: number; to_pct: number }
+  | { type: "connect"; from: string; to: string; duration_ms: number }
+  | { type: "pulse"; targets: string[]; duration_ms: number };
+
 export interface Segment {
   text: string;
-  reveals: string[];
-  focus: string[];
+  actions: SegmentAction[];
 }
 
 export interface Dialogue {
@@ -94,6 +101,10 @@ export interface Dialogue {
   blackboard: Blackboard;
   heading: string;
   marked_complete: boolean;
+  /** When false, dialogue is prefetched but not yet shown (omitted = treated as true). */
+  visible?: boolean;
+  segments?: unknown;
+  elements?: unknown;
 }
 
 export interface AnimatedDialogue {

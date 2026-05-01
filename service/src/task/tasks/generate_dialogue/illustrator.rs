@@ -15,9 +15,10 @@ use crate::{
         format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
     },
 };
+const MAX_RETRIES: usize = 5;
 
 #[derive(Deserialize)]
-struct IllustratorOutput {
+pub struct IllustratorOutput {
     library: String,
     code: String,
 }
@@ -51,8 +52,14 @@ pub struct Illustrator {
     client: Box<dyn LLMClient>,
 }
 
+struct RenderFailure {
+    library: String,
+    code: String,
+    error: String,
+}
+
 impl<'a> Illustrator {
-    pub fn with() -> Self {
+    pub fn new() -> Self {
         let mut client = LLMClientFactory::get_client(ClientType::GeminiPro);
         client.set_json_mode(true);
         Self { client }
@@ -89,12 +96,21 @@ impl<'a> Illustrator {
         Ok(output_path)
     }
 
-    pub fn execute_illustrator_output(
+    fn try_render(
         &self,
         output: IllustratorOutput,
         request: &IllustrationRequest,
-    ) -> Result<IllustrationResult> {
-        let output_path = self.get_output_path(request)?;
+    ) -> std::result::Result<IllustrationResult, RenderFailure> {
+        let output_path = match self.get_output_path(request) {
+            Ok(p) => p,
+            Err(e) => {
+                return Err(RenderFailure {
+                    library: output.library,
+                    code: output.code,
+                    error: e.to_string(),
+                });
+            }
+        };
         let library = output.library.clone();
 
         let executed_code: String;
@@ -113,25 +129,29 @@ impl<'a> Illustrator {
         };
 
         match exec_result {
+            Ok(()) if Path::new(&output_path).exists() => {
+                log::info!("[illustrator] figure saved to {output_path}");
+                Ok(IllustrationResult {
+                    blackboard: Blackboard::new(request.instruction.into(), Some(output_path)),
+                    source_code: Some(executed_code),
+                    library: Some(library),
+                })
+            }
             Ok(()) => {
-                if Path::new(&output_path).exists() {
-                    log::info!("[illustrator] figure saved to {output_path}");
-                    Ok(IllustrationResult {
-                        blackboard: Blackboard::new(
-                            request.instruction.into(),
-                            Some(output_path),
-                        ),
-                        source_code: Some(executed_code),
-                        library: Some(library),
-                    })
-                } else {
-                    log::error!("[illustrator] ran but no file at {output_path}");
-                    Ok(IllustrationResult::empty())
-                }
+                log::error!("[illustrator] ran but no file at {output_path}");
+                Err(RenderFailure {
+                    library,
+                    code: executed_code,
+                    error: format!("execution succeeded but no file at {output_path}"),
+                })
             }
             Err(e) => {
                 log::error!("[illustrator] execution failed: {e}");
-                Ok(IllustrationResult::empty())
+                Err(RenderFailure {
+                    library,
+                    code: executed_code,
+                    error: e.to_string(),
+                })
             }
         }
     }
@@ -140,24 +160,58 @@ impl<'a> Illustrator {
         &mut self,
         request: IllustrationRequest<'a>,
     ) -> Result<IllustrationResult> {
-        let prompt = self.prepare_prompt(&request);
+        self.client.set_system_prompt(self.prepare_prompt(&request));
 
-        self.client.set_system_prompt(prompt);
-        let response = self
-            .client
-            .generate("Produce the figure code.".to_string())
-            .await?;
+        let mut user_message = "Produce the figure code.".to_string();
+        let mut last_failure: Option<RenderFailure> = None;
 
-        let raw = response.text();
-        let json_str = strip_json_block(&raw);
-        let fixed = fix_json_escapes(json_str);
-        let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
-            Ok(v) => v,
-            Err(e) => {
-                log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
-                return Ok(IllustrationResult::empty());
+        for attempt in 0..=MAX_RETRIES {
+            if attempt > 0 {
+                log::info!(
+                    "[illustrator] retry {attempt}/{MAX_RETRIES} after previous render failure"
+                );
             }
-        };
-        self.execute_illustrator_output(parsed, &request)
+
+            let response = self.client.generate(user_message.clone()).await?;
+            let raw = response.text();
+            let json_str = strip_json_block(&raw);
+            let fixed = fix_json_escapes(json_str);
+            let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
+                    return Ok(IllustrationResult::empty());
+                }
+            };
+
+            match self.try_render(parsed, &request) {
+                Ok(result) => return Ok(result),
+                Err(failure) => {
+                    user_message = Illustrator::build_retry_message(&failure);
+                    last_failure = Some(failure);
+                }
+            }
+        }
+
+        if let Some(failure) = last_failure {
+            log::error!(
+                "[illustrator] giving up after {MAX_RETRIES} retries; last error: {}",
+                failure.error
+            );
+        }
+        Ok(IllustrationResult::empty())
+    }
+    fn build_retry_message(failure: &RenderFailure) -> String {
+        format!(
+        "Your previous {library} attempt failed when executed. Read the error, fix the issue, and respond with a corrected JSON block (same schema). Do not repeat the same mistake.\n\n\
+         ## Previous code\n\
+         ```{library}\n{code}\n```\n\n\
+         ## Execution error\n\
+         ```\n{error}\n```\n\n\
+         Produce the corrected figure code now.",
+        library = failure.library,
+        code = failure.code,
+        error = failure.error,
+    )
     }
 }

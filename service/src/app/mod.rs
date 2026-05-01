@@ -1,17 +1,20 @@
 use std::sync::{Arc, OnceLock};
 
 use serde::{Deserialize, Serialize, Serializer};
-use serde_json::Value;
+use serde_json::{json, Value};
+use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use crate::agent::handler::AgentHandler;
-use crate::api::request::handler::ServiceHandler;
 use crate::api::request::Request;
 use crate::api::ApiType;
 use crate::app::state::{MetisPhase, TeachingContext};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
 use crate::logs::EventHistory;
+use crate::service::handler::ServiceHandler;
+use crate::task::manager::TaskMangager;
+use crate::task::TaskRequest;
 use crate::utils::cmd::ensure_venv;
 pub mod book;
 pub mod journey;
@@ -29,16 +32,20 @@ pub fn init_context() -> Result<&'static AppContext> {
 pub struct App<'a> {
     request_handler: ServiceHandler<'a>,
     agent_handler: AgentHandler<'a>,
-    pub context: &'a AppContext
+    task_manager: TaskMangager,
+    pub context: &'a AppContext,
 }
 
 impl App<'_> {
-    pub fn new(context: &'static AppContext) -> Result<Self> {
+    pub fn new(context: &'static AppContext, app_handle: AppHandle) -> Result<Self> {
         ensure_venv()?;
+        let task_manager = TaskMangager::new(app_handle);
+        task_manager.resume();
         Ok(Self {
             request_handler: ServiceHandler::with(context),
             agent_handler: AgentHandler::with(context),
-            context
+            task_manager,
+            context,
         })
     }
 
@@ -46,12 +53,34 @@ impl App<'_> {
         match request.api_type {
             ApiType::Service => {
                 let request_type = request.request_type.ok_or(MetisError::RequestTypeMissing)?;
-                self.request_handler
+                let service_response = self
+                    .request_handler
                     .handle(request_type, request.params)
-                    .await
+                    .await?;
+                let _ = self.dispatch_tasks(service_response.task_request).await;
+                Ok(service_response.response)
             }
             ApiType::UserMessage => self.agent_handler.handle(request.params).await,
+            ApiType::Task => {
+                let request_type = request.request_type.ok_or(MetisError::RequestTypeMissing)?;
+                let task_id = self
+                    .task_manager
+                    .dispatch(request_type.into(), request.params)
+                    .await?;
+                Ok(json!({"task_id": task_id}))
+            }
         }
+    }
+    pub async fn dispatch_tasks(&self, tasks: Option<Vec<TaskRequest>>) -> Result<()> {
+        if let Some(task_requests) = tasks {
+            for task_request in task_requests.iter() {
+                let _id = self
+                    .task_manager
+                    .dispatch(task_request.task_type, task_request.params.clone())
+                    .await?;
+            }
+        }
+        Ok(())
     }
 }
 

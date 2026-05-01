@@ -29,6 +29,21 @@ fn value_from_json_col(raw: Option<String>) -> Result<Value> {
 }
 
 impl TasksRepo {
+
+    pub fn dedup(identity: &str) -> Result<bool> {
+        if identity.is_empty() {
+            return Ok(true);
+        }
+        let conn = get_database().conn.lock().unwrap();
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM background_tasks
+             WHERE identity = ?1 AND status IN ('pending', 'running')",
+            rusqlite::params![identity],
+            |row| row.get(0),
+        )?;
+        Ok(count == 0)
+    }
+
     pub fn insert(task: &Task) -> Result<()> {
         let params_json = serde_json::to_string(&task.params)?;
         let checkpoint_json = serde_json::to_string(&task.checkpoint)?;
@@ -41,8 +56,8 @@ impl TasksRepo {
         let ts = now_secs();
         let conn = get_database().conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO background_tasks (id, name, status, params, checkpoint, error, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO background_tasks (id, name, status, params, checkpoint, error, identity, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 task.id,
                 task.name,
@@ -50,6 +65,7 @@ impl TasksRepo {
                 params_json,
                 checkpoint_json,
                 task.error,
+                task.identity,
                 ts,
                 ts,
             ],
@@ -57,10 +73,46 @@ impl TasksRepo {
         Ok(())
     }
 
+    pub fn list_active() -> Result<Vec<Task>> {
+        let conn = get_database().conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, status, params, checkpoint, error, identity
+             FROM background_tasks
+             WHERE status IN ('pending', 'running')
+             ORDER BY created_at ASC",
+        )?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let status_str: String = row.get(2)?;
+            let status = match status_str.as_str() {
+                "pending" => TaskStatus::Pending,
+                "running" => TaskStatus::Running,
+                "completed" => TaskStatus::Completed,
+                "failed" => TaskStatus::Failed,
+                other => {
+                    return Err(MetisError::ValueParseError(format!(
+                        "unknown background_tasks.status: {other}"
+                    )));
+                }
+            };
+            out.push(Task {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                status,
+                params: value_from_json_col(row.get(3)?)?,
+                checkpoint: value_from_json_col(row.get(4)?)?,
+                error: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
+                identity: row.get(6)?,
+            });
+        }
+        Ok(out)
+    }
+
     pub fn get(id: &str) -> Result<Option<Task>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, name, status, params, checkpoint, error
+            "SELECT id, name, status, params, checkpoint, error, identity
              FROM background_tasks WHERE id = ?1",
         )?;
         let mut rows = stmt.query(rusqlite::params![id])?;
@@ -84,6 +136,7 @@ impl TasksRepo {
                 params: value_from_json_col(row.get(3)?)?,
                 checkpoint: value_from_json_col(row.get(4)?)?,
                 error: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
+                identity: row.get(6)?,
             }))
         } else {
             Ok(None)

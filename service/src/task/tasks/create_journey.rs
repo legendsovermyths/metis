@@ -3,12 +3,12 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::request::handlers::generate_course::PageRange,
     app::journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
     db::repo::{books::BooksRepo, journeys::JourneysRepo},
     error::MetisError,
     task::{
         context::TaskContext,
+        gaurd::TaskGaurd,
         manager::TaskFuture,
         progress::{TaskProgress, TaskStatus},
     },
@@ -23,11 +23,13 @@ use crate::{
 };
 
 #[derive(Deserialize)]
-struct CreateJourneyParams {
+pub struct CreateJourneyParams {
     chapter_title: String,
     advisor_notes: String,
     book_id: i64,
 }
+
+impl TaskGaurd for CreateJourneyParams {}
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateJourneyCheckpoint {
@@ -37,6 +39,12 @@ pub struct CreateJourneyCheckpoint {
     topics: Option<Vec<String>>,
     journey: Option<Journey>,
     generated_topic_map: bool,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct PageRange{
+    pub chapter_start: u32,
+    pub chapter_end: u32
 }
 
 pub fn create_journey(context: TaskContext) -> TaskFuture {

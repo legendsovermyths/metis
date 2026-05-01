@@ -4,9 +4,9 @@ use serde::Serialize;
 
 use crate::{
     app::journey::{
-        artifact::JourneyArtifacts, dialogue::Dialogues, progress::JourneyProgress, Journey
+        artifact::JourneyArtifacts, progress::JourneyProgress, Journey, JourneyArc,
     },
-    db::{get_database, persistence::Persistent, repo::dialogue::DialoguesRepo},
+    db::{get_database, repo::dialogue::DialoguesRepo},
     error::{MetisError, Result},
 };
 
@@ -57,7 +57,7 @@ impl JourneysRepo {
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              WHERE j.id = ?1",
@@ -78,6 +78,13 @@ impl JourneysRepo {
         }
     }
 
+    pub fn get_arc(journey_id: i64, arc_idx: usize) -> Result<Option<JourneyArc>> {
+        let Some(row) = Self::get(journey_id)? else {
+            return Ok(None);
+        };
+        Ok(row.journey.arcs.get(arc_idx).cloned())
+    }
+
     pub fn get_latest() -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -86,7 +93,7 @@ impl JourneysRepo {
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              ORDER BY j.created_at DESC LIMIT 1",
@@ -115,7 +122,7 @@ impl JourneysRepo {
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              ORDER BY j.created_at DESC",
@@ -172,14 +179,13 @@ impl JourneysRepo {
             None => return Ok(None),
         };
 
-        let dialogues = DialoguesRepo::get_by_journey(journey_id)?;
-
-        let (mut arc_idx, mut topic_idx, mut is_journey_complete) = dialogues
-            .last()
+        let last = DialoguesRepo::get_last_for_journey(journey_id)?;
+        let (mut arc_idx, mut topic_idx, mut is_journey_complete) = last
+            .as_ref()
             .map(|d| (d.arc_idx, d.topic_idx, false))
             .unwrap_or((0, 0, false));
 
-        if let Some(last) = dialogues.last() {
+        if let Some(last) = last {
             if last.marked_complete {
                 let next_topic = topic_idx + 1;
                 if row.journey.arcs.get(arc_idx).and_then(|a| a.topics.get(next_topic)).is_some() {
@@ -200,7 +206,6 @@ impl JourneysRepo {
             journey_id,
             arc_idx,
             topic_idx,
-            dialogues: Persistent::new(Dialogues::with(dialogues)),
             is_journey_complete,
         };
 

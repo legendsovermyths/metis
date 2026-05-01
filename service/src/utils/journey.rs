@@ -3,7 +3,7 @@ use std::{fs, sync::Arc};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-     api::request::handlers::generate_course::PageRange, app::journey::{artifact::TopicRange, Journey}, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, utils::{
+    app::journey::{artifact::TopicRange, Journey}, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, task::tasks::create_journey::PageRange, utils::{
         format::{clean_page_output, strip_json_block},
         pdf::{extract_page_range, truncated_copy},
     }
@@ -11,7 +11,10 @@ use crate::{
 
 const MAX_CONCURRENT_PRO: usize = 5;
 
-pub fn find_book_for_chapter(chapter_title: &str, preferred_book_id: Option<i64>) -> Result<(String, String)> {
+pub fn find_book_for_chapter(
+    chapter_title: &str,
+    preferred_book_id: Option<i64>,
+) -> Result<(String, String)> {
     let books = BooksRepo::list()?;
 
     if let Some(id) = preferred_book_id {
@@ -92,17 +95,15 @@ pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<P
     })?;
     log::info!(
         "[detect_page_range] complete — PDF pages {}-{}",
-        range.chapter_start, range.chapter_end
+        range.chapter_start,
+        range.chapter_end
     );
     Ok(range)
 }
 
 const PAGES_PER_CALL: usize = 2;
 
-pub async fn convert_to_markdown(
-    chapter_pdf: &str,
-    num_pages: usize,
-) -> Result<String> {
+pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<String> {
     let total_batches = (num_pages + PAGES_PER_CALL - 1) / PAGES_PER_CALL;
 
     // Phase 1: slice all batch PDFs upfront (fast, synchronous)
@@ -110,7 +111,12 @@ pub async fn convert_to_markdown(
     let mut page = 1;
     while page <= num_pages {
         let page_end = (page + PAGES_PER_CALL - 1).min(num_pages);
-        let batch_pdf = format!("{}.batch_{}-{}.pdf", chapter_pdf.trim_end_matches(".pdf"), page, page_end);
+        let batch_pdf = format!(
+            "{}.batch_{}-{}.pdf",
+            chapter_pdf.trim_end_matches(".pdf"),
+            page,
+            page_end
+        );
         extract_page_range(chapter_pdf, page as u32, page_end as u32, &batch_pdf)?;
         batch_pdfs.push((page, page_end, batch_pdf));
         page += PAGES_PER_CALL;
@@ -137,9 +143,15 @@ pub async fn convert_to_markdown(
 
             let prompts = get_prompt_provider();
             let prompt = if batch_pages == 1 {
-                format!("{}\n\nExtract page 1 of this PDF.", prompts.get_page_to_md_raw())
+                format!(
+                    "{}\n\nExtract page 1 of this PDF.",
+                    prompts.get_page_to_md_raw()
+                )
             } else {
-                format!("{}\n\nExtract pages 1 and 2 of this PDF.", prompts.get_page_to_md_raw())
+                format!(
+                    "{}\n\nExtract pages 1 and 2 of this PDF.",
+                    prompts.get_page_to_md_raw()
+                )
             };
 
             let response = client.generate_with_file(prompt, &file_uri).await?;
@@ -151,7 +163,10 @@ pub async fn convert_to_markdown(
     while let Some(result) = set.join_next().await {
         match result {
             Ok(Ok(batch)) => {
-                log::info!("[convert_to_markdown] {}/{total_batches} done", batches.len() + 1);
+                log::info!(
+                    "[convert_to_markdown] {}/{total_batches} done",
+                    batches.len() + 1
+                );
                 batches.push(batch);
             }
             Ok(Err(e)) => {
@@ -174,7 +189,7 @@ pub async fn convert_to_markdown(
                 format!("<!-- PAGE {} -->\n\n{}", page_num, raw)
             } else {
                 raw.replace("<!-- PAGE 1 -->", &format!("<!-- PAGE {} -->", page_num))
-                   .replace("<!-- PAGE 2 -->", &format!("<!-- PAGE {} -->", page_end))
+                    .replace("<!-- PAGE 2 -->", &format!("<!-- PAGE {} -->", page_end))
             }
         })
         .collect::<Vec<_>>()
@@ -214,9 +229,7 @@ pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>
     let text = response.text();
     let json_text = strip_json_block(&text);
     let topics: Vec<String> = serde_json::from_str(json_text).map_err(|e| {
-        MetisError::JsonError(format!(
-            "Failed to parse topic list: {e}\nResponse: {text}"
-        ))
+        MetisError::JsonError(format!("Failed to parse topic list: {e}\nResponse: {text}"))
     })?;
     Ok(topics)
 }

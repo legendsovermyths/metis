@@ -2,9 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app::journey::{
-        blackboard::Blackboard, dialogue::Dialogue, progress::JourneyProgress, ArcTopic, Journey, JourneyArc
+        blackboard::Blackboard, progress::JourneyProgress, ArcTopic, Journey, JourneyArc,
     },
-    db::{persistence::DbObject, repo::journeys::JourneysRepo},
+    db::{
+        persistence::DbObject,
+        repo::{dialogue::DialoguesRepo, journeys::JourneysRepo},
+    },
     error::Result,
 };
 
@@ -53,35 +56,22 @@ impl JourneyArtifacts {
             }
         }
     }
-    
-    pub fn recent_dialogues(&self, n: usize)->Vec<&Dialogue>{
-        self.progress.dialogues.read().get_recent(n)
+
+    pub fn current_blackboard(&self) -> Result<Blackboard> {
+        Ok(DialoguesRepo::get_last_for_journey(self.progress.journey_id)?
+            .map(|d| d.blackboard)
+            .unwrap_or_else(Blackboard::empty))
     }
 
-    pub fn push_dialogue(&mut self, dialogue: Dialogue, topic_complete: bool) -> bool {
-        self.progress.dialogues.write().push(dialogue);
-        if topic_complete {
-            self.step()
-        } else {
-            false
-        }
-    }
-
-    pub fn get_current_state(&self) -> Option<(&JourneyArc, &ArcTopic, Blackboard)> {
-        let topic = self.get_topic(
-            self.progress.arc_idx,
-            self.progress.topic_idx,
-        );
-
+    pub fn get_current_state(&self) -> Result<Option<(&JourneyArc, &ArcTopic, Blackboard)>> {
+        let topic = self.get_topic(self.progress.arc_idx, self.progress.topic_idx);
         let arc = self.get_arc(self.progress.arc_idx);
         match (arc, topic) {
             (Some(arc), Some(topic)) => {
-                let blackboard = self.progress.dialogues.read().last()
-                    .map(|d| d.blackboard.clone())
-                    .unwrap_or_else(Blackboard::empty);
-                Some((arc, topic, blackboard))
+                let blackboard = self.current_blackboard()?;
+                Ok(Some((arc, topic, blackboard)))
             }
-            _ => None,
+            _ => Ok(None),
         }
     }
 }

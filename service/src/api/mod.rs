@@ -1,12 +1,13 @@
 use serde::Deserialize;
 
-pub mod request;
 pub mod response;
+pub mod request;
 
 #[derive(Deserialize)]
 pub enum ApiType{
     UserMessage,
-    Service
+    Service,
+    Task
 }
 
 

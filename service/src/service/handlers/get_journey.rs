@@ -1,13 +1,9 @@
-use std::sync::{Arc, Mutex};
-
 use serde::Deserialize;
-use serde_json::Value;
 
 use crate::{
-    api::request::handler::BoxFuture,
     app::AppContext,
     db::repo::journeys::JourneysRepo,
-    error::{MetisError, Result},
+    error::{MetisError, Result}, service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
@@ -19,6 +15,6 @@ pub fn get_journey(params: GetJourneyParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
         let row = JourneysRepo::get(params.id)?
             .ok_or_else(|| MetisError::NotFound(format!("journey {}", params.id)))?;
-        Ok(serde_json::to_value(row)?)
+        Ok(serde_json::to_value(row)?.into())
     })
 }

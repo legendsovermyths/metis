@@ -3,7 +3,6 @@ use serde_json::Value;
 
 use crate::app::AppContextValue;
 
-
 #[derive(Serialize)]
 pub struct Response {
     response: Option<Value>,
