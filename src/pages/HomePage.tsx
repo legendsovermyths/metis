@@ -1,28 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, MessageCircle, BookOpen, Compass } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
 import { setChat } from "@/lib/service";
 
 const quickLinks = [
-  {
-    title: "Start a conversation",
-    description: "Ask anything, explore ideas through dialogue",
-    icon: MessageCircle,
-    path: "/chat",
-  },
-  {
-    title: "Browse your library",
-    description: "Access your uploaded books and references",
-    icon: BookOpen,
-    path: "/library",
-  },
-  {
-    title: "Continue a journey",
-    description: "Pick up where you left off in your learning path",
-    icon: Compass,
-    path: "/journeys",
-  },
+  { title: "Start a conversation", path: "/chat" },
+  { title: "Browse your library", path: "/library" },
+  { title: "Continue a journey", path: "/journeys" },
 ];
 
 export default function HomePage() {
@@ -66,8 +51,10 @@ export default function HomePage() {
           </p>
           <Button
             size="lg"
+            variant="outline"
             onClick={handleGetStarted}
             className="mt-8 rounded-xl px-8 font-medium"
+            style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.4)" }}
           >
             Get Started
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -93,7 +80,9 @@ export default function HomePage() {
 
         <Button
           size="lg"
+          variant="outline"
           className="mt-8 rounded-xl px-8 font-medium"
+          style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.4)" }}
           onClick={() => void createJourney()}
         >
           Create a journey
@@ -102,7 +91,7 @@ export default function HomePage() {
       </div>
 
       {/* Quick links */}
-      <div className="mt-16 grid w-full max-w-2xl gap-2 opacity-0 animate-fade-in-up [animation-delay:200ms] md:grid-cols-3">
+      <div className="mt-16 w-full max-w-sm opacity-0 animate-fade-in-up [animation-delay:200ms]">
         {quickLinks.map((link) => (
           <Link
             key={link.path}
@@ -115,15 +104,10 @@ export default function HomePage() {
                   }
                 : undefined
             }
-            className="group rounded-xl bg-surface p-5 transition-all duration-200 hover:bg-surface-hover"
+            className="group flex items-center justify-between border-b border-border/30 py-4 last:border-0 transition-colors hover:text-foreground"
           >
-            <link.icon
-              className="mb-3 h-4 w-4 transition-colors"
-              strokeWidth={1.5}
-              style={{ color: "hsl(var(--amber))" }}
-            />
-            <h3 className="mb-1 text-sm font-medium text-foreground">{link.title}</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{link.description}</p>
+            <span className="text-sm font-medium text-foreground">{link.title}</span>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-all duration-200 group-hover:text-foreground group-hover:translate-x-0.5" />
           </Link>
         ))}
       </div>

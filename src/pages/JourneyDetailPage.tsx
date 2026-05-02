@@ -1,16 +1,11 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Circle, Loader2, Play, Dumbbell, PenSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Dumbbell } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getJourney, teachingInit, type JourneyRow } from "@/lib/service";
 import { getArcAssessmentMeta, loadQuizResult } from "@/lib/mockAssessment";
 
-const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
-
-function journeyGlyph(id: number): string {
-  return GLYPHS[Math.abs(id) % GLYPHS.length];
-}
 
 export default function JourneyDetailPage() {
   const { id } = useParams();
@@ -65,8 +60,10 @@ export default function JourneyDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-57px)] items-center justify-center paper-texture">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground opacity-40" />
+      <div className="flex min-h-[calc(100vh-57px)] items-center justify-center gap-1 paper-texture text-muted-foreground">
+        <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+        <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+        <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
       </div>
     );
   }
@@ -86,8 +83,6 @@ export default function JourneyDetailPage() {
   }
 
   const title = row.journey.journey_title || row.chapter_title || "Untitled journey";
-  const description = row.chapter_title ? `Chapter · ${row.chapter_title}` : "Your learning path";
-  const progressPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
   const allDone = completedTopics >= totalTopics && totalTopics > 0;
 
   const toggleArc = (arcKey: string) => {
@@ -122,55 +117,37 @@ export default function JourneyDetailPage() {
           All journeys
         </Link>
 
-        <div className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl font-display text-2xl italic"
-              style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}
-            >
-              {journeyGlyph(row.id)}
-            </div>
-            <div>
-              <h1 className="font-display text-2xl italic tracking-tight text-foreground">{title}</h1>
-              <p className="text-sm text-muted-foreground">{description}</p>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center gap-3">
-            <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${progressPct}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.7 }}
-              />
-            </div>
-            <span className="text-sm font-medium text-muted-foreground tabular-nums">{progressPct}%</span>
-          </div>
+        <div className="mb-10 animate-fade-in">
+          <h1 className="font-display text-4xl italic tracking-tight text-foreground leading-tight">
+            {title}
+          </h1>
+          <p className="mt-3 text-xs uppercase tracking-widest text-muted-foreground/35">
+            {[
+              row.journey.arcs.length > 0 && `${row.journey.arcs.length} arc${row.journey.arcs.length === 1 ? "" : "s"}`,
+              totalTopics > 0 && `${totalTopics} topics`,
+              row.chapter_title,
+            ].filter(Boolean).join(" · ")}
+          </p>
 
           {row.journey.arcs.length > 0 && (
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-5">
               <Link
                 to={`/journeys/${numericId}/practice`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-soft transition-colors hover:border-foreground/20 hover:text-foreground"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
               >
-                <Dumbbell className="h-3.5 w-3.5" strokeWidth={1.75} />
-                Practice problems
-                <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">
-                  {row.journey.arcs.length} sheet{row.journey.arcs.length === 1 ? "" : "s"}
-                </span>
+                <Dumbbell className="h-3 w-3" strokeWidth={1.75} />
+                Practice problems · {row.journey.arcs.length} sheet{row.journey.arcs.length === 1 ? "" : "s"}
               </Link>
             </div>
           )}
         </div>
 
         {row.journey.arcs.length === 0 ? (
-          <div className="rounded-xl bg-surface p-8 text-center animate-fade-in">
-            <p className="text-sm text-muted-foreground">
-              This journey has no arcs yet. You can flesh it out in the next phase.
-            </p>
-          </div>
+          <p className="mt-4 text-sm text-muted-foreground/50 animate-fade-in">
+            This journey has no arcs yet.
+          </p>
         ) : (
-          <div className="space-y-2">
+          <div className="mt-2">
             {row.journey.arcs.map((arc, i) => {
               const arcKey = `arc-${i}`;
               const arcCompleted = arc.topics.filter((_, t) => completedSet.has(`${i}-${t}`)).length;
@@ -190,93 +167,76 @@ export default function JourneyDetailPage() {
               return (
                 <div
                   key={arcKey}
-                  className="rounded-xl bg-card overflow-hidden animate-fade-in-up opacity-0 border border-border/60"
-                  style={{ animationDelay: `${i * 80}ms` }}
+                  className="border-t border-border/15 animate-fade-in-up opacity-0"
+                  style={{ animationDelay: `${i * 60}ms` }}
                 >
+                  {/* Arc header — click to toggle */}
                   <button
                     type="button"
                     onClick={() => toggleArc(arcKey)}
-                    className="flex w-full items-center gap-3 p-5 text-left transition-colors hover:bg-surface-hover"
+                    className="flex w-full items-start gap-5 pt-5 pb-3 text-left group"
                   >
+                    {/* Arc number */}
+                    <span className="w-7 shrink-0 text-[10px] tabular-nums text-muted-foreground/25 pt-0.5 font-medium select-none">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+
+                    {/* Arc title + meta */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-medium text-foreground">{arc.arc_title}</h3>
-                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                          {arcCompleted}/{total}
+                      <div className="flex items-center justify-between gap-3">
+                        <span className={cn(
+                          "text-sm font-medium transition-colors",
+                          arcDone ? "text-muted-foreground/45" : "text-foreground"
+                        )}>
+                          {arc.arc_title}
                         </span>
-                        {arcDone && <Check className="h-3.5 w-3.5 text-green-500" />}
-                        {meta.has_quiz && (
-                          <span
-                            title="Check-in available"
-                            className="flex h-4 items-center gap-1 rounded-full border border-border/70 bg-surface/70 px-1.5 text-[9px] font-medium uppercase tracking-widest text-muted-foreground"
-                          >
-                            <PenSquare className="h-2.5 w-2.5" strokeWidth={2} />
-                            check-in
-                          </span>
-                        )}
-                        {lastQuiz && (
-                          <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                            · {quizScoreText}/{lastQuiz.total}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-3 shrink-0">
+                          {arcDone && (
+                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground/30">done</span>
+                          )}
+                          {meta.has_quiz && (
+                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground/30">check-in</span>
+                          )}
+                          <span className="text-[10px] tabular-nums text-muted-foreground/30">{arcCompleted}/{total}</span>
+                        </div>
                       </div>
                     </div>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                        isExpanded && "rotate-180"
-                      )}
-                    />
                   </button>
 
+                  {/* Topics — expanded */}
                   {isExpanded && (
-                    <div className="border-t border-border">
-                      <div className="px-5 py-3">
-                        {arc.topics.map((topic, ti) => {
-                          const topicDone = completedSet.has(`${i}-${ti}`);
-                          return (
-                            <div
-                              key={`${arcKey}-t-${ti}`}
-                              className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-hover"
-                            >
-                              {topicDone ? (
-                                <Check className="h-5 w-5 shrink-0 text-green-500" strokeWidth={1.5} />
-                              ) : (
-                                <Circle className="h-5 w-5 shrink-0 text-border" strokeWidth={1.5} />
-                              )}
-                              <span className={cn("text-sm", topicDone ? "text-muted-foreground" : "text-foreground")}>
-                                {topic.name}
-                              </span>
-                              <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
-                                {topic.mode}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                    <div className="pl-12 pb-6 animate-fade-in">
+                      <p className="text-xs leading-loose">
+                        {arc.topics.map((topic, ti) => (
+                          <span key={ti}>
+                            <span className={completedSet.has(`${i}-${ti}`)
+                              ? "text-muted-foreground/30 line-through"
+                              : "text-foreground/65"
+                            }>
+                              {topic.name}
+                            </span>
+                            {ti < arc.topics.length - 1 && (
+                              <span className="mx-2 text-muted-foreground/20">·</span>
+                            )}
+                          </span>
+                        ))}
+                      </p>
 
                       {showAssessmentRow && (
-                        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-surface/30 px-4 py-3">
+                        <div className="flex items-center gap-5 mt-4">
                           {meta.has_quiz && (
                             <Link
                               to={`/journeys/${numericId}/arc/${i}/quiz`}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:border-foreground/20 hover:text-foreground"
+                              className="text-[10px] uppercase tracking-widest text-muted-foreground/40 transition-colors hover:text-foreground"
                             >
-                              <PenSquare className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              Check-in
-                              {lastQuiz && (
-                                <span className="ml-1 text-muted-foreground tabular-nums">
-                                  · last {quizScoreText}/{lastQuiz.total}
-                                </span>
-                              )}
+                              {lastQuiz ? `Check-in · last ${quizScoreText}/${lastQuiz.total}` : "Check-in →"}
                             </Link>
                           )}
                           <Link
                             to={`/journeys/${numericId}/arc/${i}/complete`}
-                            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            className="text-[10px] uppercase tracking-widest text-muted-foreground/40 transition-colors hover:text-foreground"
                           >
-                            End-of-arc page
-                            <ArrowRight className="h-3 w-3" />
+                            End of arc →
                           </Link>
                         </div>
                       )}
@@ -294,10 +254,10 @@ export default function JourneyDetailPage() {
       </div>
 
       {row.journey.arcs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/80 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/20 bg-background/90 backdrop-blur-xl">
           <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-3">
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">
-              {completedTopics}/{totalTopics} topics
+            <span className="text-[10px] text-muted-foreground/35 tabular-nums">
+              {completedTopics} of {totalTopics} topics
             </span>
             <Button
               onClick={handleContinue}
@@ -306,7 +266,11 @@ export default function JourneyDetailPage() {
             >
               {starting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="mr-2 flex items-center gap-0.5">
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                  </span>
                   Starting...
                 </>
               ) : allDone ? (
@@ -316,13 +280,13 @@ export default function JourneyDetailPage() {
                 </>
               ) : completedTopics > 0 ? (
                 <>
-                  <Play className="mr-2 h-4 w-4" />
                   Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               ) : (
                 <>
-                  <Play className="mr-2 h-4 w-4" />
                   Start
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
             </Button>

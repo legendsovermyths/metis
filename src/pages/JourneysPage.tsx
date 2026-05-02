@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Loader2 } from "lucide-react";
 import type { JourneyRow } from "@/lib/service";
 import { useJourneyCreation } from "@/context/JourneyCreationContext";
 
@@ -8,6 +7,23 @@ const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ
 
 function journeyGlyph(id: number): string {
   return GLYPHS[Math.abs(id) % GLYPHS.length];
+}
+
+/** Returns per-arc fill ratios (0..1) derived from aggregate completed_topics. */
+function arcFillRatios(row: JourneyRow): number[] {
+  const arcs = row.journey.arcs;
+  let remaining = row.completed_topics;
+  return arcs.map((arc) => {
+    const size = arc.topics.length;
+    if (size === 0) return 0;
+    if (remaining >= size) {
+      remaining -= size;
+      return 1;
+    }
+    const pct = remaining / size;
+    remaining = 0;
+    return pct;
+  });
 }
 
 function formatDate(createdAt: number): string {
@@ -34,127 +50,155 @@ export default function JourneysPage() {
   }, [lastCreatedId, clearLastCreatedId, navigate]);
 
   return (
-    <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-8 pb-24 md:pb-8">
+    <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-10 pb-24 md:pb-10">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-8 animate-fade-in">
-          <h1 className="font-display text-3xl italic tracking-tight text-foreground">Journeys</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Your learning paths — each journey is a deep exploration of a subject
-          </p>
+
+        {/* Header */}
+        <div className="mb-10 flex items-end justify-between animate-fade-in">
+          <div>
+            <h1 className="font-display text-4xl italic tracking-tight text-foreground">Journeys</h1>
+            {journeyRows.length > 0 && (
+              <p className="mt-1 font-display text-xs italic text-muted-foreground/50">
+                {journeyRows.length} {journeyRows.length === 1 ? "path" : "paths"}
+              </p>
+            )}
+          </div>
         </div>
 
+        {/* Loading */}
         {journeysLoading && pendingJourneys.length === 0 && (
-          <div className="flex justify-center py-16 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin opacity-40" />
+          <div className="flex justify-center gap-1 py-16 text-muted-foreground">
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full bg-current opacity-40" />
           </div>
         )}
 
+        {/* Error */}
         {!journeysLoading && journeysError && (
           <div className="rounded-xl bg-surface p-6 text-center text-sm text-muted-foreground">
             {journeysError}
           </div>
         )}
 
+        {/* Empty state */}
         {!journeysLoading && !journeysError && journeyRows.length === 0 && pendingJourneys.length === 0 && (
-          <div className="flex flex-col items-center py-20 text-center animate-fade-in">
-            <span className="font-display text-8xl italic text-muted-foreground/20 select-none leading-none mb-6">∫</span>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              No journeys yet. Use <span className="font-medium text-foreground">Create a journey</span> on Home
+          <div className="flex flex-col items-center py-24 text-center animate-fade-in">
+            <span className="font-display text-[8rem] italic text-muted-foreground/[0.07] select-none leading-none mb-8">∫</span>
+            <p className="text-sm text-muted-foreground/50 leading-relaxed max-w-xs">
+              No journeys yet. Use <span className="font-medium text-foreground/70">Create a journey</span> on Home
               to open chat with your advisor and plan a path.
             </p>
           </div>
         )}
 
         {(journeyRows.length > 0 || pendingJourneys.length > 0) && (
-          <div className="space-y-2">
-            {/* Pending journey skeletons */}
+          <div>
+
+            {/* Pending skeletons */}
             {pendingJourneys.map((j) => (
               <div
                 key={j.tempId}
-                className="rounded-xl bg-card overflow-hidden animate-fade-in border border-border/60"
+                className="flex items-start gap-5 border-b border-border/20 py-7 animate-fade-in"
               >
-                <div className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-amber-soft">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2.5 pt-1">
-                      <div className="h-4 w-48 animate-pulse rounded-full bg-surface" />
-                      {j.chapterTitle ? (
-                        <p className="text-sm text-muted-foreground/70">Chapter · {j.chapterTitle}</p>
-                      ) : (
-                        <div className="h-3 w-36 animate-pulse rounded-full bg-surface" />
-                      )}
-                      <div className="h-2.5 w-20 animate-pulse rounded-full bg-surface" />
-                    </div>
+                {/* Glyph placeholder */}
+                <div className="h-8 w-8 shrink-0 animate-pulse rounded bg-surface mt-0.5" />
+
+                {/* Content */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-4 mb-2">
+                    <div className="h-3.5 w-48 animate-pulse rounded bg-surface" />
+                    <div className="h-3 w-8 shrink-0 animate-pulse rounded-full bg-surface" />
                   </div>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="h-1.5 flex-1 rounded-full bg-surface overflow-hidden">
-                      <div className="h-full w-1/3 rounded-full bg-foreground/10 animate-pulse" />
-                    </div>
-                    <div className="h-3 w-6 animate-pulse rounded-full bg-surface" />
+                  {j.chapterTitle ? (
+                    <p className="text-xs text-muted-foreground/40 mb-3">Chapter · {j.chapterTitle}</p>
+                  ) : (
+                    <div className="h-2.5 w-28 animate-pulse rounded-full bg-surface mb-3" />
+                  )}
+                  <div className="flex gap-[3px]">
+                    {[1, 2, 3].map((k) => (
+                      <div
+                        key={k}
+                        className="h-[3px] flex-1 animate-pulse rounded-full bg-surface"
+                        style={{ animationDelay: `${k * 100}ms` }}
+                      />
+                    ))}
                   </div>
                 </div>
-                <div className="border-t border-border/60 divide-y divide-border/60">
-                  {[0.55, 0.40, 0.65].map((w, i) => (
-                    <div key={i} className="flex items-center gap-3 px-6 py-4">
-                      <div
-                        className="animate-pulse rounded-full bg-surface"
-                        style={{ height: "0.625rem", width: `${w * 100}%`, animationDelay: `${i * 120}ms` }}
-                      />
-                      <div
-                        className="ml-auto h-2 w-8 animate-pulse rounded-full bg-surface shrink-0"
-                        style={{ animationDelay: `${i * 120}ms` }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-border/60 px-6 py-3 flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/50" />
-                  <span className="text-xs text-muted-foreground/60">Crafting your journey…</span>
-                </div>
+
+                {/* Thinking indicator */}
+                <span className="flex items-center gap-0.5 shrink-0 mt-1.5">
+                  <span className="thinking-dot h-1 w-1 rounded-full bg-muted-foreground/30" />
+                  <span className="thinking-dot h-1 w-1 rounded-full bg-muted-foreground/30" />
+                  <span className="thinking-dot h-1 w-1 rounded-full bg-muted-foreground/30" />
+                </span>
               </div>
             ))}
 
+            {/* Journey rows */}
             {journeyRows.map((row, i) => {
-              const total = row.total_topics;
-              const completedTopics = row.completed_topics;
-              const pct = total > 0 ? Math.round((completedTopics / total) * 100) : 0;
               const title = row.journey.journey_title || row.chapter_title || "Untitled journey";
-              const blurb = row.chapter_title ? `Chapter · ${row.chapter_title}` : "Open to continue this path.";
+              const blurb = row.chapter_title ? `Chapter · ${row.chapter_title}` : null;
+              const fillRatios = arcFillRatios(row);
+              const glyph = journeyGlyph(row.id);
+              const isStarted = row.completed_topics > 0;
+              const isComplete = row.total_topics > 0 && row.completed_topics >= row.total_topics;
 
               return (
                 <Link
                   key={row.id}
                   to={`/journeys/${row.id}`}
-                  className="group block rounded-xl bg-card p-6 transition-all duration-200 hover:bg-surface animate-fade-in-up opacity-0 border border-border/60 hover:border-border"
-                  style={{ animationDelay: `${i * 80}ms` }}
+                  className="group flex items-start gap-5 border-b border-border/20 py-7 last:border-0 animate-fade-in-up opacity-0"
+                  style={{ animationDelay: `${i * 60}ms` }}
                 >
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl font-display text-2xl italic"
-                      style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}
-                    >
-                      {journeyGlyph(row.id)}
+                  {/* Glyph — amber-tinted, opacity tied to progress */}
+                  <span
+                    className="w-8 shrink-0 pt-0.5 font-display text-3xl italic select-none transition-opacity duration-200 group-hover:opacity-70"
+                    style={{
+                      color: "hsl(var(--amber))",
+                      opacity: isComplete ? 0.6 : isStarted ? 0.4 : 0.22,
+                    }}
+                  >
+                    {glyph}
+                  </span>
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    {/* Title row with count on the right */}
+                    <div className="flex items-baseline justify-between gap-4">
+                      <p className="font-display text-sm italic text-foreground leading-snug">
+                        {title}
+                      </p>
+                      <span className="shrink-0 font-display text-xs italic tabular-nums text-muted-foreground/40">
+                        {row.completed_topics}/{row.total_topics}
+                      </span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-base font-medium text-foreground">{title}</h3>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0.5" />
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground leading-relaxed line-clamp-2">{blurb}</p>
-                      <p className="mt-2 text-xs text-muted-foreground/70">{formatDate(row.created_at)}</p>
-                      <div className="mt-4 flex items-center gap-3">
-                        <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
+
+                    {blurb && (
+                      <p className="mt-0.5 text-xs text-muted-foreground/40">{blurb}</p>
+                    )}
+
+                    {/* Segmented arc progress track — full width of content column */}
+                    <div className="mt-3 flex gap-[3px]">
+                      {fillRatios.length > 0 ? (
+                        fillRatios.map((fill, idx) => (
                           <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.7 }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                          {completedTopics}/{total}
-                        </span>
-                      </div>
+                            key={idx}
+                            className="h-[3px] flex-1 overflow-hidden rounded-full bg-border/25"
+                          >
+                            <div
+                              className="h-full rounded-full transition-all duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
+                              style={{
+                                width: `${fill * 100}%`,
+                                backgroundColor: "hsl(var(--amber))",
+                                opacity: 0.7,
+                              }}
+                            />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="h-[3px] flex-1 rounded-full bg-border/15" />
+                      )}
                     </div>
                   </div>
                 </Link>

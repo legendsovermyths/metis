@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Sun, Moon, Loader2, BookOpen, Hand, X, GraduationCap } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Hand, X } from "lucide-react";
+
+const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
 import {
   getAllDialogues,
@@ -378,15 +379,29 @@ function AnimatedBlackboard({
         if (node) freshNodes.push(node);
       }
       if (freshNodes.length > 0) {
-        tl.to(freshNodes, { opacity: 1, duration: 0.5, stagger: 0.15, ease: "power2.out" }, 0);
+        // Separate shape nodes from edge/path nodes so edges draw after nodes settle.
+        const freshShapes = freshNodes.filter((n) => {
+          const tag = n.tagName.toLowerCase();
+          return tag !== "line" && tag !== "polyline" && !n.classList.contains("edge");
+        });
+        const freshEdges = freshNodes.filter((n) => {
+          const tag = n.tagName.toLowerCase();
+          return tag === "line" || tag === "polyline" || n.classList.contains("edge");
+        });
+        if (freshShapes.length > 0)
+          tl.to(freshShapes, { opacity: 1, duration: 0.45, stagger: 0.08, ease: "power2.out" }, 0);
+        if (freshEdges.length > 0)
+          tl.to(freshEdges, { opacity: 1, duration: 0.4, stagger: 0.12, ease: "power2.out" }, freshShapes.length > 0 ? 0.25 : 0);
         freshNodes.forEach((node, i) => {
+          const isEdge = freshEdges.includes(node);
+          const delay = isEdge ? 0.25 + freshEdges.indexOf(node) * 0.12 : i * 0.08;
           const paths = Array.from(node.querySelectorAll("path")) as SVGPathElement[];
           const drawables = paths.filter((p) => p.getAttribute("data-dash-len"));
           if (drawables.length > 0) {
             tl.to(
               drawables,
               { strokeDashoffset: 0, duration: 1.6, ease: "power2.out" },
-              i * 0.15
+              delay
             );
           }
         });
@@ -447,7 +462,6 @@ function AnimatedBlackboard({
 }
 
 export default function TeachingPage() {
-  const { theme, toggle } = useTheme();
   const { context } = useAppContext();
   const navigate = useNavigate();
   const ts = context?.teaching;
@@ -754,8 +768,8 @@ export default function TeachingPage() {
       )}
     >
       {/* Top bar */}
-      <div className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
-        <div className="relative flex items-center justify-between px-4 py-2">
+      <div className="sticky top-0 z-50 border-b border-border/30 bg-card/80 backdrop-blur-xl">
+        <div className="relative flex items-center justify-between px-4 py-3">
           <Link
             to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -764,40 +778,40 @@ export default function TeachingPage() {
             <span className="text-xs font-medium hidden sm:inline">Back</span>
           </Link>
 
-          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            <GraduationCap className="h-3.5 w-3.5" />
-            Teaching
-          </div>
+          {/* Arc · Topic context — replaces generic "Teaching" badge */}
+          {(displayArc || displayHeading) && (
+            <p className="pointer-events-none absolute left-1/2 -translate-x-1/2 max-w-[42%] truncate font-display text-sm italic text-muted-foreground/80">
+              {displayArc && displayHeading
+                ? `${displayArc} · ${displayHeading}`
+                : displayArc || displayHeading}
+            </p>
+          )}
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={openAside}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Raise hand to ask a question"
-            >
-              <Hand className="h-4 w-4" />
-              <span className="hidden sm:inline">Raise hand</span>
-            </button>
-            <button
-              onClick={toggle}
-              className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </button>
-          </div>
+          {/* Placeholder to balance flex */}
+          <div className="w-16" />
         </div>
 
-        {/* Progress bar */}
-        <div className="h-[2px] bg-surface">
-          <div
-            className="h-full transition-all duration-700 ease-out"
-            style={{ width: `${progressPct}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.7 }}
-          />
+        {/* Segmented arc progress */}
+        <div className="flex items-center gap-1 px-4 pb-2.5">
+          {journey.arcs.map((arc, idx) => {
+            const arcTopics = arc.topics.length;
+            let fill: number;
+            if (idx < currentArcIdx) {
+              fill = 1;
+            } else if (idx === currentArcIdx) {
+              fill = arcTopics > 0 ? currentTopicIdx / arcTopics : 0;
+            } else {
+              fill = 0;
+            }
+            return (
+              <div key={idx} className="h-[3px] flex-1 overflow-hidden rounded-full bg-surface">
+                <div
+                  className="h-full rounded-full transition-all duration-700 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
+                  style={{ width: `${fill * 100}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.65 }}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -835,8 +849,7 @@ export default function TeachingPage() {
             {/* Board pane — only shown when a blackboard image exists */}
             {hasBoard && (
               <div
-                className="relative lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden"
-                style={{ backgroundColor: "hsl(var(--amber-soft) / 0.3)" }}
+                className="relative lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border/30 flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden bg-background"
               >
                 <div key={currentImageUrl!} className="w-full h-full animate-fade-in">
                   {isRevealing && reveal ? (
@@ -872,23 +885,12 @@ export default function TeachingPage() {
             <div ref={dialogueScrollRef} className={cn("overflow-y-auto", hasBoard ? "flex-1 lg:w-1/2" : "flex-1")}>
               <div className={cn("mx-auto px-6 py-10 md:px-8", hasBoard ? "max-w-2xl" : "max-w-2xl lg:max-w-3xl")}>
                 <header className="mb-10 animate-fade-in">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 mb-2">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/50 mb-2">
                     {displayArc}
                   </p>
                   <h1 className="font-display text-2xl italic tracking-tight text-foreground md:text-3xl">
                     {displayHeading}
                   </h1>
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="h-1 flex-1 rounded-full bg-surface overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${progressPct}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.6 }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
-                      {completedTopics}/{totalTopics}
-                    </span>
-                  </div>
                 </header>
 
                 {hasNoPages && !isLoading && (
@@ -963,17 +965,9 @@ export default function TeachingPage() {
                 )}
 
                 {waitingForNext && !isLoading && (
-                  <div className="mt-8 rounded-xl bg-surface px-4 py-3.5 animate-fade-in">
-                    <div className="flex items-center gap-3">
-                      <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
-                      <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
-                      <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
-                      <span className="text-xs font-medium text-foreground">Preparing the next section…</span>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground/80 leading-relaxed">
-                      Metis is composing more dialogues in the background. We'll continue automatically once they're ready.
-                    </p>
-                  </div>
+                  <p className="mt-8 text-sm italic text-muted-foreground/45 animate-fade-in">
+                    Professor Metis is composing the next section…
+                  </p>
                 )}
 
                 {error && (
@@ -983,20 +977,20 @@ export default function TeachingPage() {
                 )}
 
                 {isJourneyComplete && isOnLastPage && (
-                  <div className="mt-12 text-center animate-fade-in">
-                    <div className="inline-block rounded-xl bg-surface p-8">
-                      <p className="font-display text-xl italic text-foreground mb-2">Journey complete</p>
-                      <p className="text-sm text-muted-foreground mb-6">
-                        You've finished all topics. Well done.
-                      </p>
-                      <Button
-                        onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
-                        className="rounded-xl px-6"
-                      >
-                        Back to journey
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
+                  <div className="relative mt-16 flex flex-col items-center text-center py-20 overflow-hidden animate-fade-in">
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display text-[14rem] italic leading-none text-foreground/[0.035]">
+                      {GLYPHS[Math.abs(journeyId ?? 0) % GLYPHS.length]}
+                    </span>
+                    <p className="relative font-display text-3xl italic text-foreground mb-3">Journey complete.</p>
+                    <p className="relative text-sm text-muted-foreground/55 mb-12">
+                      You've worked through all {totalTopics} topics.
+                    </p>
+                    <Link
+                      to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
+                      className="relative text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
+                    >
+                      ← Back to journeys
+                    </Link>
                   </div>
                 )}
               </div>
@@ -1005,8 +999,17 @@ export default function TeachingPage() {
         );
       })()}
 
+      {/* Floating raise hand button */}
+      <button
+        onClick={openAside}
+        className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card shadow-medium text-muted-foreground transition-colors hover:text-foreground"
+        aria-label="Raise hand to ask a question"
+      >
+        <Hand className="h-4 w-4" />
+      </button>
+
       {/* Bottom bar */}
-      <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-xl px-4 py-3">
+      <div className="sticky bottom-0 border-t border-border/30 bg-card/80 backdrop-blur-xl px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <Button
             variant="ghost"
@@ -1020,8 +1023,8 @@ export default function TeachingPage() {
           </Button>
 
           {totalPages > 0 && (
-            <span className="text-xs font-medium text-muted-foreground tabular-nums">
-              {pageIndex + 1} of {totalPages}
+            <span className="text-[10px] tabular-nums text-muted-foreground/50">
+              {pageIndex + 1} / {totalPages}
             </span>
           )}
 
@@ -1043,12 +1046,20 @@ export default function TeachingPage() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  <span className="mr-2 flex items-center gap-0.5">
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                  </span>
                   Loading...
                 </>
               ) : waitingForNext ? (
                 <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  <span className="mr-2 flex items-center gap-0.5">
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                  </span>
                   Preparing...
                 </>
               ) : hasNoPages ? (
@@ -1079,7 +1090,7 @@ export default function TeachingPage() {
       </div>
 
       {isAsking && (
-        <aside className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[400px] flex-col border-l border-border bg-background animate-in slide-in-from-right duration-300">
+        <aside className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[400px] flex-col border-l border-border bg-background animate-in slide-in-from-right duration-300 [animation-timing-function:cubic-bezier(0.22,1,0.36,1)]">
           {/* Header — matches main topbar exactly (py-2 row + h-[2px] bar + border-b) */}
           <div className="border-b border-border bg-card/80 backdrop-blur-xl">
             <div className="flex items-center justify-between px-6 py-2">
@@ -1118,10 +1129,10 @@ export default function TeachingPage() {
               {exchanges.map((ex, i) => (
                 <div key={i}>
                   <p
-                    className="mb-5 pl-3 text-xs italic text-muted-foreground/80 border-l-2"
+                    className="mb-5 pl-3 text-sm italic text-muted-foreground/70 border-l-2"
                     style={{ borderColor: "hsl(var(--amber) / 0.45)" }}
                   >
-                    "{ex.question}"
+                    {ex.question}
                   </p>
                   <article className="font-display text-[17px] italic leading-[1.85] text-foreground/90">
                     {ex.answer}
@@ -1135,10 +1146,10 @@ export default function TeachingPage() {
               {pendingQuestion && (
                 <div>
                   <p
-                    className="mb-5 pl-3 text-xs italic text-muted-foreground/80 border-l-2"
+                    className="mb-5 pl-3 text-sm italic text-muted-foreground/70 border-l-2"
                     style={{ borderColor: "hsl(var(--amber) / 0.45)" }}
                   >
-                    "{pendingQuestion}"
+                    {pendingQuestion}
                   </p>
                   <div className="flex items-center gap-1.5">
                     <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />

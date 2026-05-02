@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, Route, Sun, Moon, ArrowLeft, ArrowRight, MessageCircle } from "lucide-react";
+import { Send, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/hooks/use-theme";
 import { useAppContext } from "@/context/AppContext";
 import { sendMessage } from "@/lib/service";
 import { useJourneyCreation } from "@/context/JourneyCreationContext";
@@ -18,11 +17,11 @@ interface Message {
   content: string;
 }
 
-const modeInfo: Record<Mode, { label: string; icon: React.ElementType }> = {
-  onboarding: { label: "Getting to know you", icon: User },
-  teaching: { label: "Teaching", icon: Sparkles },
-  advising: { label: "Advising", icon: Route },
-  idle: { label: "Chat", icon: MessageCircle },
+const modeInfo: Record<Mode, { label: string }> = {
+  onboarding: { label: "Getting to know you" },
+  teaching: { label: "Teaching" },
+  advising: { label: "Advising" },
+  idle: { label: "Chat" },
 };
 
 function phaseToMode(phase: string | undefined): Mode {
@@ -45,7 +44,6 @@ function historyToMessages(events: import("@/lib/service").ChatEvent[]): Message
 }
 
 export default function ChatPage() {
-  const { theme, toggle } = useTheme();
   const { context } = useAppContext();
   const navigate = useNavigate();
   const phase = context?.chat.phase;
@@ -141,47 +139,30 @@ export default function ChatPage() {
     }
   };
 
-  const ModeIcon = modeInfo[mode].icon;
-
   return (
     <div className="relative flex h-[calc(100vh-57px)] flex-col md:h-screen">
       {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-border bg-card/50 px-4 py-2 backdrop-blur-sm">
+      <div className="flex items-center border-b border-border/30 bg-card/50 px-4 py-3 backdrop-blur-sm">
         <Link to="/" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
           <span className="text-xs font-medium hidden sm:inline">Back</span>
         </Link>
-        <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground" style={{ backgroundColor: "hsl(var(--amber-soft))", color: "hsl(var(--amber))" }}>
-          <ModeIcon className="h-3.5 w-3.5" />
-          {modeInfo[mode].label}
-        </div>
-        <button
-          onClick={toggle}
-          className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
       </div>
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-2xl space-y-6">
           {messages.length === 0 && (
-            <div className="flex h-full min-h-[50vh] flex-col items-center justify-center text-center animate-fade-in">
-              <div className="mb-5 font-display text-5xl italic tracking-tight text-foreground">Metis</div>
-              <h2 className="text-base font-medium text-foreground">
+            <div className="flex h-full min-h-[50vh] flex-col justify-center animate-fade-in">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground/40 mb-3">
+                {modeInfo[mode].label}
+              </p>
+              <h2 className="text-xl font-medium text-foreground">
                 {mode === "onboarding" && "Tell me about yourself"}
                 {mode === "teaching" && "Let's explore an idea together"}
                 {mode === "advising" && "What would you like to learn next?"}
                 {mode === "idle" && "What's on your mind?"}
               </h2>
-              <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
-                {mode === "onboarding" && "I'll adapt my teaching approach based on your background and preferences."}
-                {mode === "teaching" && "I'll guide you to the answer through questions, not direct explanations."}
-                {mode === "advising" && "Let's figure out the best path for your learning journey."}
-                {mode === "idle" && "Ask me anything or head to your library to get started."}
-              </p>
             </div>
           )}
 
@@ -193,21 +174,22 @@ export default function ChatPage() {
                 msg.role === "user" ? "flex justify-end" : "flex justify-start"
               )}
             >
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                  msg.role === "user"
-                    ? "bg-foreground text-background"
-                    : "bg-surface text-foreground"
-                )}
-              >
-                <div className="whitespace-pre-wrap chat-latex">
-                  <Latex>{msg.content}</Latex>
+              {msg.role === "assistant" ? (
+                <div className="max-w-[85%] text-sm leading-relaxed text-foreground">
+                  <div className="whitespace-pre-wrap chat-latex">
+                    <Latex>{msg.content}</Latex>
+                  </div>
+                  {isStreaming && msg.id === messages[messages.length - 1]?.id && (
+                    <span className="inline-block h-4 w-0.5 bg-foreground animate-pulse-soft ml-0.5" />
+                  )}
                 </div>
-                {msg.role === "assistant" && isStreaming && msg.id === messages[messages.length - 1]?.id && (
-                  <span className="inline-block h-4 w-0.5 bg-foreground animate-pulse-soft ml-0.5" />
-                )}
-              </div>
+              ) : (
+                <div className="max-w-[75%] rounded-2xl border border-border/50 px-4 py-2.5 text-sm leading-relaxed text-foreground">
+                  <div className="whitespace-pre-wrap chat-latex">
+                    <Latex>{msg.content}</Latex>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
 
