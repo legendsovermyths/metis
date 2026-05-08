@@ -14,6 +14,7 @@ use crate::{
 pub mod advisor;
 pub mod handler;
 pub mod onboarder;
+pub mod tutor;
 
 #[async_trait]
 pub trait Agent: Send + Sync {

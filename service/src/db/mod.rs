@@ -2,9 +2,9 @@ pub mod repo;
 pub mod persistence;
 
 use rusqlite::Connection;
-use std::sync::{Mutex, OnceLock};
+use std::{process::Output, sync::{Mutex, OnceLock}};
 
-use crate::error::Result;
+use crate::{db::persistence::Persistent, error::Result};
 
 static DB_INSTANCE: OnceLock<Db> = OnceLock::new();
 
@@ -38,3 +38,4 @@ impl Db {
         Ok(())
     }
 }
+
