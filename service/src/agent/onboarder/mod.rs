@@ -1,7 +1,5 @@
 pub mod tools;
 
-use std::sync::{Arc, Mutex};
-
 use async_trait::async_trait;
 
 use crate::{
@@ -9,7 +7,6 @@ use crate::{
         onboarder::tools::{GetNotesTool, SetDoneTool, SetNotesTool},
         Agent, AgentResponse,
     },
-    api::request::handler::runtime,
     app::AppContext,
     error::Result,
     llm_client::{
@@ -20,20 +17,17 @@ use crate::{
     prompts::get_prompt_provider,
 };
 
-pub struct Onboarder {
-    client: Arc<tokio::sync::Mutex<dyn LLMChatClient>>,
+pub struct Onboarder<'a> {
+    client: Box<dyn LLMChatClient + 'a>,
 }
 
-impl Onboarder {
-    pub fn new(context: Arc<Mutex<AppContext>>) -> Self {
-        let client = LLMClientFactory::get_chat_client(ClientType::GeminiFlash, context);
-        let mut gaurd = client.blocking_lock();
-        let tools = Self::tools();
-        for tool in tools {
-            gaurd.add_tool(tool);
+impl<'a> Onboarder<'a> {
+    pub fn new(context: &'a AppContext) -> Self {
+        let mut client = LLMClientFactory::get_chat_client(ClientType::GeminiFlash, context);
+        for tool in Self::tools() {
+            client.add_tool(tool);
         }
-        gaurd.set_system_prompt(get_prompt_provider().get_onboarder_system_prompt());
-        drop(gaurd);
+        client.set_system_prompt(get_prompt_provider().get_onboarder_system_prompt());
         Self { client }
     }
 
@@ -46,19 +40,18 @@ impl Onboarder {
     }
 }
 
-impl Agent for Onboarder {
-    fn generate(&mut self, message: Option<String>) -> Result<AgentResponse> {
-        runtime().block_on(async {
-            if let Some(message) = message {
-                let response = self.client.lock().await.generate(message).await?.text();
-                return Ok(AgentResponse::with(response));
-            }
-            return Err(crate::error::MetisError::AgentError(
-                "Message is required for onboarding agent".to_string(),
-            ));
-        })
+#[async_trait]
+impl<'a> Agent for Onboarder<'a> {
+    async fn generate(&mut self, message: Option<String>) -> Result<AgentResponse> {
+        if let Some(message) = message {
+            let response = self.client.generate(message).await?.text();
+            return Ok(AgentResponse::with(response)?);
+        }
+        return Err(crate::error::MetisError::AgentError(
+            "Message is required for onboarding agent".to_string(),
+        ));
     }
-    fn get_event_history(&mut self) -> crate::logs::EventHistory {
-        runtime().block_on(async { self.client.lock().await.get_event_history() })
+    async fn get_event_history(&mut self) -> crate::logs::EventHistory {
+        self.client.get_event_history()
     }
 }

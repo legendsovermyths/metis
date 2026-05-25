@@ -1,5 +1,4 @@
-use std::sync::{Arc, Mutex};
-
+use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::{app::AppContext, error::Result};
@@ -14,8 +13,9 @@ pub struct Parameter {
 }
 
 
+#[async_trait]
 pub trait Tool: Send + Sync {
-    fn execute(&self, value: Value, context: Arc<Mutex<AppContext>>) -> Result<Value>;
+    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value>;
     fn name(&self) -> &str;
     fn description(&self) -> &str;
     fn parameters(&self) -> Parameters; 

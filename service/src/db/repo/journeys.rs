@@ -4,9 +4,9 @@ use serde::Serialize;
 
 use crate::{
     app::journey::{
-        artifact::JourneyArtifacts, dialogue::Dialogues, progress::JourneyProgress, Journey
+        artifact::JourneyArtifacts, progress::JourneyProgress, Journey, JourneyArc,
     },
-    db::{get_database, persistence::Persistent, repo::dialogue::DialoguesRepo},
+    db::{get_database, repo::dialogue::DialoguesRepo},
     error::{MetisError, Result},
 };
 
@@ -18,15 +18,16 @@ pub struct JourneyRow {
     pub journey: Journey,
     pub created_at: i64,
     pub advisor_notes: String,
+    pub tutor_notes: String,
     pub completed_topics: usize,
     pub total_topics: usize,
 }
 
 pub struct JourneysRepo;
 
-fn build_row(id: i64, chapter_title: String, chapter_dir: String, journey: Journey, created_at: i64, advisor_notes: String, completed_topics: usize) -> JourneyRow {
+fn build_row(id: i64, chapter_title: String, chapter_dir: String, journey: Journey, created_at: i64, advisor_notes: String, tutor_notes: String, completed_topics: usize) -> JourneyRow {
     let total_topics = journey.arcs.iter().map(|a| a.topics.len()).sum();
-    JourneyRow { id, chapter_title, chapter_dir, journey, created_at, advisor_notes, completed_topics, total_topics }
+    JourneyRow { id, chapter_title, chapter_dir, journey, created_at, advisor_notes, tutor_notes, completed_topics, total_topics }
 }
 
 impl JourneysRepo {
@@ -52,12 +53,12 @@ impl JourneysRepo {
     pub fn get(id: i64) -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              WHERE j.id = ?1",
@@ -71,22 +72,30 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             )))
         } else {
             Ok(None)
         }
     }
 
+    pub fn get_arc(journey_id: i64, arc_idx: usize) -> Result<Option<JourneyArc>> {
+        let Some(row) = Self::get(journey_id)? else {
+            return Ok(None);
+        };
+        Ok(row.journey.arcs.get(arc_idx).cloned())
+    }
+
     pub fn get_latest() -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              ORDER BY j.created_at DESC LIMIT 1",
@@ -100,7 +109,8 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             )))
         } else {
             Ok(None)
@@ -110,12 +120,12 @@ impl JourneysRepo {
     pub fn get_all() -> Result<Vec<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
                  SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1
+                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
                  GROUP BY journey_id
              ) d ON d.journey_id = j.id
              ORDER BY j.created_at DESC",
@@ -130,7 +140,8 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             ));
         }
         Ok(out)
@@ -138,7 +149,7 @@ impl JourneysRepo {
 
     pub fn update(artifacts: &JourneyArtifacts) -> Result<()> {
         let id = artifacts.id.ok_or_else(|| {
-            MetisError::MetisError("Artifacts passed without id to update".to_string())
+            MetisError::InternalError("Artifacts passed without id to update".to_string())
         })?;
         let journey_json = serde_json::to_string(&artifacts.journey)?;
         let conn = get_database().conn.lock().unwrap();
@@ -147,7 +158,8 @@ impl JourneysRepo {
          SET chapter_title = ?2,
              chapter_dir   = ?3,
              journey_json  = ?4,
-             advisor_notes = ?5
+             advisor_notes = ?5,
+             tutor_notes   = ?6
          WHERE id = ?1",
             rusqlite::params![
                 id,
@@ -155,12 +167,14 @@ impl JourneysRepo {
                 artifacts.chapter_dir,
                 journey_json,
                 artifacts.advisor_notes,
+                artifacts.tutor_notes,
             ],
         )?;
         if rows_affected == 0 {
-            return Err(MetisError::MetisError(
-                "No id found in database for the artifact, update failed".to_string(),
-            ));
+            return Err(MetisError::NotFound(format!(
+                "journey {} — update affected zero rows",
+                id
+            )));
         }
         Ok(())
     }
@@ -171,14 +185,13 @@ impl JourneysRepo {
             None => return Ok(None),
         };
 
-        let dialogues = DialoguesRepo::get_by_journey(journey_id)?;
-
-        let (mut arc_idx, mut topic_idx, mut is_journey_complete) = dialogues
-            .last()
+        let last = DialoguesRepo::get_last_for_journey(journey_id)?;
+        let (mut arc_idx, mut topic_idx, mut is_journey_complete) = last
+            .as_ref()
             .map(|d| (d.arc_idx, d.topic_idx, false))
             .unwrap_or((0, 0, false));
 
-        if let Some(last) = dialogues.last() {
+        if let Some(last) = last {
             if last.marked_complete {
                 let next_topic = topic_idx + 1;
                 if row.journey.arcs.get(arc_idx).and_then(|a| a.topics.get(next_topic)).is_some() {
@@ -199,7 +212,6 @@ impl JourneysRepo {
             journey_id,
             arc_idx,
             topic_idx,
-            dialogues: Persistent::new(Dialogues::with(dialogues)),
             is_journey_complete,
         };
 
@@ -209,8 +221,18 @@ impl JourneysRepo {
             chapter_dir: row.chapter_dir,
             journey: row.journey,
             advisor_notes: row.advisor_notes,
+            tutor_notes: row.tutor_notes,
             progress,
         }))
     }
-}
 
+    pub fn delete_single(id: i64) -> Result<()> {
+        DialoguesRepo::delete_all_for_journey(id)?;
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM journeys WHERE id = ?1",
+            rusqlite::params![id],
+        )?;
+        Ok(())
+    }
+}

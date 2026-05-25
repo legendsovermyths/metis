@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,16 +7,16 @@
 @layer base {
   :root {
     --background: 60 7% 97%;
-    --foreground: 220 10% 20%;
+    --foreground: 25 15% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 10% 20%;
+    --card-foreground: 25 15% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 10% 20%;
+    --popover-foreground: 25 15% 13%;
 
-    --primary: 220 13% 26%;
-    --primary-foreground: 60 7% 97%;
+    --primary: 30 55% 40%;
+    --primary-foreground: 40 30% 97%;
 
     --secondary: 220 10% 94%;
     --secondary-foreground: 220 10% 30%;
@@ -32,29 +32,39 @@
 
     --border: 220 10% 90%;
     --input: 220 10% 90%;
-    --ring: 220 13% 26%;
+    --ring: 30 55% 40%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 60 5% 96%;
     --sidebar-foreground: 220 10% 30%;
-    --sidebar-primary: 220 13% 26%;
-    --sidebar-primary-foreground: 60 7% 97%;
+    --sidebar-primary: 30 55% 40%;
+    --sidebar-primary-foreground: 40 30% 97%;
     --sidebar-accent: 220 10% 93%;
     --sidebar-accent-foreground: 220 13% 26%;
     --sidebar-border: 220 10% 90%;
-    --sidebar-ring: 220 13% 26%;
+    --sidebar-ring: 30 55% 40%;
 
     /* Metis custom tokens */
     --surface: 60 5% 98%;
-    --surface-hover: 220 10% 96%;
-    --text-primary: 220 10% 20%;
-    --text-secondary: 220 8% 46%;
-    --text-tertiary: 220 6% 62%;
-    --shadow-soft: 0 1px 3px 0 hsl(220 10% 20% / 0.04), 0 1px 2px -1px hsl(220 10% 20% / 0.04);
-    --shadow-medium: 0 4px 6px -1px hsl(220 10% 20% / 0.05), 0 2px 4px -2px hsl(220 10% 20% / 0.04);
-    --shadow-large: 0 10px 15px -3px hsl(220 10% 20% / 0.06), 0 4px 6px -4px hsl(220 10% 20% / 0.04);
-    --gradient-subtle: linear-gradient(135deg, hsl(220 10% 97%), hsl(200 10% 96%));
+    --surface-hover: 40 15% 94%;
+    --text-primary: 25 15% 13%;
+    --text-secondary: 25 8% 42%;
+    --text-tertiary: 25 6% 58%;
+    --shadow-soft: 0 1px 3px 0 hsl(30 20% 15% / 0.07), 0 1px 2px -1px hsl(30 20% 15% / 0.06);
+    --shadow-medium: 0 4px 6px -1px hsl(30 20% 15% / 0.08), 0 2px 4px -2px hsl(30 20% 15% / 0.06);
+    --shadow-large: 0 10px 25px -3px hsl(30 20% 15% / 0.10), 0 4px 6px -4px hsl(30 20% 15% / 0.06);
+    --gradient-subtle: linear-gradient(135deg, hsl(60 10% 97%), hsl(40 15% 95%));
+
+    /* Amber accent */
+    --amber: 30 55% 40%;
+    --amber-rich: 32 60% 36%;
+    --amber-soft: 35 70% 94%;
+    --amber-muted: 35 55% 88%;
+
+    /* Editorial tokens */
+    --ink: 25 15% 13%;
+    --parchment: 42 25% 91%;
   }
 
   .dark {
@@ -67,7 +77,7 @@
     --popover: 220 12% 13%;
     --popover-foreground: 220 8% 88%;
 
-    --primary: 220 8% 88%;
+    --primary: 35 65% 58%;
     --primary-foreground: 220 12% 10%;
 
     --secondary: 220 10% 18%;
@@ -84,25 +94,35 @@
 
     --border: 220 10% 20%;
     --input: 220 10% 20%;
-    --ring: 220 8% 70%;
+    --ring: 35 65% 58%;
 
     --sidebar-background: 220 12% 10%;
     --sidebar-foreground: 220 8% 80%;
-    --sidebar-primary: 220 8% 88%;
+    --sidebar-primary: 35 65% 58%;
     --sidebar-primary-foreground: 220 12% 10%;
     --sidebar-accent: 220 10% 16%;
     --sidebar-accent-foreground: 220 8% 80%;
     --sidebar-border: 220 10% 18%;
-    --sidebar-ring: 220 8% 70%;
+    --sidebar-ring: 35 65% 58%;
 
     --surface: 220 12% 12%;
     --surface-hover: 220 10% 16%;
-    --text-primary: 220 8% 88%;
-    --text-secondary: 220 8% 62%;
-    --text-tertiary: 220 6% 48%;
-    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.2);
-    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.25);
-    --shadow-large: 0 10px 15px -3px hsl(0 0% 0% / 0.3);
+    --text-primary: 40 15% 88%;
+    --text-secondary: 35 8% 62%;
+    --text-tertiary: 30 6% 48%;
+    --shadow-soft: 0 1px 3px 0 hsl(0 0% 0% / 0.25);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.32);
+    --shadow-large: 0 10px 25px -3px hsl(0 0% 0% / 0.38);
+
+    /* Amber accent — dark */
+    --amber: 35 65% 58%;
+    --amber-rich: 33 68% 52%;
+    --amber-soft: 35 30% 18%;
+    --amber-muted: 35 25% 22%;
+
+    /* Editorial tokens — dark */
+    --ink: 25 15% 13%;
+    --parchment: 220 12% 16%;
   }
 }
 
@@ -113,7 +133,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
 
@@ -121,6 +141,56 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .font-display {
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+  }
+
+  .text-amber {
+    color: hsl(var(--amber));
+  }
+
+  .bg-amber-soft {
+    background-color: hsl(var(--amber-soft));
+  }
+
+  .bg-amber-muted {
+    background-color: hsl(var(--amber-muted));
+  }
+
+  .label-whisper {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .display-hero {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-style: italic;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+}
+
+/* Blur-in: primary reveal animation replacing fade-in-up */
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(6px); transform: scale(0.98); }
+  to   { opacity: 1; filter: blur(0);   transform: scale(1); }
+}
+
+/* Scale-enter: for interactive elements */
+@keyframes scale-enter {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Reveal-line: decorative ink line draws in */
+@keyframes reveal-line {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
 }
 
 /* Subtle paper texture */
@@ -141,6 +211,18 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Drop cap — first letter of the opening assistant utterance */
+.metis-dropcap > p:first-of-type::first-letter {
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 4.25rem;
+  line-height: 0.82;
+  float: left;
+  padding: 0.15rem 0.55rem 0 0;
+  color: hsl(var(--amber));
 }
 
 /* Chat images: black & white, blend with background */
@@ -164,3 +246,27 @@
 .chat-latex .katex-display {
   margin: 0.75em 0;
 }
+
+/* Formula flourish — math pops in when it first lands in the DOM during reveal */
+@keyframes math-pop {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animated-dialogue .katex {
+  animation: math-pop 320ms ease-out both;
+  transform-origin: left center;
+  display: inline-block;
+}
+.animated-dialogue .katex-display {
+  animation: math-pop 320ms ease-out both;
+  transform-origin: center center;
+}
+
+/* Thinking dots animation */
+@keyframes thinking-dot {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40%           { opacity: 1;   transform: scale(1); }
+}
+.thinking-dot:nth-child(1) { animation: thinking-dot 1.2s ease-in-out infinite; }
+.thinking-dot:nth-child(2) { animation: thinking-dot 1.2s ease-in-out 0.2s infinite; }
+.thinking-dot:nth-child(3) { animation: thinking-dot 1.2s ease-in-out 0.4s infinite; }

@@ -1,0 +1,21 @@
+use std::sync::{Arc, Mutex};
+
+use serde::Deserialize;
+
+use crate::{
+    app::{book::Book, AppContext},
+    db::repo::{self, books::BooksRepo},
+    error::Result, service::handler::BoxFuture,
+};
+
+#[derive(Deserialize)]
+pub struct GetAllBooksParams;
+pub fn get_all_books(_: GetAllBooksParams, _context: &AppContext) -> BoxFuture {
+    Box::pin(async move {
+        let books: Vec<Book> = BooksRepo::list()?
+            .iter()
+            .map(|item| Book::new(item.id, item.title.clone(), item.toc.clone()))
+            .collect();
+        Ok(serde_json::to_value(books)?.into())
+    })
+}

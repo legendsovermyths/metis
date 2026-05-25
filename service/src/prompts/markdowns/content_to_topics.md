@@ -7,6 +7,7 @@ Rules:
 - Include main topics, sub-topics and sub-sub-topics that represent substantial, teachable ideas.
 - You can skip sub-sub-topics. If a topic is minor enough that it can be naturally covered while teaching a parent topic, it's usually better to leave it out — the professor will cover it organically during the lecture.
 - Aim for **roughly equal weight** across topics. Each topic in the list should carry enough content for a meaningful teaching segment. Avoid bloating the list with tiny, granular items that would leave some topics with 30 seconds of content and others with 20 minutes.
+- Ideally you should aim for 15-25 equally distributed topics in the chapter.
 - Preserve the conceptual order but output a flat list.
 - EXCLUDE headings that are purely administrative or non-teachable, such as:
   - "Problems", "Exercises", "Practice Problems", "Homework", "Exercises and Problems"

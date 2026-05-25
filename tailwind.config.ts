@@ -14,9 +14,18 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['Lora', 'Georgia', 'Times New Roman', 'serif'],
       },
       colors: {
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          rich: "hsl(var(--amber-rich))",
+          soft: "hsl(var(--amber-soft))",
+          muted: "hsl(var(--amber-muted))",
+        },
+        ink: "hsl(var(--ink))",
+        parchment: "hsl(var(--parchment))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -86,8 +95,8 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
         },
         "fade-in-up": {
           "0%": { opacity: "0", transform: "translateY(16px)" },
@@ -105,15 +114,30 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "blur-in": {
+          "0%": { opacity: "0", filter: "blur(6px)", transform: "scale(0.98)" },
+          "100%": { opacity: "1", filter: "blur(0)", transform: "scale(1)" },
+        },
+        "scale-enter": {
+          "0%": { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "reveal-line": {
+          "0%": { transform: "scaleX(0)" },
+          "100%": { transform: "scaleX(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.4s ease-out forwards",
+        "fade-in": "fade-in 0.3s ease-out forwards",
         "fade-in-up": "fade-in-up 0.5s ease-out forwards",
         "slide-up": "slide-up 0.3s ease-out forwards",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         shimmer: "shimmer 2s linear infinite",
+        "blur-in": "blur-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "scale-enter": "scale-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "reveal-line": "reveal-line 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
     },
   },

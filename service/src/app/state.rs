@@ -11,6 +11,12 @@ pub enum MetisPhase {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct TeachingState {
-    pub artifacts: Persistent<JourneyArtifacts>,
+pub struct TeachingContext {
+    pub artifacts: Option<Persistent<JourneyArtifacts>>,
+}
+
+impl TeachingContext {
+    pub fn new() -> Self {
+        Self { artifacts: None }
+    }
 }

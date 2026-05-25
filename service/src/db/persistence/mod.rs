@@ -1,22 +1,22 @@
-pub mod gaurd;
+pub mod guard;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{db::persistence::gaurd::PersistentGuard, error::Result};
+use crate::{db::persistence::guard::PersistentGuard, error::Result};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Persistent<T: DbObject> {
     data: T,
 }
 
-impl<T: DbObject> Persistent<T> {
+impl<T: DbObject + Send + Sync> Persistent<T> {
     pub fn write(&mut self) -> PersistentGuard<'_, T> {
         PersistentGuard {
             inner: &mut self.data,
         }
     }
-    
-    pub fn read(&self)->&T{
+
+    pub fn read(&self) -> &T {
         &self.data
     }
 

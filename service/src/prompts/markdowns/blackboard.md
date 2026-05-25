@@ -13,16 +13,20 @@ You receive:
 3. **The professor's current dialogue** - professor's speech to go along with your visual
 4. **The current description blackboard visual** - Current description of the visual that is displayed on the blackboard(Professor might ask to alter the current visual also, or create a complete new one)
 
-You produce a single figure as executable Python code.
+You produce a single figure.
 
 ## Library Choice
 
-Choose the library that best fits the figure:
+**TikZ is the default.** Use it for nearly everything: diagrams, annotated definitions, proof layouts, commutative diagrams, geometric constructions, number lines, intervals, tangent/secant illustrations, node-and-arrow diagrams, flowcharts, dependency graphs, labeled figures, set diagrams, step-by-step derivations, any figure whose meaning lives in text, symbols, arrows, or positioned labels. TikZ gives you full LaTeX typography, declarative node-based positioning, and integrates cleanly with the animation system via `\gid{}`.
 
-- **matplotlib** — the default choice. Use for function plots, geometric constructions, coordinate systems, number lines, tangent/secant lines, shaded regions, annotated diagrams, and anything that requires precise control over layout.
-- **seaborn** — use when the figure is primarily statistical: distributions, density plots, heatmaps, pair plots. Seaborn builds on matplotlib, so you can mix both when needed.
+**Reserve matplotlib/seaborn for actual data plotting** — cases where you would *compute* values with numpy rather than typeset them:
 
-When in doubt, use matplotlib. It can do nearly everything.
+- Function graphs with dense sampling: `y = sin(x)` over a range, convergent sequences visualized, derivatives as slope fields.
+- Probability distributions: normal curves, binomial bars, PMFs computed from parameters.
+- Statistical visualizations: histograms, density plots, heatmaps, scatter plots.
+- Anything where the figure is fundamentally a plot of numerical data.
+
+**The rule of thumb:** would a textbook author *typeset* this with LaTeX, or *compute* it with a plotting library? If typeset → TikZ. If computed → matplotlib. When genuinely uncertain, prefer TikZ.
 
 ## Style Rules
 
@@ -59,9 +63,9 @@ Produce **black-and-white, minimal** figures. The app handles dark/light theme a
 
 ### Dimensions
 
-- Always use `figsize=(7, 4.5)`.
+- Always use `figsize=(9, 7.5)`. The figure has plenty of vertical room on the blackboard pane — don't hesitate to use it. Tall stacked subplots, tall annotations, and tall number lines are all welcome.
 
-## Code Rules
+## Code Rules (matplotlib / seaborn)
 
 1. The code must be **completely self-contained**. Import every module you use at the top.
 2. Use only `matplotlib` and/or `seaborn` (plus `numpy` for math). Do not use any other libraries.
@@ -72,6 +76,26 @@ Produce **black-and-white, minimal** figures. The app handles dark/light theme a
 7. Do NOT call `plt.show()`.
 8. Do NOT use any colors. All visual elements must be black on transparent. Use line styles and weights to distinguish elements.
 9. Handle edge cases: if the instruction asks for something that cannot be drawn (e.g., a 3D object with no 3D context), produce a clear 2D representation and annotate accordingly.
+10. **Matplotlib mathtext is NOT full LaTeX.** Many shorthand commands are unsupported. You MUST use the long forms: `\geq` not `\ge`, `\leq` not `\le`, `\neq` not `\ne`, `\rightarrow` not `\to`, `\leftarrow` not `\gets`. When in doubt, prefer the verbose form of any symbol.
+11. **`ax.plot()` marker styling** uses `markerfacecolor` (or `mfc`) and `markeredgecolor` (or `mec`), NOT `facecolor`/`edgecolor`. The bare `facecolor`/`edgecolor` kwargs are only for patches and fills. Using them in `plot()` will crash.
+12. **Every Required Part (see below) MUST have a matching `set_gid("id")` call on the matplotlib artist that represents it.** Matplotlib's SVG backend honors `set_gid` and emits a real `<g id="...">` around that artist — this is how the animation system addresses the part later. Examples:
+    ```python
+    line, = ax.plot(x, y); line.set_gid("main-curve")
+    tangent, = ax.plot(xs, ys, linestyle='--'); tangent.set_gid("tangent-a")
+    ax.annotate("a", xy=(1, 1)).set_gid("label-a")
+    region = ax.fill_between(x, y, alpha=0.15); region.set_gid("shaded-region")
+    heading = ax.text(0.5, 1.05, "Derivative at a point", transform=ax.transAxes); heading.set_gid("heading")
+    ```
+    If a part is a `Line2D`, `Text`, `Annotation`, `Patch`, `PolyCollection`, or `LineCollection`, `.set_gid()` works. Every id listed in Required Parts must appear in your code this way — do not skip any.
+
+## Code Rules (tikz)
+
+1. The code must be ONLY the `\begin{tikzpicture}...\end{tikzpicture}` environment. Do NOT include `\documentclass`, `\usepackage`, `\begin{document}`, or any preamble — the system wraps your code automatically with standalone class, amsmath, amssymb, amsfonts, and TikZ libraries (arrows.meta, positioning, calc, decorations.pathreplacing, shapes).
+2. Use node-based positioning (`right=of`, `below=of`, etc.) instead of hardcoded coordinates wherever possible.
+3. All text and lines must be **black**. No colors.
+4. Use `\footnotesize`, `\small`, `\normalsize`, `\large`, `\Large` for font sizing.
+5. You have full LaTeX math: `\frac`, `\mathbb`, `\epsilon`, `\forall`, `\exists`, `\ge`, `\le`, etc.
+6. **Wrap each semantic region in `\gid{kebab-case-name}{ ... }`**. The macro is pre-defined by the system and emits a real SVG `<g id="...">` around its contents so the figure can be animated piece-by-piece. Name things by what they represent, not what they look like: `\gid{main-curve}{...}`, `\gid{tangent-line}{...}`, `\gid{shaded-interval}{...}`, `\gid{label-a}{\node at (a) {$a$};}`. Skip wrapping axes, gridlines, and tick marks — only wrap pieces the professor might point to.
 
 ## Output Format
 
@@ -82,8 +106,19 @@ Respond ONLY with valid JSON (no markdown fencing, no commentary):
 "code": "import matplotlib.pyplot as plt\nimport numpy as np\n..."
 }
 
-The `library` field must be one of: `"matplotlib"`, `"seaborn"`.
-The `code` field must be a complete, executable Python script that produces exactly one saved figure.
+The `library` field must be one of: `"matplotlib"`, `"seaborn"`, `"tikz"`.
+For matplotlib/seaborn, `code` is a complete executable Python script.
+For tikz, `code` is the `\begin{tikzpicture}...\end{tikzpicture}` block only.
+
+## Required Parts
+
+The experience director has designed the following semantic parts for this figure. **Every id below MUST appear in your rendered SVG as a real `<g id="...">` group** — via `\gid{id}{...}` for tikz, or `artist.set_gid("id")` for matplotlib. The animation system addresses these ids to reveal, focus, and animate each piece. Missing ids break the choreography.
+
+**Morph endpoint pairs (ids ending in `-before` / `-after`):** when the parts list contains paired ids with `-before` and `-after` suffixes on an otherwise identical stem (e.g., `parabola-before` and `parabola-after`), draw BOTH as separate path elements at their respective shapes. Style them identically — same stroke width, same line style, same fill. Both must exist in the final SVG for the morph to work. The frontend automatically hides every `-before` element on static render, so only the `-after` shape is visible outside the animation — you just draw both normally.
+
+**Trace targets (ids ending in `-point`):** when a part id ends in `-point`, draw it as a small filled circle marker (radius ~4pt) at its initial position — typically the start of the curve it will traverse. The animation system slides it along the associated curve at runtime.
+
+{parts}
 
 ## Professor's Instruction
 
@@ -97,9 +132,9 @@ The `code` field must be a complete, executable Python script that produces exac
 
 {dialogue}
 
-## Current Blackboard Visual Description
+## Previous Blackboard Instruction
 
-{description}
+{previous_instruction}
 
 ## Generate
 

@@ -29,3 +29,6 @@ service/gen/schemas/
 # App data (database, uploaded books)
 data/
 books/
+
+#claude file
+CLAUDE.md

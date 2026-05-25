@@ -6,7 +6,7 @@ use std::{
 use crate::{
     constants::GEMINI_BASE_URL,
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client, llm_client::{LLMClient, LLMResponse}}, logs::Event,
+    llm_client::{llm_client::{LLMClient, LLMResponse}}, logs::Event,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -199,5 +199,8 @@ impl LLMClient for GeminiClient {
     }
     fn set_system_prompt(&mut self, prompt: String) {
         self.system_prompt = prompt;
+    }
+    fn set_json_mode(&mut self, enabled: bool) {
+        self.json_mode = enabled;
     }
 }

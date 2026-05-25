@@ -8,5 +8,8 @@ CREATE TABLE IF NOT EXISTS dialogues (
     blackboard_json TEXT    NOT NULL DEFAULT '{"description":"","image_url":null}',
     heading         TEXT    NOT NULL DEFAULT '',
     marked_complete INTEGER NOT NULL DEFAULT 0,
+    visible         INTEGER NOT NULL DEFAULT 1,
+    segments_json   TEXT,
+    elements_json   TEXT,
     UNIQUE(journey_id, arc_idx, topic_idx, idx)
 );

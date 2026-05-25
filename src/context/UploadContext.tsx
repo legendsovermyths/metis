@@ -3,11 +3,12 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
+  useMemo,
   useState,
 } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { analyseBook, getAllBooks, type BackendBook } from "@/lib/service";
+import { useTasks } from "@/context/TasksContext";
 
 export interface PendingUpload {
   tempId: string;
@@ -24,12 +25,15 @@ interface UploadContextValue {
 
 const UploadContext = createContext<UploadContextValue | null>(null);
 
+function filenameFromPath(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path;
+}
+
 export function BookUploadProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<BackendBook[]>([]);
   const [booksLoading, setBooksLoading] = useState(true);
   const [booksError, setBooksError] = useState<string | null>(null);
-  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
-  const nextId = useRef(0);
+  const { byType, onTaskDone } = useTasks();
 
   const fetchBooks = useCallback((silent = false) => {
     if (!silent) setBooksLoading(true);
@@ -40,8 +44,17 @@ export function BookUploadProvider({ children }: { children: React.ReactNode }) 
       .finally(() => setBooksLoading(false));
   }, []);
 
-  // Fetch once on mount
-  useEffect(() => { fetchBooks(false); }, [fetchBooks]);
+  useEffect(() => {
+    fetchBooks(false);
+  }, [fetchBooks]);
+
+  // Refresh book list whenever any task completes — cheap, and the only task
+  // that affects books is analyse_book.
+  useEffect(() => {
+    return onTaskDone(() => {
+      fetchBooks(true);
+    });
+  }, [onTaskDone, fetchBooks]);
 
   const pickAndUpload = useCallback(async () => {
     const selected = await open({
@@ -49,21 +62,25 @@ export function BookUploadProvider({ children }: { children: React.ReactNode }) 
       filters: [{ name: "PDF", extensions: ["pdf"] }],
     });
     if (!selected) return;
-
     const path = selected as string;
-    const filename = path.split(/[/\\]/).pop() ?? path;
-    const tempId = `upload-${nextId.current++}`;
+    try {
+      await analyseBook(path);
+    } catch (err) {
+      console.error("[upload] failed to spawn task:", err);
+    }
+  }, []);
 
-    setPendingUploads((prev) => [...prev, { tempId, filename }]);
-
-    analyseBook(path)
-      .then(() => fetchBooks(true))
-      .catch((err: unknown) => console.error("[upload] failed:", err))
-      .finally(() => setPendingUploads((prev) => prev.filter((u) => u.tempId !== tempId)));
-  }, [fetchBooks]);
+  const pendingUploads = useMemo<PendingUpload[]>(() => {
+    return byType("analyse_book").map((task) => {
+      const path = typeof task.params.path === "string" ? task.params.path : "";
+      return { tempId: task.id, filename: filenameFromPath(path) };
+    });
+  }, [byType]);
 
   return (
-    <UploadContext.Provider value={{ books, booksLoading, booksError, pendingUploads, pickAndUpload }}>
+    <UploadContext.Provider
+      value={{ books, booksLoading, booksError, pendingUploads, pickAndUpload }}
+    >
       {children}
     </UploadContext.Provider>
   );
