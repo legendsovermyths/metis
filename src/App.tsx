@@ -34,8 +34,9 @@ function AppLayout() {
   const isAssessmentPage =
     /\/journeys\/[^/]+\/arc\/[^/]+\/(quiz|complete)$/.test(location.pathname) ||
     /\/journeys\/[^/]+\/practice(\/[^/]+)?$/.test(location.pathname);
+  const isHomePage = location.pathname === "/";
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
-  const showNav = onboarded && !isChatPage && !isTeachPage && !isAssessmentPage;
+  const showNav = onboarded && !isHomePage && !isChatPage && !isTeachPage && !isAssessmentPage;
 
   if (loading) {
     return (

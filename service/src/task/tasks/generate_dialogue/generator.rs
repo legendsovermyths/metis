@@ -8,6 +8,7 @@ use crate::{
     error::{MetisError, Result},
     task::tasks::generate_dialogue::{
         curator::{Curator, CuratorRequest},
+        enhancer::{EnhancementResult, Enhancer, EnhancerRequest},
         illustrator::{IllustrationRequest, IllustrationResult, Illustrator},
         narrator::{NarrateRequest, Narrator, NarratorOutput},
         GenerationParams,
@@ -19,11 +20,12 @@ pub struct DialgoueGenerator {
     narrator: Narrator,
     curator: Curator,
     illustrator: Illustrator,
+    enhancer: Enhancer,
 }
 
 impl DialgoueGenerator {
     pub fn new()->Self{
-       DialgoueGenerator { narrator: Narrator::new(), curator: Curator::new(), illustrator: Illustrator::new() } 
+       DialgoueGenerator { narrator: Narrator::new(), curator: Curator::new(), illustrator: Illustrator::new(), enhancer: Enhancer::new() }
     }
     pub async fn generate(&mut self, request: &GenerationParams) -> Result<Dialogue> {
         let recent_dialogues =
@@ -82,18 +84,55 @@ impl DialgoueGenerator {
             )
             .await?;
 
+        let enhanced = self
+            .enhance(
+                illustration,
+                curated.parts,
+                curated.segments,
+                &curated.dialogue,
+                instruction,
+                &topic.name,
+                &artifacts.chapter_dir,
+            )
+            .await?;
+
         let (final_parts, final_segments) =
-            self.finalize_parts_and_segments(curated.parts, curated.segments, &illustration.blackboard);
+            self.finalize_parts_and_segments(enhanced.parts, enhanced.segments, &enhanced.blackboard);
 
         let dialogue = self.build_dialogue(
             &artifacts,
             curated.dialogue,
-            illustration.blackboard,
+            enhanced.blackboard,
             narration.topic_complete,
             final_segments,
             final_parts,
         )?;
         Ok(dialogue)
+    }
+
+    async fn enhance(
+        &mut self,
+        illustration: IllustrationResult,
+        parts: Vec<ElementDescriptor>,
+        segments: Vec<Segment>,
+        dialogue: &str,
+        instruction: &str,
+        topic: &str,
+        chapter_dir: &str,
+    ) -> Result<EnhancementResult> {
+        self.enhancer
+            .enhance(EnhancerRequest {
+                source_code: illustration.source_code.as_deref(),
+                library: illustration.library.as_deref(),
+                fallback_blackboard: illustration.blackboard,
+                parts,
+                segments,
+                dialogue,
+                instruction,
+                topic,
+                chapter_dir,
+            })
+            .await
     }
 
     fn build_dialogue(
@@ -120,6 +159,7 @@ impl DialgoueGenerator {
         };
 
         Ok(Dialogue {
+            id: None,
             journey_id: progress.journey_id,
             arc_idx: progress.arc_idx,
             topic_idx: progress.topic_idx,

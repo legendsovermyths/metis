@@ -18,15 +18,16 @@ pub struct JourneyRow {
     pub journey: Journey,
     pub created_at: i64,
     pub advisor_notes: String,
+    pub tutor_notes: String,
     pub completed_topics: usize,
     pub total_topics: usize,
 }
 
 pub struct JourneysRepo;
 
-fn build_row(id: i64, chapter_title: String, chapter_dir: String, journey: Journey, created_at: i64, advisor_notes: String, completed_topics: usize) -> JourneyRow {
+fn build_row(id: i64, chapter_title: String, chapter_dir: String, journey: Journey, created_at: i64, advisor_notes: String, tutor_notes: String, completed_topics: usize) -> JourneyRow {
     let total_topics = journey.arcs.iter().map(|a| a.topics.len()).sum();
-    JourneyRow { id, chapter_title, chapter_dir, journey, created_at, advisor_notes, completed_topics, total_topics }
+    JourneyRow { id, chapter_title, chapter_dir, journey, created_at, advisor_notes, tutor_notes, completed_topics, total_topics }
 }
 
 impl JourneysRepo {
@@ -52,7 +53,7 @@ impl JourneysRepo {
     pub fn get(id: i64) -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
@@ -71,7 +72,8 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             )))
         } else {
             Ok(None)
@@ -88,7 +90,7 @@ impl JourneysRepo {
     pub fn get_latest() -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
@@ -107,7 +109,8 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             )))
         } else {
             Ok(None)
@@ -117,7 +120,7 @@ impl JourneysRepo {
     pub fn get_all() -> Result<Vec<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
@@ -137,7 +140,8 @@ impl JourneysRepo {
                 serde_json::from_str(&row.get::<_, String>(3)?)?,
                 row.get(4)?,
                 row.get(5)?,
-                row.get::<_, i64>(6)? as usize,
+                row.get(6)?,
+                row.get::<_, i64>(7)? as usize,
             ));
         }
         Ok(out)
@@ -154,7 +158,8 @@ impl JourneysRepo {
          SET chapter_title = ?2,
              chapter_dir   = ?3,
              journey_json  = ?4,
-             advisor_notes = ?5
+             advisor_notes = ?5,
+             tutor_notes   = ?6
          WHERE id = ?1",
             rusqlite::params![
                 id,
@@ -162,6 +167,7 @@ impl JourneysRepo {
                 artifacts.chapter_dir,
                 journey_json,
                 artifacts.advisor_notes,
+                artifacts.tutor_notes,
             ],
         )?;
         if rows_affected == 0 {
@@ -215,8 +221,18 @@ impl JourneysRepo {
             chapter_dir: row.chapter_dir,
             journey: row.journey,
             advisor_notes: row.advisor_notes,
+            tutor_notes: row.tutor_notes,
             progress,
         }))
     }
-}
 
+    pub fn delete_single(id: i64) -> Result<()> {
+        DialoguesRepo::delete_all_for_journey(id)?;
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM journeys WHERE id = ?1",
+            rusqlite::params![id],
+        )?;
+        Ok(())
+    }
+}

@@ -5,7 +5,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 
 use crate::{
-    agent::{advisor::Advisor, onboarder::Onboarder, Agent},
+    agent::{advisor::Advisor, onboarder::Onboarder, tutor::Tutor, Agent},
     app::{state::MetisPhase, AppContext},
     error::{MetisError, Result},
 };
@@ -34,6 +34,10 @@ impl<'a> AgentHandler<'a> {
         agents.insert(
             MetisPhase::Idle,
             Mutex::new(Box::new(Advisor::new(context))),
+        );
+        agents.insert(
+            MetisPhase::Teaching,
+            Mutex::new(Box::new(Tutor::new(context))),
         );
         Self { agents, context }
     }

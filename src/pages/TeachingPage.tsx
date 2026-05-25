@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Hand, X } from "lucide-react";
-
-const GLYPHS = ["∑", "∂", "λ", "∫", "⊥", "∇", "Θ", "◈", "◇", "ψ"] as const;
+import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
+import { ArrowLeft, Hand, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
+import { GLYPHS, toRoman } from "@/lib/editorial";
 import {
   getAllDialogues,
   getNextDialogue,
+  sendMessage,
+  setDialogue,
   type Dialogue,
   type ElementDescriptor,
   type Segment,
@@ -474,19 +475,24 @@ export default function TeachingPage() {
   type Exchange = { question: string; answer: string };
   const [isAsking, setIsAsking] = useState(false);
   const [question, setQuestion] = useState("");
-  const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const exchangesEndRef = useRef<HTMLDivElement>(null);
 
-  const mockAnswers = useMemo(
-    () => [
-      "Good question — and actually a subtle one. When we shrink the interval toward zero, we're not dividing by zero; we're asking what the ratio *approaches*. That distinction is the whole point of the limit. 'At zero' is undefined, but 'arbitrarily close to zero' has a perfectly well-defined answer. Hold onto that feeling — it's the same move we'll use over and over.",
-      "Right, so the wobble matters because within any finite interval the speed can genuinely vary. The trick isn't to eliminate the wobble — it's to make the interval small enough that the wobble becomes *irrelevant*. That's why we take the limit rather than just 'pick a small number.'",
-      "Yes, exactly — you're putting your finger on why calculus was controversial for two centuries. Newton and Leibniz were a bit hand-wavy about this. It took Cauchy and Weierstrass to make it rigorous. But the intuition you have now is the same one they had; you're just catching up to the formalism.",
-    ],
-    []
-  );
+  const exchanges = useMemo<Exchange[]>(() => {
+    const events = context?.chat.event_history.events ?? [];
+    const result: Exchange[] = [];
+    let pendingQ: string | null = null;
+    for (const ev of events) {
+      if (ev.event_type === "UserMessage") {
+        pendingQ = ev.content;
+      } else if (ev.event_type === "LlmMessage" && pendingQ != null) {
+        result.push({ question: pendingQ, answer: ev.content });
+        pendingQ = null;
+      }
+    }
+    return result;
+  }, [context?.chat.event_history.events]);
 
   const openAside = useCallback(() => {
     setIsAsking(true);
@@ -497,7 +503,6 @@ export default function TeachingPage() {
     setIsAsking(false);
     setTimeout(() => {
       setQuestion("");
-      setExchanges([]);
       setPendingQuestion(null);
     }, 200);
   }, [isThinking]);
@@ -509,14 +514,15 @@ export default function TeachingPage() {
     setPendingQuestion(q);
     setQuestion("");
     setIsThinking(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    setExchanges((prev) => {
-      const answer = mockAnswers[prev.length % mockAnswers.length];
-      return [...prev, { question: q, answer }];
-    });
-    setPendingQuestion(null);
-    setIsThinking(false);
-  }, [question, isThinking, mockAnswers]);
+    try {
+      await sendMessage(q);
+    } catch {
+      // Error already surfaced via toast by callBackend.
+    } finally {
+      setPendingQuestion(null);
+      setIsThinking(false);
+    }
+  }, [question, isThinking]);
 
   useEffect(() => {
     if (isAsking) {
@@ -601,6 +607,12 @@ export default function TeachingPage() {
       setPageIndex(allDialogues.length - 1);
     }
   }, [allDialogues.length]);
+
+  const selectedDialogueId = allDialogues[pageIndex]?.id ?? null;
+  useEffect(() => {
+    if (selectedDialogueId == null) return;
+    void setDialogue(selectedDialogueId);
+  }, [selectedDialogueId]);
 
   const segIdx = reveal?.segmentIndex ?? -1;
   const segsRef = reveal?.segments;
@@ -740,7 +752,7 @@ export default function TeachingPage() {
   if (!ts || !artifacts || !journey) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 paper-texture px-6">
-        <p className="text-muted-foreground">No active teaching session.</p>
+        <p className="text-text-tertiary">No active teaching session.</p>
         <Link
           to="/journeys"
           className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
@@ -755,10 +767,14 @@ export default function TeachingPage() {
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
   const currentDialogue: Dialogue | undefined = allDialogues[pageIndex];
-  const displayHeading = currentDialogue?.heading || currentArc?.topics[0]?.name || "Starting...";
+  const displayHeading = currentDialogue?.heading || currentArc?.topics[0]?.name || "A passage waits…";
   const displayArc = currentDialogue
     ? journey.arcs[currentDialogue.arc_idx]?.arc_title
     : currentArc?.arc_title;
+  // Drop cap on the opening passage of each arc — same flourish as the first Metis utterance in chat.
+  const isFirstOfArc = currentDialogue
+    ? allDialogues.findIndex((d) => d.arc_idx === currentDialogue.arc_idx) === pageIndex
+    : false;
 
   return (
     <div
@@ -768,19 +784,19 @@ export default function TeachingPage() {
       )}
     >
       {/* Top bar */}
-      <div className="sticky top-0 z-50 border-b border-border/30 bg-card/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-50 border-b border-border/20 bg-background/60 backdrop-blur-xl">
         <div className="relative flex items-center justify-between px-4 py-3">
           <Link
             to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-text-tertiary hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-xs font-medium hidden sm:inline">Back</span>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span className="label-whisper hidden sm:inline">Back to the Course</span>
           </Link>
 
           {/* Arc · Topic context — replaces generic "Teaching" badge */}
           {(displayArc || displayHeading) && (
-            <p className="pointer-events-none absolute left-1/2 -translate-x-1/2 max-w-[42%] truncate font-display text-sm italic text-muted-foreground/80">
+            <p className="pointer-events-none absolute left-1/2 -translate-x-1/2 max-w-[42%] truncate font-display text-sm italic text-text-tertiary/80">
               {displayArc && displayHeading
                 ? `${displayArc} · ${displayHeading}`
                 : displayArc || displayHeading}
@@ -788,7 +804,7 @@ export default function TeachingPage() {
           )}
 
           {/* Placeholder to balance flex */}
-          <div className="w-16" />
+          <div className="w-24" />
         </div>
 
         {/* Segmented arc progress */}
@@ -849,9 +865,9 @@ export default function TeachingPage() {
             {/* Board pane — only shown when a blackboard image exists */}
             {hasBoard && (
               <div
-                className="relative lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border/30 flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden bg-background"
+                className="relative lg:w-[55%] border-b lg:border-b-0 lg:border-r border-border/20 flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden bg-background"
               >
-                <div key={currentImageUrl!} className="w-full h-full animate-fade-in">
+                <div key={currentImageUrl!} className="w-full h-full animate-blur-in">
                   {isRevealing && reveal ? (
                     <AnimatedBlackboard
                       svgUrl={currentImageUrl!}
@@ -882,48 +898,70 @@ export default function TeachingPage() {
             )}
 
             {/* Dialogue pane — expands to full width when no board */}
-            <div ref={dialogueScrollRef} className={cn("overflow-y-auto", hasBoard ? "flex-1 lg:w-1/2" : "flex-1")}>
+            <div ref={dialogueScrollRef} className={cn("overflow-y-auto", hasBoard ? "flex-1 lg:w-[45%] lg:border-l lg:border-border/20" : "flex-1")}>
               <div className={cn("mx-auto px-6 py-10 md:px-8", hasBoard ? "max-w-2xl" : "max-w-2xl lg:max-w-3xl")}>
-                <header className="mb-10 animate-fade-in">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/50 mb-2">
+                <header className="relative mb-10 animate-blur-in">
+                  <p className="label-whisper text-text-tertiary mb-3">
                     {displayArc}
                   </p>
-                  <h1 className="font-display text-2xl italic tracking-tight text-foreground md:text-3xl">
+                  <h1 className="display-hero text-2xl text-foreground md:text-3xl mb-0">
                     {displayHeading}
                   </h1>
+                  <div
+                    className="h-px w-12 mt-5 animate-reveal-line"
+                    style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "left" }}
+                  />
+                  {/* Folio — bibliographic page number in the corner */}
+                  {!hasNoPages && totalPages > 0 && (
+                    <span className="label-whisper text-text-tertiary absolute top-0 right-0 tabular-nums">
+                      fol. {toRoman(pageIndex + 1).toLowerCase()}
+                    </span>
+                  )}
                 </header>
 
                 {hasNoPages && !isLoading && (
-                  <div className="text-center py-20 animate-fade-in">
-                    <p className="text-sm text-muted-foreground mb-6">
-                      Ready to begin. Press <span className="font-medium text-foreground">Begin</span> to
-                      start the lecture.
+                  <div className="py-20 animate-blur-in">
+                    <p className="font-display italic text-base text-foreground/70 leading-relaxed max-w-md">
+                      Ready when you are — the first passage waits to be opened.
                     </p>
                   </div>
                 )}
 
                 {!hasNoPages && (
-                  <div key={pageIndex} className="animate-fade-in">
+                  <div key={pageIndex} className="animate-blur-in">
                     {isRevealing && reveal ? (
-                      <div className="space-y-5">
+                      <div className="space-y-6">
                         {reveal.segments.slice(0, reveal.segmentIndex + 1).map((seg, i) => {
                           const isCurrent = i === reveal.segmentIndex;
                           const text = isCurrent ? safeTypedSlice(seg.text, reveal.typedLen) : seg.text;
                           return (
-                            <article
-                              key={i}
-                              className={cn(proseClasses, "animated-dialogue transition-opacity duration-500")}
-                              style={{ opacity: isSettled || isCurrent ? 1 : 0.4 }}
-                            >
-                              <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                {preprocessMath(text)}
-                              </ReactMarkdown>
-                            </article>
+                            <Fragment key={i}>
+                              {i > 0 && (
+                                <div
+                                  className="flex justify-center select-none text-text-tertiary/35 font-display"
+                                  aria-hidden
+                                >
+                                  <span style={{ letterSpacing: "0.4em", paddingLeft: "0.4em" }}>⁂</span>
+                                </div>
+                              )}
+                              <article
+                                className={cn(
+                                  proseClasses,
+                                  "animated-dialogue transition-opacity duration-500",
+                                  isFirstOfArc && i === 0 && "metis-dropcap",
+                                )}
+                                style={{ opacity: isSettled || isCurrent ? 1 : 0.4 }}
+                              >
+                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                  {preprocessMath(text)}
+                                </ReactMarkdown>
+                              </article>
+                            </Fragment>
                           );
                         })}
                       </div>
                     ) : (
-                      <article className={proseClasses}>
+                      <article className={cn(proseClasses, isFirstOfArc && "metis-dropcap")}>
                         <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                           {preprocessMath(currentDialogue?.content ?? "")}
                         </ReactMarkdown>
@@ -957,7 +995,7 @@ export default function TeachingPage() {
                 )}
 
                 {isLoading && (
-                  <div className="mt-8 flex items-center gap-1.5 animate-fade-in">
+                  <div className="mt-8 flex items-center gap-1.5 animate-blur-in">
                     <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
                     <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
                     <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
@@ -965,8 +1003,8 @@ export default function TeachingPage() {
                 )}
 
                 {waitingForNext && !isLoading && (
-                  <p className="mt-8 text-sm italic text-muted-foreground/45 animate-fade-in">
-                    Professor Metis is composing the next section…
+                  <p className="mt-8 font-display italic text-sm text-text-tertiary/55 animate-blur-in">
+                    Professor Metis is composing the next passage…
                   </p>
                 )}
 
@@ -977,19 +1015,20 @@ export default function TeachingPage() {
                 )}
 
                 {isJourneyComplete && isOnLastPage && (
-                  <div className="relative mt-16 flex flex-col items-center text-center py-20 overflow-hidden animate-fade-in">
+                  <div className="relative mt-16 flex flex-col items-center text-center py-20 overflow-hidden animate-blur-in">
                     <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display text-[14rem] italic leading-none text-foreground/[0.035]">
                       {GLYPHS[Math.abs(journeyId ?? 0) % GLYPHS.length]}
                     </span>
                     <p className="relative font-display text-3xl italic text-foreground mb-3">Journey complete.</p>
-                    <p className="relative text-sm text-muted-foreground/55 mb-12">
+                    <p className="relative text-sm text-text-tertiary/55 mb-12">
                       You've worked through all {totalTopics} topics.
                     </p>
                     <Link
                       to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
-                      className="relative text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
+                      className="group relative font-display italic text-sm text-text-tertiary transition-colors hover:text-foreground"
                     >
-                      ← Back to journeys
+                      <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+                      <span className="ml-1">back to the Course</span>
                     </Link>
                   </div>
                 )}
@@ -1002,47 +1041,49 @@ export default function TeachingPage() {
       {/* Floating raise hand button */}
       <button
         onClick={openAside}
-        className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card shadow-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 backdrop-blur-sm text-text-tertiary transition-colors hover:text-amber hover:border-amber/40"
         aria-label="Raise hand to ask a question"
       >
-        <Hand className="h-4 w-4" />
+        <Hand className="h-4 w-4" strokeWidth={1.5} />
       </button>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 border-t border-border/30 bg-card/80 backdrop-blur-xl px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
+      <div className="sticky bottom-0 border-t border-border/20 bg-background/60 backdrop-blur-xl px-4 py-3.5">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+          {/* Previous — italic text-link */}
+          <button
             onClick={handlePrev}
             disabled={pageIndex <= 0}
-            className="rounded-xl"
+            className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
           >
-            <ChevronLeft className="mr-1 h-4 w-4" />
-            Prev
-          </Button>
+            <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+            <span className="ml-1 hidden sm:inline">previous passage</span>
+          </button>
 
+          {/* Counter — italic Lora */}
           {totalPages > 0 && (
-            <span className="text-[10px] tabular-nums text-muted-foreground/50">
-              {pageIndex + 1} / {totalPages}
+            <span className="font-display italic text-xs text-text-tertiary tabular-nums">
+              passage {pageIndex + 1} of {totalPages}
             </span>
           )}
 
+          {/* Right side — Finish, primary CTA, or Next text-link */}
           {isJourneyComplete && isOnLastPage ? (
             <Button
-              size="sm"
               onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
-              className="rounded-xl shadow-soft"
+              variant="outline"
+              className="rounded-xl px-6 text-sm font-medium"
+              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
             >
               Finish
-              <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : isOnLastPage || hasNoPages ? (
             <Button
-              size="sm"
               onClick={handleNext}
               disabled={isLoading || waitingForNext}
-              className="rounded-xl shadow-soft"
+              variant="outline"
+              className="rounded-xl px-6 text-sm font-medium"
+              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
             >
               {isLoading ? (
                 <>
@@ -1051,7 +1092,7 @@ export default function TeachingPage() {
                     <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
                     <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
                   </span>
-                  Loading...
+                  Loading…
                 </>
               ) : waitingForNext ? (
                 <>
@@ -1060,56 +1101,45 @@ export default function TeachingPage() {
                     <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
                     <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
                   </span>
-                  Preparing...
+                  Preparing…
                 </>
               ) : hasNoPages ? (
-                <>
-                  Begin
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </>
+                "Begin"
               ) : (
-                <>
-                  Continue
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </>
+                "Continue"
               )}
             </Button>
           ) : (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => setPageIndex((p) => Math.min(p + 1, totalPages - 1))}
               disabled={pageIndex >= totalPages - 1}
-              className="rounded-xl"
+              className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
             >
-              Next
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
+              <span className="mr-1 hidden sm:inline">next passage</span>
+              <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+            </button>
           )}
         </div>
       </div>
 
       {isAsking && (
-        <aside className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[400px] flex-col border-l border-border bg-background animate-in slide-in-from-right duration-300 [animation-timing-function:cubic-bezier(0.22,1,0.36,1)]">
-          {/* Header — matches main topbar exactly (py-2 row + h-[2px] bar + border-b) */}
-          <div className="border-b border-border bg-card/80 backdrop-blur-xl">
-            <div className="flex items-center justify-between px-6 py-2">
-              <p
-                className="text-[10px] font-medium uppercase tracking-[0.15em]"
-                style={{ color: "hsl(var(--amber))" }}
-              >
+        <aside className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[400px] flex-col border-l border-border/40 bg-background animate-in slide-in-from-right duration-300 [animation-timing-function:cubic-bezier(0.22,1,0.36,1)]">
+          {/* Header — italic Lora label with a single amber hairline */}
+          <div className="border-b border-border/20 bg-background/60 backdrop-blur-xl">
+            <div className="flex items-center justify-between px-6 py-3">
+              <p className="font-display italic text-sm text-foreground">
                 Professor Metis pauses
               </p>
               <button
                 onClick={dismissAside}
                 disabled={isThinking}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:text-foreground disabled:opacity-30"
                 aria-label="Dismiss"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="h-[2px]" style={{ backgroundColor: "hsl(var(--amber))", opacity: 0.7 }} />
+            <div className="h-px" style={{ backgroundColor: "hsl(var(--amber) / 0.4)" }} />
           </div>
 
           {/* Exchanges */}
@@ -1119,7 +1149,7 @@ export default function TeachingPage() {
                 <p className="font-display text-2xl italic tracking-tight text-foreground mb-3">
                   What would you like to ask?
                 </p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-text-tertiary leading-relaxed">
                   The lecture stays beside you — refer to it as you write.
                 </p>
               </div>
@@ -1129,13 +1159,25 @@ export default function TeachingPage() {
               {exchanges.map((ex, i) => (
                 <div key={i}>
                   <p
-                    className="mb-5 pl-3 text-sm italic text-muted-foreground/70 border-l-2"
+                    className="mb-5 pl-3 text-sm italic text-text-tertiary/70 border-l-2"
                     style={{ borderColor: "hsl(var(--amber) / 0.45)" }}
                   >
                     {ex.question}
                   </p>
-                  <article className="font-display text-[17px] italic leading-[1.85] text-foreground/90">
-                    {ex.answer}
+                  <article
+                    className={cn(
+                      "prose prose-neutral dark:prose-invert max-w-none",
+                      "prose-p:font-display prose-p:italic prose-p:text-[17px] prose-p:leading-[1.85] prose-p:text-foreground/90",
+                      "prose-headings:font-display prose-headings:italic prose-headings:tracking-tight",
+                      "prose-strong:text-foreground prose-strong:font-semibold",
+                      "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
+                      "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto",
+                      "[&_.katex]:text-foreground",
+                    )}
+                  >
+                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                      {preprocessMath(ex.answer)}
+                    </ReactMarkdown>
                   </article>
                   {i < exchanges.length - 1 && (
                     <div className="mt-10 h-px bg-border/40" />
@@ -1146,7 +1188,7 @@ export default function TeachingPage() {
               {pendingQuestion && (
                 <div>
                   <p
-                    className="mb-5 pl-3 text-sm italic text-muted-foreground/70 border-l-2"
+                    className="mb-5 pl-3 text-sm italic text-text-tertiary/70 border-l-2"
                     style={{ borderColor: "hsl(var(--amber) / 0.45)" }}
                   >
                     {pendingQuestion}
@@ -1162,48 +1204,51 @@ export default function TeachingPage() {
             </div>
           </div>
 
-          {/* Input */}
-          <div className="border-t border-border/50 px-6 py-5 bg-surface/60">
+          {/* Input — hairline-bordered, italic placeholder */}
+          <div className="border-t border-border/30 px-6 py-5">
             <form onSubmit={handleAsk}>
-              <textarea
-                autoFocus
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    handleAsk(e as unknown as React.FormEvent);
+              <div className="border-b border-border/40 transition-colors focus-within:border-foreground/40">
+                <textarea
+                  autoFocus
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      handleAsk(e as unknown as React.FormEvent);
+                    }
+                  }}
+                  rows={exchanges.length === 0 ? 3 : 2}
+                  disabled={isThinking}
+                  className="w-full resize-none bg-transparent px-1 py-2 text-sm leading-relaxed text-foreground placeholder:text-text-tertiary placeholder:font-display placeholder:italic focus:outline-none disabled:opacity-50"
+                  placeholder={
+                    exchanges.length === 0
+                      ? "anything about what we just covered…"
+                      : "a follow-up…"
                   }
-                }}
-                rows={exchanges.length === 0 ? 3 : 2}
-                disabled={isThinking}
-                className="w-full resize-none rounded-xl border border-border bg-background p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/40 focus:border-border focus:outline-none disabled:opacity-50"
-                placeholder={
-                  exchanges.length === 0
-                    ? "Anything about what we just covered..."
-                    : "A follow-up..."
-                }
-              />
+                />
+              </div>
               <div className="mt-3 flex items-center justify-between">
                 {exchanges.length > 0 ? (
                   <button
                     type="button"
                     onClick={dismissAside}
                     disabled={isThinking}
-                    className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                    className="group font-display italic text-sm text-text-tertiary transition-colors hover:text-foreground disabled:opacity-30 disabled:hover:text-text-tertiary"
                   >
-                    Back to lecture
+                    <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+                    <span className="ml-1">back to the lecture</span>
                   </button>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground/50">⌘↵ to ask</span>
+                  <span className="label-whisper text-text-tertiary">⌘↵ to ask</span>
                 )}
-                <Button
+                <button
                   type="submit"
-                  size="sm"
                   disabled={!question.trim() || isThinking}
-                  className="rounded-xl"
+                  className="group font-display italic text-sm text-text-tertiary hover:text-amber transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
                 >
-                  Ask
-                </Button>
+                  ask
+                  <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+                </button>
               </div>
             </form>
           </div>

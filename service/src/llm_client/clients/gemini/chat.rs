@@ -221,6 +221,36 @@ impl<'a> GeminiChat<'a> {
             return Ok(LLMResponse::from(""));
         }
     }
+
+    fn rebuild_contents_from_history(&mut self) {
+        let mut contents: Vec<Value> = Vec::new();
+        for event in &self.event_history.events {
+            match event.event_type {
+                EventType::UserMessage | EventType::UserRequest => {
+                    contents.push(json!({"role": "user", "parts": [{"text": event.content}]}));
+                }
+                EventType::LlmMessage => {
+                    contents.push(json!({"role": "model", "parts": [{"text": event.content}]}));
+                }
+                EventType::FunctionCall => {
+                    let args: Value = serde_json::from_str(&event.content).unwrap_or(json!({}));
+                    contents.push(json!({
+                        "role": "model",
+                        "parts": [{"functionCall": {"name": event.name, "args": args}}]
+                    }));
+                }
+                EventType::FunctionResponse => {
+                    let response: Value =
+                        serde_json::from_str(&event.content).unwrap_or(json!(event.content));
+                    contents.push(json!({
+                        "role": "user",
+                        "parts": [{"functionResponse": {"name": event.name, "response": response}}]
+                    }));
+                }
+            }
+        }
+        self.contents = contents;
+    }
 }
 
 #[async_trait]
@@ -241,5 +271,10 @@ impl<'a> LLMChatClient for GeminiChat<'a> {
 
     fn get_event_history(&self) -> EventHistory {
         self.event_history.clone()
+    }
+
+    fn set_event_history(&mut self, history: EventHistory) {
+        self.event_history = history;
+        self.rebuild_contents_from_history();
     }
 }

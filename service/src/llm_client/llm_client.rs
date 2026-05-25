@@ -15,6 +15,7 @@ pub trait LLMChatClient: Send + Sync {
     fn set_system_prompt(&mut self, prompt: String);
     fn add_tool(&mut self, tool: Box<dyn Tool>);
     fn get_event_history(&self)->EventHistory;
+    fn set_event_history(&mut self, history: EventHistory);
 }
 
 pub struct LLMResponse {

@@ -11,7 +11,7 @@ use crate::{
 
 pub struct LLMClientFactory;
 
-const FLASH: &str = "gemini-3-flash-preview";
+const FLASH: &str = "gemini-3.5-flash";
 const PRO: &str = "gemini-3.1-pro-preview";
 const CLAUDE_OPUS: &str = "us.anthropic.claude-opus-4-6-v1";
 

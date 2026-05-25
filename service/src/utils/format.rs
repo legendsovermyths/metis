@@ -1,3 +1,8 @@
+/// Round to one decimal place.
+pub fn round1(v: f64) -> f64 {
+    (v * 10.0).round() / 10.0
+}
+
 /// Fix invalid JSON escape sequences produced by LLMs.
 /// In JSON, only `\"`, `\\`, `\/`, `\b`, `\f`, `\n`, `\r`, `\t`, `\uXXXX` are valid.
 /// LLMs often emit raw LaTeX like `\epsilon` which contains `\e` — not a valid escape.

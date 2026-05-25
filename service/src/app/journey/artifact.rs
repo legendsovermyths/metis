@@ -18,6 +18,7 @@ pub struct JourneyArtifacts {
     pub chapter_dir: String,
     pub journey: Journey,
     pub advisor_notes: String,
+    pub tutor_notes: String,
     pub progress: JourneyProgress,
 }
 

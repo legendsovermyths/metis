@@ -86,7 +86,7 @@ export default function ArcCompletePage() {
             <ArrowLeft className="h-4 w-4" />
             <span className="text-xs font-medium hidden sm:inline">Back</span>
           </Link>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+          <span className="label-whisper text-text-tertiary">
             Arc complete
           </span>
           <div className="w-16" />
@@ -99,16 +99,20 @@ export default function ArcCompletePage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl px-6 py-16 md:px-8">
-          <header className="mb-10 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60 mb-3">
+          <header className="mb-10 animate-blur-in">
+            <p className="label-whisper text-text-tertiary mb-4">
               {arc.arc_title}
             </p>
-            <h1 className="font-display text-4xl italic tracking-tight text-foreground md:text-5xl">
+            <h1 className="display-hero text-5xl text-foreground md:text-6xl mb-5">
               That's the arc.
             </h1>
+            <div
+              className="h-px w-10 animate-reveal-line"
+              style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "left" }}
+            />
           </header>
 
-          <article className="prose prose-neutral dark:prose-invert max-w-none mb-10 animate-fade-in prose-p:text-[1.05rem] prose-p:leading-[1.85] prose-p:text-foreground/90">
+          <article className="prose prose-neutral dark:prose-invert max-w-none mb-10 animate-blur-in prose-p:text-[1.05rem] prose-p:leading-[1.85] prose-p:text-foreground/90">
             <p>
               Nicely done. We've come all the way from a car video and a nagging
               question about speedometers to a real, precise definition of the
@@ -130,7 +134,7 @@ export default function ArcCompletePage() {
             )}
           </article>
 
-          <div className="space-y-2 animate-fade-in-up opacity-0" style={{ animationDelay: "120ms" }}>
+          <div className="space-y-2 animate-blur-in opacity-0" style={{ animationDelay: "120ms" }}>
             {meta.has_practice && (
               <button
                 onClick={() => navigate(`/journeys/${id}/arc/${arcIdx}/practice`)}

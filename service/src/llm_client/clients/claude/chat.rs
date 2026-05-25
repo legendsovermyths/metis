@@ -213,15 +213,69 @@ impl<'a> ClaudeChat<'a> {
             }
 
             log::warn!(
-                "[claude_chat] No usable text in model response. Raw content: {}",
-                content
+                "[claude_chat] No usable text in model response. stop_reason={:?} usage={} content={} full_response={}",
+                stop_reason,
+                response.get("usage").cloned().unwrap_or(json!(null)),
+                content,
+                response,
             );
-            self.messages
-                .push(json!({"role": "assistant", "content": content}));
-            let event = Event::new("model", EventType::LlmMessage, "");
-            self.event_history.events.push(event);
-            return Ok(LLMResponse::from(""));
+            return Err(MetisError::AgentError(format!(
+                "Claude returned no text (stop_reason={stop_reason})"
+            )));
         }
+    }
+
+    fn rebuild_messages_from_history(&mut self) {
+        let mut messages: Vec<Value> = Vec::new();
+        let mut synthetic_id: u64 = 0;
+        let mut pending_tool_use_id: Option<String> = None;
+        for event in &self.event_history.events {
+            match event.event_type {
+                EventType::UserMessage | EventType::UserRequest => {
+                    messages.push(json!({"role": "user", "content": event.content}));
+                }
+                EventType::LlmMessage => {
+                    if event.content.is_empty() {
+                        continue;
+                    }
+                    messages.push(json!({
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": event.content}]
+                    }));
+                }
+                EventType::FunctionCall => {
+                    synthetic_id += 1;
+                    let id = format!("replay_{}", synthetic_id);
+                    let input: Value =
+                        serde_json::from_str(&event.content).unwrap_or(json!({}));
+                    messages.push(json!({
+                        "role": "assistant",
+                        "content": [{
+                            "type": "tool_use",
+                            "id": id,
+                            "name": event.name,
+                            "input": input,
+                        }]
+                    }));
+                    pending_tool_use_id = Some(id);
+                }
+                EventType::FunctionResponse => {
+                    let id = pending_tool_use_id.take().unwrap_or_else(|| {
+                        synthetic_id += 1;
+                        format!("replay_{}", synthetic_id)
+                    });
+                    messages.push(json!({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": id,
+                            "content": event.content,
+                        }]
+                    }));
+                }
+            }
+        }
+        self.messages = messages;
     }
 }
 
@@ -243,5 +297,10 @@ impl<'a> LLMChatClient for ClaudeChat<'a> {
 
     fn get_event_history(&self) -> EventHistory {
         self.event_history.clone()
+    }
+
+    fn set_event_history(&mut self, history: EventHistory) {
+        self.event_history = history;
+        self.rebuild_messages_from_history();
     }
 }

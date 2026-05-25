@@ -109,6 +109,7 @@ pub struct ChatContext {
     pub notes: Option<String>,
     pub is_done: bool,
     pub event_history: EventHistory,
+    pub dialogue_id: Option<i64>,
 }
 
 impl ChatContext {
@@ -118,6 +119,7 @@ impl ChatContext {
             notes: None,
             is_done: false,
             event_history: EventHistory::new(),
+            dialogue_id: None,
         }
     }
     pub fn set_done(&mut self) {

@@ -194,7 +194,7 @@ export default function QuizPage() {
               <ArrowLeft className="h-4 w-4" />
               <span className="text-xs font-medium">Back to journey</span>
             </Link>
-            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+            <span className="label-whisper text-text-tertiary">
               Check-in · Review
             </span>
           </div>
@@ -202,19 +202,19 @@ export default function QuizPage() {
 
         <div className="mx-auto max-w-3xl px-6 py-12 pb-24">
           {/* Score header */}
-          <div className="mb-10 animate-fade-in">
-            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+          <div className="mb-10 animate-blur-in">
+            <p className="label-whisper text-text-tertiary mb-4">
               Your result
             </p>
-            <div className="mt-3 flex items-baseline gap-3">
-              <h1 className="font-serif text-6xl font-semibold tracking-tight text-foreground tabular-nums">
+            <div className="flex items-baseline gap-3">
+              <h1 className="display-hero text-7xl text-foreground tabular-nums">
                 {scoreText}
               </h1>
-              <span className="font-serif text-2xl text-muted-foreground tabular-nums">
+              <span className="display-hero text-3xl text-text-tertiary tabular-nums">
                 / {result.total}
               </span>
             </div>
-            <p className="mt-5 max-w-xl font-serif text-lg italic leading-relaxed text-foreground/80">
+            <p className="mt-5 max-w-xl font-display text-lg italic leading-relaxed text-foreground/80">
               {verbal}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
@@ -244,13 +244,13 @@ export default function QuizPage() {
                 <div
                   key={q.id}
                   className={cn(
-                    "rounded-2xl border border-border bg-card p-6 shadow-soft ring-1 animate-fade-in-up opacity-0",
+                    "rounded-2xl border border-border bg-card p-6 shadow-soft ring-1 animate-blur-in opacity-0",
                     verdictRing(ev.verdict)
                   )}
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                    <span className="label-whisper text-text-tertiary">
                       Question {i + 1}
                     </span>
                     <span className="flex items-center gap-1.5 text-xs font-medium text-foreground/80">
@@ -267,7 +267,7 @@ export default function QuizPage() {
 
                   <div className="mt-5 space-y-4">
                     <div>
-                      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                      <p className="mb-1.5 label-whisper text-text-tertiary">
                         Your answer
                       </p>
                       <div className="rounded-xl border border-border/60 bg-surface/60 p-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap font-sans">
@@ -282,7 +282,7 @@ export default function QuizPage() {
                     </div>
 
                     <div>
-                      <p className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                      <p className="mb-1.5 label-whisper text-text-tertiary">
                         Ideal answer
                       </p>
                       <article className="prose prose-sm prose-neutral dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-foreground/90">
@@ -293,7 +293,7 @@ export default function QuizPage() {
                     </div>
 
                     <div className="rounded-xl border-l-2 border-foreground/20 bg-surface/40 py-2 pl-3 pr-3">
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70 mb-1">
+                      <p className="label-whisper text-text-tertiary mb-1">
                         Professor Metis
                       </p>
                       <article className="prose prose-sm prose-neutral dark:prose-invert max-w-none font-serif italic prose-p:leading-relaxed prose-p:text-foreground/90">
@@ -308,7 +308,7 @@ export default function QuizPage() {
             })}
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3 animate-fade-in">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3 animate-blur-in">
             <Button
               variant="ghost"
               onClick={handleRetake}
@@ -345,7 +345,7 @@ export default function QuizPage() {
             <ArrowLeft className="h-4 w-4" />
             <span className="text-xs font-medium">Leave check-in</span>
           </Link>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+          <span className="label-whisper text-text-tertiary">
             Check-in
           </span>
         </div>
@@ -376,13 +376,13 @@ export default function QuizPage() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-6 py-10 md:px-8">
-          <header className="mb-8 animate-fade-in">
-            <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+          <header className="mb-8 animate-blur-in">
+            <p className="label-whisper text-text-tertiary">
               {quiz.arc_title} · Question {qIdx + 1} of {total}
             </p>
           </header>
 
-          <div key={qIdx} className="animate-fade-in">
+          <div key={qIdx} className="animate-blur-in">
             <article className="prose prose-neutral dark:prose-invert max-w-none mb-8 prose-headings:font-serif prose-p:font-serif prose-p:text-[1.25rem] prose-p:leading-[1.7] prose-p:text-foreground prose-p:mt-0 first:prose-p:mt-0">
               <ReactMarkdown rehypePlugins={[rehypeRaw]}>
                 {preprocessMath(q.prompt)}
@@ -390,7 +390,7 @@ export default function QuizPage() {
             </article>
 
             <div>
-              <label className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+              <label className="mb-2 block label-whisper text-text-tertiary">
                 Your answer
               </label>
               <textarea

@@ -154,7 +154,7 @@ impl TaskMangager {
             };
 
             let app_handle = self.app_handle.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 while let Some(progress) = rx.recv().await {
                     let _ = TasksRepo::update(&progress);
                     let _ = app_handle.emit("task:progress", progress);
@@ -162,7 +162,7 @@ impl TaskMangager {
             });
             let task_id_value = task.id.clone();
             let app_handle = self.app_handle.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 match runner(context).await {
                     Ok(val) => {
                         let _ = TasksRepo::mark_complete(&task_id_value);

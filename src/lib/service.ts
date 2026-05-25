@@ -29,6 +29,7 @@ export interface ChatContext {
   notes: string | null;
   is_done: boolean;
   event_history: EventHistory;
+  dialogue_id: number | null;
 }
 
 export interface SessionContext {
@@ -57,6 +58,7 @@ export interface JourneyArtifacts {
   chapter_dir: string;
   journey: Journey;
   advisor_notes: string;
+  tutor_notes: string;
   progress: JourneyProgress;
 }
 
@@ -94,6 +96,7 @@ export interface Segment {
 }
 
 export interface Dialogue {
+  id: number | null;
   journey_id: number;
   arc_idx: number;
   topic_idx: number;
@@ -122,6 +125,7 @@ export interface JourneyRow {
   journey: Journey;
   created_at: number;
   advisor_notes: string;
+  tutor_notes: string;
   completed_topics: number;
   total_topics: number;
 }
@@ -258,6 +262,10 @@ export async function createJourney(params: CreateJourneyParams): Promise<string
   return callTask("create_journey", params as unknown as Record<string, unknown>);
 }
 
+export async function deleteJourney(id: number): Promise<void> {
+  await callService("DeleteJourney", { id });
+}
+
 // -- API: dialogues --
 
 export async function getAllDialogues(journeyId: number): Promise<Dialogue[]> {
@@ -298,6 +306,10 @@ export async function setTeaching(teaching: TeachingContext): Promise<void> {
 
 export async function teachingInit(journeyId: number): Promise<void> {
   await callService("TeachingInit", { journey_id: journeyId });
+}
+
+export async function setDialogue(dialogueId: number): Promise<void> {
+  await callService("SetDialogue", { dialogue_id: dialogueId });
 }
 
 // -- API: tasks --

@@ -11,21 +11,22 @@ use crate::{
 pub struct DialoguesRepo;
 
 fn dialogue_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Dialogue> {
-    let bb_json: String = row.get(5)?;
+    let bb_json: String = row.get(6)?;
     let blackboard: Blackboard =
         serde_json::from_str(&bb_json).unwrap_or_else(|_| Blackboard::empty());
-    let segments = json_col_to_vec(row.get(9)?);
-    let elements = json_col_to_vec(row.get(10)?);
+    let segments = json_col_to_vec(row.get(10)?);
+    let elements = json_col_to_vec(row.get(11)?);
     Ok(Dialogue {
-        journey_id: row.get(0)?,
-        arc_idx: row.get::<_, i64>(1)? as usize,
-        topic_idx: row.get::<_, i64>(2)? as usize,
-        idx: row.get::<_, i64>(3)? as usize,
-        content: row.get(4)?,
+        id: Some(row.get(0)?),
+        journey_id: row.get(1)?,
+        arc_idx: row.get::<_, i64>(2)? as usize,
+        topic_idx: row.get::<_, i64>(3)? as usize,
+        idx: row.get::<_, i64>(4)? as usize,
+        content: row.get(5)?,
         blackboard,
-        heading: row.get(6)?,
-        marked_complete: row.get::<_, i64>(7)? != 0,
-        visible: row.get::<_, i64>(8)? != 0,
+        heading: row.get(7)?,
+        marked_complete: row.get::<_, i64>(8)? != 0,
+        visible: row.get::<_, i64>(9)? != 0,
         segments,
         elements,
     })
@@ -60,7 +61,7 @@ impl DialoguesRepo {
     pub fn get_visible_for_journey(journey_id: i64) -> Result<Vec<Dialogue>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
              FROM dialogues
              WHERE journey_id = ?1 AND visible = 1
              ORDER BY arc_idx, topic_idx, idx",
@@ -91,7 +92,7 @@ impl DialoguesRepo {
     pub fn get_next_invisible(journey_id: i64) -> Result<Option<Dialogue>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
              FROM dialogues
              WHERE journey_id = ?1 AND visible = 0
              ORDER BY arc_idx, topic_idx, idx
@@ -108,7 +109,7 @@ impl DialoguesRepo {
     pub fn get_last_for_journey(journey_id: i64) -> Result<Option<Dialogue>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
              FROM dialogues
              WHERE journey_id = ?1
              ORDER BY arc_idx DESC, topic_idx DESC, idx DESC
@@ -129,7 +130,7 @@ impl DialoguesRepo {
         let n_i64 = n as i64;
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
              FROM dialogues
              WHERE journey_id = ?1
              ORDER BY arc_idx DESC, topic_idx DESC, idx DESC
@@ -144,6 +145,86 @@ impl DialoguesRepo {
         Ok(out)
     }
 
+    pub fn get_before_dialogue(dialogue_id: i64, n: usize, inclusive: bool) -> Result<Vec<Dialogue>> {
+        if n == 0 {
+            return Ok(Vec::new());
+        }
+        let anchor = match Self::get_by_id(dialogue_id)? {
+            Some(d) => d,
+            None => return Ok(Vec::new()),
+        };
+        let conn = get_database().conn.lock().unwrap();
+        let cmp = if inclusive { "<=" } else { "<" };
+        let sql = format!(
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+             FROM dialogues
+             WHERE journey_id = ?1
+               AND (arc_idx, topic_idx, idx) {cmp} (?2, ?3, ?4)
+             ORDER BY arc_idx DESC, topic_idx DESC, idx DESC
+             LIMIT ?5"
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let mut rows = stmt.query(rusqlite::params![
+            anchor.journey_id,
+            anchor.arc_idx as i64,
+            anchor.topic_idx as i64,
+            anchor.idx as i64,
+            n as i64,
+        ])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(dialogue_from_row(&row)?);
+        }
+        out.reverse();
+        Ok(out)
+    }
+
+    pub fn get_after_dialogue(dialogue_id: i64, n: usize) -> Result<Vec<Dialogue>> {
+        if n == 0 {
+            return Ok(Vec::new());
+        }
+        let anchor = match Self::get_by_id(dialogue_id)? {
+            Some(d) => d,
+            None => return Ok(Vec::new()),
+        };
+        let conn = get_database().conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+             FROM dialogues
+             WHERE journey_id = ?1
+               AND (arc_idx, topic_idx, idx) > (?2, ?3, ?4)
+             ORDER BY arc_idx, topic_idx, idx
+             LIMIT ?5",
+        )?;
+        let mut rows = stmt.query(rusqlite::params![
+            anchor.journey_id,
+            anchor.arc_idx as i64,
+            anchor.topic_idx as i64,
+            anchor.idx as i64,
+            n as i64,
+        ])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(dialogue_from_row(&row)?);
+        }
+        Ok(out)
+    }
+
+    pub fn get_by_id(id: i64) -> Result<Option<Dialogue>> {
+        let conn = get_database().conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, journey_id, arc_idx, topic_idx, idx, content, blackboard_json, heading, marked_complete, visible, segments_json, elements_json
+             FROM dialogues
+             WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query(rusqlite::params![id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(dialogue_from_row(&row)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn count_completed_topics(journey_id: i64) -> Result<usize> {
         let conn = get_database().conn.lock().unwrap();
         let count: i64 = conn.query_row(
@@ -154,5 +235,23 @@ impl DialoguesRepo {
             |row| row.get(0),
         )?;
         Ok(count as usize)
+    }
+
+    pub fn delete_all_for_journey(journey_id: i64) -> Result<()> {
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM dialogues WHERE journey_id = ?1",
+            rusqlite::params![journey_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_single(dialogue_id: i64) -> Result<()> {
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM dialogues WHERE id = ?1",
+            rusqlite::params![dialogue_id],
+        )?;
+        Ok(())
     }
 }

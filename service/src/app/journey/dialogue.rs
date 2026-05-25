@@ -4,6 +4,7 @@ use crate::app::journey::blackboard::{Blackboard, ElementDescriptor, Segment};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dialogue {
+    pub id: Option<i64>,
     pub journey_id: i64,
     pub arc_idx: usize,
     pub topic_idx: usize,
@@ -20,6 +21,7 @@ pub struct Dialogue {
 impl Default for Dialogue {
     fn default() -> Self {
         Dialogue {
+            id: None,
             journey_id: 0,
             arc_idx: 0,
             topic_idx: 0,

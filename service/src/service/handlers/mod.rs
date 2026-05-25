@@ -6,6 +6,8 @@ pub mod get_journey;
 pub mod get_next_dialogue;
 pub mod list_tasks;
 pub mod set_chat;
+pub mod set_dialogue;
 pub mod set_session;
 pub mod set_teaching;
 pub mod teaching_init;
+pub mod delete_journey;

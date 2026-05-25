@@ -166,6 +166,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
             chapter_dir,
             journey,
             advisor_notes: params.advisor_notes,
+            tutor_notes: String::new(),
             progress: JourneyProgress::new(id),
         })?)
     })

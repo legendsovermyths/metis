@@ -32,4 +32,6 @@ pub enum ServiceRequestType {
     SetTeaching,
     SetSession,
     SetChat,
+    SetDialogue,
+    DeleteJourney
 }

@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
-use serde_json::Value;
 
 use crate::{
     app::{book::Book, AppContext},

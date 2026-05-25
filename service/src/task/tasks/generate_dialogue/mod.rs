@@ -13,10 +13,14 @@ use crate::{
     },
 };
 
+pub mod annotation;
 pub mod curator;
+pub mod enhancer;
 pub mod generator;
 pub mod illustrator;
+pub mod layout;
 pub mod narrator;
+pub mod templates;
 
 #[derive(Deserialize, Serialize)]
 pub struct GenerationParams {
@@ -61,6 +65,6 @@ impl Default for GenerationCheckpoint {
 
 impl TaskGaurd for GenerationParams {
     fn identity(&self) -> Option<String> {
-        None
+        Some(format!("GenerateDialogues:{}", self.id))
     }
 }

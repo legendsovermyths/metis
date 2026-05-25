@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   createJourney,
+  deleteJourney,
   getAllJourneys,
   type CreateJourneyParams,
   type JourneyRow,
@@ -31,6 +32,7 @@ interface JourneyCreationContextValue {
     params: CreateJourneyParams,
     onError?: (msg: string) => void,
   ) => Promise<void>;
+  removeJourney: (id: number) => Promise<void>;
 }
 
 const JourneyCreationContext = createContext<JourneyCreationContextValue | null>(null);
@@ -96,6 +98,12 @@ export function JourneyCreationProvider({ children }: { children: React.ReactNod
     [],
   );
 
+  const removeJourney = useCallback(async (id: number) => {
+    await deleteJourney(id);
+    setJourneyRows((prev) => prev.filter((r) => r.id !== id));
+    lastSeenIdsRef.current.delete(id);
+  }, []);
+
   const pendingJourneys = useMemo<PendingJourney[]>(() => {
     return byType("create_journey").map((task) => {
       const chapter =
@@ -114,6 +122,7 @@ export function JourneyCreationProvider({ children }: { children: React.ReactNod
         lastCreatedId,
         clearLastCreatedId,
         startJourneyCreation,
+        removeJourney,
       }}
     >
       {children}

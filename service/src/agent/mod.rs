@@ -63,6 +63,7 @@ impl AgentResponse {
         segments: Vec<Segment>,
     ) -> Result<Self> {
         let payload = Dialogue {
+            id: None,
             idx: dialogue.idx,
             visible: false,
             topic_idx: dialogue.topic_idx,

@@ -1,4 +1,4 @@
-use std::env::VarError;
+use std::{env::VarError, fs};
 
 use thiserror::Error;
 
@@ -42,4 +42,6 @@ pub enum MetisError{
     NotFound(String),
     #[error("Internal error: {0}")]
     InternalError(String),
+    #[error ("IOError: {0}")]
+    IOError(#[from] std::io::Error)
 }
