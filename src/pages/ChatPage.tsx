@@ -28,7 +28,7 @@ function preprocessMath(md: string): string {
   return result.split(ESC_DOLLAR).join("$");
 }
 
-type Mode = "onboarding" | "teaching" | "advising" | "idle";
+type Mode = "onboarding" | "teaching" | "advising" | "idle" | "exploring";
 
 interface Message {
   id: string;
@@ -77,6 +77,13 @@ const modeGreeting: Record<Mode, {
     whisper: "Speak as plainly as you like.",
     glyph: "ψ",
   },
+  exploring: {
+    label: "The Crossroads",
+    heading: "What do you want to make sense of?",
+    verse: "Bring the knot; we'll find the thread.",
+    whisper: "A problem, a paper, a page — set it down here.",
+    glyph: "∴",
+  },
 };
 
 function phaseToMode(phase: string | undefined): Mode {
@@ -84,6 +91,7 @@ function phaseToMode(phase: string | undefined): Mode {
     case "Onboarding": return "onboarding";
     case "Teaching":   return "teaching";
     case "Advising":   return "advising";
+    case "Exploring":  return "exploring";
     default:           return "idle";
   }
 }

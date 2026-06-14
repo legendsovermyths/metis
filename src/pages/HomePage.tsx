@@ -23,7 +23,7 @@ export default function HomePage() {
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
 
   const goToChatFresh = async () => {
-    if (context) await setChat({ ...context.chat, is_done: false });
+    if (context) await setChat({ ...context.chat, phase: "Exploring", is_done: false });
     navigate("/chat");
   };
 

@@ -128,7 +128,6 @@ impl<'a> Agent for Tutor<'a> {
             };
             DialogueEventsRepo::insert_events(journey_id, Some(id), &new_events)?;
         }
-
         AgentResponse::with(response)
     }
 

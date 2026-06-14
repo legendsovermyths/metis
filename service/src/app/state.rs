@@ -8,6 +8,7 @@ pub enum MetisPhase {
     Onboarding,
     Advising,
     Teaching,
+    Exploring
 }
 
 #[derive(Serialize, Deserialize, Clone)]

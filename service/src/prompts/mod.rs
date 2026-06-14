@@ -12,9 +12,12 @@ pub struct PromptProvider {
     analyse_book_prompt: String,
     onboarder_system_prompt: String,
     advisor_system_prompt: String,
+    director_system_prompt: String,
     architect_course_prompt: String,
     page_range_prompt: String,
     page_to_md_prompt: String,
+    image_to_markdown_prompt: String,
+    text_to_markdown_prompt: String,
     topic_mapper_prompt: String,
     content_to_topics_prompt: String,
     narrator_system_prompt: String,
@@ -30,9 +33,12 @@ impl PromptProvider {
             analyse_book_prompt: include_str!("markdowns/analyse_book.md").to_string(),
             onboarder_system_prompt: include_str!("markdowns/onboarder.md").to_string(),
             advisor_system_prompt: include_str!("markdowns/advisor.md").to_string(),
+            director_system_prompt: include_str!("markdowns/director.md").to_string(),
             architect_course_prompt: include_str!("markdowns/architect.md").to_string(),
             page_range_prompt: include_str!("markdowns/page_range.md").to_string(),
             page_to_md_prompt: include_str!("markdowns/page_to_md.md").to_string(),
+            image_to_markdown_prompt: include_str!("markdowns/image_to_markdown.md").to_string(),
+            text_to_markdown_prompt: include_str!("markdowns/text_to_markdown.md").to_string(),
             topic_mapper_prompt: include_str!("markdowns/topic_mapper.md").to_string(),
             content_to_topics_prompt: include_str!("markdowns/content_to_topics.md").to_string(),
             narrator_system_prompt: include_str!("markdowns/narrator.md").to_string(),
@@ -52,6 +58,9 @@ impl PromptProvider {
     pub fn get_advisor_system_prompt(&self) -> String {
         self.advisor_system_prompt.clone()
     }
+    pub fn get_director_system_prompt(&self) -> String {
+        self.director_system_prompt.clone()
+    }
     pub fn get_architect_prompt(&self, topics: &str) -> String {
         self.architect_course_prompt.replace("{topics}", topics)
     }
@@ -60,6 +69,12 @@ impl PromptProvider {
     }
     pub fn get_page_to_md_raw(&self) -> &str {
         &self.page_to_md_prompt
+    }
+    pub fn get_image_to_markdown(&self) -> &str {
+        &self.image_to_markdown_prompt
+    }
+    pub fn get_text_to_markdown(&self) -> &str {
+        &self.text_to_markdown_prompt
     }
     pub fn get_topic_mapper_prompt(&self, topics: &str) -> String {
         format!("{}\n\n## Topics to map\n\n{}", self.topic_mapper_prompt, topics)

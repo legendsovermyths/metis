@@ -1,10 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Dumbbell } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getJourney, teachingInit, type JourneyRow } from "@/lib/service";
-import { getArcAssessmentMeta, loadQuizResult } from "@/lib/mockAssessment";
 import { journeyGlyph, toRoman } from "@/lib/editorial";
 
 export default function JourneyDetailPage() {
@@ -147,18 +146,6 @@ export default function JourneyDetailPage() {
               totalTopics > 0 && `${totalTopics} topics`,
             ].filter(Boolean).join(" · ")}
           </p>
-
-          {row.journey.arcs.length > 0 && (
-            <div className="mt-5 relative z-10">
-              <Link
-                to={`/journeys/${numericId}/practice`}
-                className="inline-flex items-center gap-1.5 label-whisper text-text-tertiary transition-colors hover:text-foreground"
-              >
-                <Dumbbell className="h-3 w-3" strokeWidth={1.75} />
-                Practice sheets · {row.journey.arcs.length}
-              </Link>
-            </div>
-          )}
         </header>
 
         {row.journey.arcs.length === 0 ? (
@@ -186,15 +173,6 @@ export default function JourneyDetailPage() {
                 const total = arc.topics.length;
                 const arcDone = arcCompleted === total && total > 0;
                 const isExpanded = expandedArcs.has(arcKey);
-
-                const meta = getArcAssessmentMeta(i, arc.arc_title);
-                const lastQuiz = meta.has_quiz ? loadQuizResult(numericId, i) : null;
-                const showAssessmentRow = meta.has_quiz;
-                const quizScoreText = lastQuiz
-                  ? Number.isInteger(lastQuiz.score)
-                    ? `${lastQuiz.score}`
-                    : lastQuiz.score.toFixed(1)
-                  : null;
 
                 return (
                   <div
@@ -233,9 +211,6 @@ export default function JourneyDetailPage() {
                             {arcDone && (
                               <span className="font-display italic text-[11px] text-text-tertiary">finis</span>
                             )}
-                            {meta.has_quiz && (
-                              <span className="label-whisper text-text-tertiary">check-in</span>
-                            )}
                             <span className="text-[10px] tabular-nums text-text-tertiary">{arcCompleted}/{total}</span>
                           </div>
                         </div>
@@ -260,25 +235,6 @@ export default function JourneyDetailPage() {
                             </span>
                           ))}
                         </div>
-
-                        {showAssessmentRow && (
-                          <div className="flex items-center gap-5 mt-5">
-                            {meta.has_quiz && (
-                              <Link
-                                to={`/journeys/${numericId}/arc/${i}/quiz`}
-                                className="label-whisper text-text-tertiary transition-colors hover:text-foreground"
-                              >
-                                {lastQuiz ? `Check-in · last ${quizScoreText}/${lastQuiz.total}` : "Check-in →"}
-                              </Link>
-                            )}
-                            <Link
-                              to={`/journeys/${numericId}/arc/${i}/complete`}
-                              className="label-whisper text-text-tertiary transition-colors hover:text-foreground"
-                            >
-                              End of arc →
-                            </Link>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>

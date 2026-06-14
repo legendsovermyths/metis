@@ -12,6 +12,7 @@ use crate::{
 };
 
 pub mod advisor;
+pub mod director;
 pub mod handler;
 pub mod onboarder;
 pub mod tutor;

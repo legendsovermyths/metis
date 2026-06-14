@@ -11,8 +11,9 @@ use crate::{
     },
     prompts::get_prompt_provider,
     utils::{
-        cmd::{execute_latex, execute_python},
         format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
+        latex::execute_latex,
+        python::execute_python,
     },
 };
 const MAX_RETRIES: usize = 5;

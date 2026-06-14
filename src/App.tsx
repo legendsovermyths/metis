@@ -11,6 +11,7 @@ import { JourneyCreationProvider } from "@/context/JourneyCreationContext";
 import { TasksProvider } from "@/context/TasksContext";
 import { AppNav } from "@/components/AppNav";
 import { BackgroundTasksPanel } from "@/components/BackgroundTasksPanel";
+import { AgentInputDialog } from "@/components/AgentInputDialog";
 import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
@@ -18,10 +19,6 @@ import JourneysPage from "./pages/JourneysPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
 import TeachingPage from "./pages/TeachingPage";
 import TasksPage from "./pages/TasksPage";
-import QuizPage from "./pages/QuizPage";
-import PracticePage from "./pages/PracticePage";
-import PracticeIndexPage from "./pages/PracticeIndexPage";
-import ArcCompletePage from "./pages/ArcCompletePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,12 +28,9 @@ function AppLayout() {
   const { context, loading } = useAppContext();
   const isChatPage = location.pathname === "/chat";
   const isTeachPage = location.pathname === "/teach";
-  const isAssessmentPage =
-    /\/journeys\/[^/]+\/arc\/[^/]+\/(quiz|complete)$/.test(location.pathname) ||
-    /\/journeys\/[^/]+\/practice(\/[^/]+)?$/.test(location.pathname);
   const isHomePage = location.pathname === "/";
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
-  const showNav = onboarded && !isHomePage && !isChatPage && !isTeachPage && !isAssessmentPage;
+  const showNav = onboarded && !isHomePage && !isChatPage && !isTeachPage;
 
   if (loading) {
     return (
@@ -50,6 +44,7 @@ function AppLayout() {
     <div className="flex min-h-screen flex-col">
       {showNav && <AppNav />}
       {onboarded && <BackgroundTasksPanel />}
+      <AgentInputDialog />
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -57,10 +52,6 @@ function AppLayout() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/journeys" element={<JourneysPage />} />
           <Route path="/journeys/:id" element={<JourneyDetailPage />} />
-          <Route path="/journeys/:id/arc/:arcIdx/complete" element={<ArcCompletePage />} />
-          <Route path="/journeys/:id/arc/:arcIdx/quiz" element={<QuizPage />} />
-          <Route path="/journeys/:id/practice" element={<PracticeIndexPage />} />
-          <Route path="/journeys/:id/practice/:arcIdx" element={<PracticePage />} />
           <Route path="/teach" element={<TeachingPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="*" element={<NotFound />} />

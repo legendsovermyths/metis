@@ -1,0 +1,21 @@
+use crate::{
+    error::Result,
+    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    prompts::{get_prompt_provider, PromptProvider},
+};
+
+pub async fn convert_image_to_markdown(image_path: &str) -> Result<String> {
+    let mut convertor_client = GeminiClient::new();
+    let (uri, _) = convertor_client.upload_file(image_path).await?;
+
+    let system_prompt = get_prompt_provider().get_image_to_markdown();
+
+    convertor_client.set_system_prompt(system_prompt.to_string());
+
+    let content = convertor_client
+        .generate_with_file(String::from("Convert this file to markdown"), &uri)
+        .await?
+        .text();
+
+    Ok(content)
+}

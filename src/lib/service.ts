@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 // -- AppContext types (mirrors Rust AppContext) --
 
-export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching";
+export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching" | "Exploring";
 
 export type EventType =
   | "UserMessage"
@@ -331,6 +331,28 @@ export async function sendMessage(message?: string): Promise<AgentResponse> {
     params: { message: message ?? null },
   });
   return data as AgentResponse;
+}
+
+// -- API: agent-initiated user input (human-in-the-loop popup) --
+
+/** A request emitted by the backend when a tool needs input from the user. */
+export interface AgentInputRequest {
+  request_id: string;
+  kind: string;
+  title?: string;
+  prompt?: string;
+}
+
+/** Deliver the user's answer back to the waiting tool. */
+export async function submitAgentInput(requestId: string, value: unknown): Promise<void> {
+  await callService("SubmitUserInput", { request_id: requestId, value });
+}
+
+/** Listen for `agent:request_input` events (one popup request at a time). */
+export async function subscribeAgentInput(
+  handler: (req: AgentInputRequest) => void,
+): Promise<UnlistenFn> {
+  return await listen<AgentInputRequest>("agent:request_input", (e) => handler(e.payload));
 }
 
 // -- Task event subscription --

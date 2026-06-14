@@ -4,7 +4,10 @@ use std::{
     process::Command,
 };
 
-use crate::error::{MetisError, Result};
+use crate::{
+    error::{MetisError, Result},
+    utils::chrome::chrome_convert_url_to_pdf,
+};
 
 const MAX_PAGES: u32 = 50;
 const TARGET_TRIPLE: &str = env!("METIS_TARGET_TRIPLE");
@@ -15,7 +18,9 @@ pub fn copy_pdf(src: &str) -> Result<String> {
         .file_name()
         .ok_or(MetisError::FileNotFound)?
         .to_str()
-        .ok_or(MetisError::UtilsError("File name not supported".to_string()))?;
+        .ok_or(MetisError::UtilsError(
+            "File name not supported".to_string(),
+        ))?;
 
     fs::create_dir_all("../books").map_err(|e| MetisError::UtilsError(e.to_string()))?;
     let dest = format!("../books/{}", file_name);
@@ -23,9 +28,13 @@ pub fn copy_pdf(src: &str) -> Result<String> {
     Ok(dest)
 }
 
+pub fn convert_url_to_pdf(url: &str) -> Result<String> {
+    chrome_convert_url_to_pdf(url)
+}
+
 pub fn truncated_copy(src: &str) -> Result<String> {
     let qpdf = find_qpdf()?;
-    let total = get_page_count(&qpdf, src)?;
+    let total = get_page_count(src)?;
 
     if total <= MAX_PAGES {
         return Ok(src.to_string());
@@ -48,7 +57,7 @@ pub fn truncated_copy(src: &str) -> Result<String> {
 
 pub fn extract_page_range(src: &str, start: u32, end: u32, dest: &str) -> Result<String> {
     let qpdf = find_qpdf()?;
-    let total = get_page_count(&qpdf, src)?;
+    let total = get_page_count(src)?;
 
     if start < 1 || end > total || start > end {
         return Err(MetisError::UtilsError(format!(
@@ -93,7 +102,8 @@ fn find_qpdf() -> Result<PathBuf> {
     })
 }
 
-fn get_page_count(qpdf: &Path, src: &str) -> Result<u32> {
+pub fn get_page_count(src: &str) -> Result<u32> {
+    let qpdf = find_qpdf()?;
     let out = Command::new(qpdf)
         .args(["--show-npages", src])
         .env("DYLD_LIBRARY_PATH", "/opt/homebrew/lib")

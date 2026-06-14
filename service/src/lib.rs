@@ -19,6 +19,7 @@ pub mod prompts;
 pub mod service;
 pub mod task;
 pub mod utils;
+pub mod bridges;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -32,6 +33,7 @@ pub fn run() {
             } else {
                 log::LevelFilter::Info
             };
+            crate::bridges::user_input::init(tauri_app.app_handle().clone());
             let app = App::new(context, tauri_app.app_handle().clone())
                 .expect("failed to initialize App");
             tauri_app.manage(Arc::new(app));

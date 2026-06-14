@@ -14,7 +14,7 @@ use crate::{
         templates::COORDINATE_SAVE,
     },
     utils::{
-        cmd::execute_latex,
+        latex::execute_latex,
         format::{fix_json_escapes, strip_json_block},
         svg::{extract_part_bboxes, svg_dimensions},
     },

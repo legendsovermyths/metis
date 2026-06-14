@@ -36,6 +36,7 @@ impl Db {
         conn.execute_batch(include_str!("../../migrations/0004_create_dialogues.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0005_create_tasks.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0006_create_dialogue_events.sql"))?;
+        conn.execute_batch(include_str!("../../migrations/0007_create_resources.sql"))?;
         Ok(())
     }
 }

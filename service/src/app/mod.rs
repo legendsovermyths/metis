@@ -14,10 +14,11 @@ use crate::logs::EventHistory;
 use crate::service::handler::ServiceHandler;
 use crate::task::manager::TaskMangager;
 use crate::task::TaskRequest;
-use crate::utils::cmd::ensure_venv;
+use crate::utils::python::ensure_venv;
 pub mod book;
 pub mod journey;
 pub mod state;
+pub mod user_input;
 
 static APP_CONTEXT: OnceLock<AppContext> = OnceLock::new();
 

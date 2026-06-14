@@ -3,10 +3,16 @@ use std::{fs, sync::Arc};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-    app::journey::{artifact::TopicRange, Journey}, db::repo::books::BooksRepo, error::{MetisError, Result}, llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient}, prompts::get_prompt_provider, task::tasks::create_journey::PageRange, utils::{
+    app::journey::{artifact::TopicRange, Journey},
+    db::repo::books::BooksRepo,
+    error::{MetisError, Result},
+    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    prompts::get_prompt_provider,
+    task::tasks::create_journey::PageRange,
+    utils::{
         format::{clean_page_output, strip_json_block},
         pdf::{extract_page_range, truncated_copy},
-    }
+    },
 };
 
 const MAX_CONCURRENT_PRO: usize = 5;
@@ -106,7 +112,6 @@ const PAGES_PER_CALL: usize = 2;
 pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<String> {
     let total_batches = (num_pages + PAGES_PER_CALL - 1) / PAGES_PER_CALL;
 
-    // Phase 1: slice all batch PDFs upfront (fast, synchronous)
     let mut batch_pdfs: Vec<(usize, usize, String)> = Vec::new();
     let mut page = 1;
     while page <= num_pages {
@@ -123,7 +128,6 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
     }
     log::info!("[convert_to_markdown] sliced {total_batches} batch PDFs, uploading + extracting (max {MAX_CONCURRENT_PRO} concurrent)");
 
-    // Phase 2: upload + generate in parallel, semaphore only gates the LLM call
     let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_PRO));
     let mut set = JoinSet::new();
 
@@ -197,6 +201,7 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
 
     Ok(combined)
 }
+
 
 pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
     let books = BooksRepo::list()?;
