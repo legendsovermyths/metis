@@ -64,4 +64,10 @@ impl UserInputBridge {
             }
         }
     }
+
+    pub async fn cancel(request_id: &str) {
+        if let Some(bridge) = BRIDGE.get() {
+            bridge.pending.lock().await.remove(request_id);
+        }
+    }
 }

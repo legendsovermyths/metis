@@ -8,7 +8,7 @@ use crate::{
     app::AppContext,
     error::{MetisError, Result},
     service::handlers::{
-        delete_journey::{self, delete_journey}, get_all_books::get_all_books, get_all_dialogues::get_all_dialogues, get_all_journeys::get_all_journeys, get_context::get_context, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, set_chat::set_chat, set_dialogue::set_dialogue, set_session::set_session, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init
+        cancel_user_input::cancel_user_input, delete_journey::{self, delete_journey}, get_all_books::get_all_books, get_all_dialogues::get_all_dialogues, get_all_journeys::get_all_journeys, get_context::get_context, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, set_chat::set_chat, set_dialogue::set_dialogue, set_session::set_session, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init
     },
     task::{task_type::TaskType, TaskRequest},
 };
@@ -47,6 +47,7 @@ impl<'a> ServiceHandler<'a> {
         handler.register(ServiceRequestType::SetTeaching, set_teaching);
         handler.register(ServiceRequestType::DeleteJourney, delete_journey);
         handler.register(ServiceRequestType::SubmitUserInput, submit_user_input);
+        handler.register(ServiceRequestType::CancelUserInput, cancel_user_input);
         handler
     }
     fn register<T, F>(&mut self, request: ServiceRequestType, func: F)

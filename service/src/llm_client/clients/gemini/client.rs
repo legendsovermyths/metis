@@ -18,6 +18,7 @@ pub struct GeminiClient {
     system_prompt: String,
     model_name: String,
     json_mode: bool,
+    file_mime_type: String,
 }
 
 impl GeminiClient {
@@ -28,6 +29,7 @@ impl GeminiClient {
             system_prompt: String::new(),
             model_name: "gemini-3-flash-preview".to_string(),
             json_mode: false,
+            file_mime_type: "application/pdf".to_string(),
         }
     }
 
@@ -38,11 +40,16 @@ impl GeminiClient {
             system_prompt: String::new(),
             model_name: model.to_string(),
             json_mode: false,
+            file_mime_type: "application/pdf".to_string(),
         }
     }
 
     pub fn set_json_mode(&mut self, enabled: bool) {
         self.json_mode = enabled;
+    }
+
+    pub fn set_file_mime_type(&mut self, mime: &str) {
+        self.file_mime_type = mime.to_string();
     }
 
     pub async fn upload_file(&self, path: &str) -> Result<(String, i64)> {
@@ -59,7 +66,7 @@ impl GeminiClient {
             .header("X-Goog-Upload-Protocol", "resumable")
             .header("X-Goog-Upload-Command", "start")
             .header("X-Goog-Upload-Header-Content-Length", num_bytes.to_string())
-            .header("X-Goog-Upload-Header-Content-Type", "application/pdf")
+            .header("X-Goog-Upload-Header-Content-Type", &self.file_mime_type)
             .header("Content-Type", "application/json")
             .body(r#"{"file": {"display_name": "textbook"}}"#)
             .send()
@@ -106,7 +113,7 @@ impl GeminiClient {
         let mut parts = vec![json!({"text": prompt})];
         if let Some(uri) = file_uri {
             parts.push(json!({
-                "file_data": { "mime_type": "application/pdf", "file_uri": uri }
+                "file_data": { "mime_type": self.file_mime_type, "file_uri": uri }
             }));
         }
         let mut request = json!({

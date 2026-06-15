@@ -11,3 +11,4 @@ pub mod latex;
 pub mod chrome;
 pub mod image;
 pub mod text;
+pub mod page;

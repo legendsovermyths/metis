@@ -4,8 +4,9 @@ use crate::{
     prompts::{get_prompt_provider, PromptProvider},
 };
 
-pub async fn convert_image_to_markdown(image_path: &str) -> Result<String> {
+pub async fn convert_image_to_markdown(image_path: &str, mime: &str) -> Result<String> {
     let mut convertor_client = GeminiClient::new();
+    convertor_client.set_file_mime_type(mime);
     let (uri, _) = convertor_client.upload_file(image_path).await?;
 
     let system_prompt = get_prompt_provider().get_image_to_markdown();

@@ -27,7 +27,7 @@ pub fn submit_user_input(params: SubmitUserInputParams, _context: &AppContext) -
             source_count += 1;
         }
         
-        let resource = Resource::new(markdown, params.notes.clone());
+        let resource = Resource::new(markdown, params.notes.clone())?;
         let id = ResourcesRepo::insert(&resource)?;
         UserInputBridge::resolve(&params.request_id, id).await;
         Ok(json!({ "success": true }).into())

@@ -34,5 +34,6 @@ pub enum ServiceRequestType {
     SetChat,
     SetDialogue,
     SubmitUserInput,
+    CancelUserInput,
     DeleteJourney
 }

@@ -341,11 +341,32 @@ export interface AgentInputRequest {
   kind: string;
   title?: string;
   prompt?: string;
+  /** The agent's own note about this resource — echoed straight back on submit. */
+  notes?: string;
 }
 
-/** Deliver the user's answer back to the waiting tool. */
-export async function submitAgentInput(requestId: string, value: unknown): Promise<void> {
-  await callService("SubmitUserInput", { request_id: requestId, value });
+/**
+ * One piece of material, shaped to match the backend `UserInput` enum
+ * (externally tagged: the single key names the variant).
+ */
+export type UserInputItem =
+  | { File: string }
+  | { Image: { src: string; mime: string } }
+  | { Url: string }
+  | { Text: string };
+
+/** Deliver the user's gathered material back to the waiting tool. */
+export async function submitAgentInput(
+  requestId: string,
+  inputs: UserInputItem[],
+  notes: string,
+): Promise<void> {
+  await callService("SubmitUserInput", { request_id: requestId, inputs, notes });
+}
+
+/** Abandon a pending input request so the waiting tool errors out instead of hanging. */
+export async function cancelAgentInput(requestId: string): Promise<void> {
+  await callService("CancelUserInput", { request_id: requestId });
 }
 
 /** Listen for `agent:request_input` events (one popup request at a time). */

@@ -12,3 +12,4 @@ pub mod set_teaching;
 pub mod teaching_init;
 pub mod delete_journey;
 pub mod submit_user_input;
+pub mod cancel_user_input;
