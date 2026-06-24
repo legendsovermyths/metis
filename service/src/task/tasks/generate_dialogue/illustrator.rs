@@ -3,18 +3,14 @@ use std::{fs, path::Path};
 use serde::Deserialize;
 
 use crate::{
-    app::journey::blackboard::{Blackboard, ElementDescriptor},
-    error::{MetisError, Result},
-    llm_client::{
+    app::dialogue::blackboard::{Blackboard, ElementDescriptor}, error::{MetisError, Result}, llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
-    },
-    prompts::get_prompt_provider,
-    utils::{
+    }, prompts::get_prompt_provider, utils::{
         format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
         latex::execute_latex,
         python::execute_python,
-    },
+    }
 };
 const MAX_RETRIES: usize = 5;
 
@@ -43,9 +39,7 @@ impl IllustrationResult {
 pub struct IllustrationRequest<'a> {
     pub dialogue: &'a str,
     pub instruction: &'a str,
-    pub previous_instruction: &'a str,
-    pub chapter_dir: &'a str,
-    pub topic: &'a str,
+    pub directory: &'a str,
     pub parts: &'a [ElementDescriptor],
 }
 
@@ -75,15 +69,13 @@ impl<'a> Illustrator {
 
         get_prompt_provider().get_blackboard_prompt(
             request.instruction,
-            request.topic,
             request.dialogue,
-            request.previous_instruction,
             &parts_json,
         )
     }
 
     pub fn get_output_path(&self, request: &IllustrationRequest) -> Result<String> {
-        let illustrations_dir = Path::new(request.chapter_dir).join("illustrations");
+        let illustrations_dir = Path::new(request.directory).join("illustrations");
         fs::create_dir_all(&illustrations_dir).map_err(|e| {
             MetisError::AgentError(format!("Failed to create illustrations dir: {}", e))
         })?;

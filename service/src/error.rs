@@ -43,5 +43,12 @@ pub enum MetisError{
     #[error("Internal error: {0}")]
     InternalError(String),
     #[error ("IOError: {0}")]
-    IOError(#[from] std::io::Error)
+    IOError(#[from] std::io::Error),
+    #[error("Invalid enum type: {0}")]
+    InvalidEnumType(String),
+    #[error("Internal data error: {0}")]
+    InternalDataError(String),
+    #[error("App context error")]
+    AppContextError(String)
 }
+

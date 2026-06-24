@@ -21,9 +21,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    app::journey::blackboard::{ElementDescriptor, Segment, SegmentAction},
-    task::tasks::generate_dialogue::{annotation::Annotation, templates},
-    utils::svg::Bbox,
+    app::dialogue::{blackboard::ElementDescriptor, segment::{Segment, SegmentAction}}, task::tasks::generate_dialogue::{annotation::Annotation, templates}, utils::svg::Bbox
 };
 
 pub struct LayoutInput<'a> {

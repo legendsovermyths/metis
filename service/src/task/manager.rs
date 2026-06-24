@@ -15,6 +15,9 @@ use crate::{
         task_type::TaskType,
         tasks::{
             analyse_book::{analyse_book, AnalyseBookCheckpoint, AnalyseBookParams},
+            create_explainer::{
+                create_explanation, CreateExplanationCheckpoint, CreateExplanationParams,
+            },
             create_journey::{create_journey, CreateJourneyCheckpoint, CreateJourneyParams},
             generate_dialogue::{generate_dialogues, GenerationCheckpoint, GenerationParams},
         },
@@ -128,6 +131,14 @@ impl TaskMangager {
                 )
                 .await
             }
+            TaskType::CreateExplanation => {
+                self.spawn::<_, CreateExplanationCheckpoint, CreateExplanationParams>(
+                    create_explanation,
+                    TaskType::CreateExplanation,
+                    params,
+                )
+                .await
+            }
         }
     }
 
@@ -142,6 +153,7 @@ impl TaskMangager {
                 TaskType::CreateJourney => create_journey,
                 TaskType::AnalyseBook => analyse_book,
                 TaskType::GenerateDialogues => generate_dialogues,
+                TaskType::CreateExplanation => create_explanation,
             };
 
             let (tx, mut rx) = mpsc::channel::<TaskProgress>(100);

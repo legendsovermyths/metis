@@ -1,12 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Home, BookOpen, Compass, Activity, Sun, Moon } from "lucide-react";
+import { Home, BookOpen, Compass, Lightbulb, Activity, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home },
   { path: "/library", label: "Library", icon: BookOpen },
   { path: "/journeys", label: "Journeys", icon: Compass },
+  { path: "/explainer", label: "Explanations", icon: Lightbulb },
   { path: "/tasks", label: "Tasks", icon: Activity },
 ];
 

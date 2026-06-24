@@ -96,7 +96,7 @@ export default function JourneyDetailPage() {
     if (starting) return;
     setStarting(true);
     try {
-      await teachingInit(numericId);
+      await teachingInit("Journey", numericId);
       navigate("/teach");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

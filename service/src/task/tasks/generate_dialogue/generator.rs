@@ -1,19 +1,21 @@
 use crate::{
-    app::journey::{
-        artifact::JourneyArtifacts,
-        blackboard::{Blackboard, BlackboardInstructions, ElementDescriptor, Segment},
-        dialogue::Dialogue,
+    app::{
+        dialogue::{
+            blackboard::{Blackboard, BlackboardInstructions, ElementDescriptor},
+            segment::Segment,
+            Dialogue, DialogueReference,
+        },
+        journey::artifact::JourneyArtifacts,
     },
     db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, journeys::JourneysRepo},
     error::{MetisError, Result},
     task::tasks::generate_dialogue::{
         curator::{Curator, CuratorRequest},
-        enhancer::{EnhancementResult, Enhancer, EnhancerRequest},
+        enhancer::{Enhancer, EnhancerRequest},
         illustrator::{IllustrationRequest, IllustrationResult, Illustrator},
         narrator::{NarrateRequest, Narrator, NarratorOutput},
         GenerationParams,
     },
-    utils::narrator::load_topic_content,
 };
 
 pub struct DialgoueGenerator {
@@ -24,41 +26,24 @@ pub struct DialgoueGenerator {
 }
 
 impl DialgoueGenerator {
-    pub fn new()->Self{
-       DialgoueGenerator { narrator: Narrator::new(), curator: Curator::new(), illustrator: Illustrator::new(), enhancer: Enhancer::new() }
+    pub fn new() -> Self {
+        DialgoueGenerator {
+            narrator: Narrator::new(),
+            curator: Curator::new(),
+            illustrator: Illustrator::new(),
+            enhancer: Enhancer::new(),
+        }
     }
     pub async fn generate(&mut self, request: &GenerationParams) -> Result<Dialogue> {
-        let recent_dialogues =
-            DialoguesRepo::get_recent_for_journey(request.id, request.num_dialogues)?;
-        let artifacts = JourneysRepo::get_artifacts(request.id)?.ok_or(MetisError::ParamsError(
-            "journey id does not exist for generation of dialogues".into(),
-        ))?;
-        let (arc, topic, blackboard) = artifacts.get_current_state()?.ok_or(
-            MetisError::AgentError("Cannot generate dialogue for finished artifact".into()),
-        )?;
-
-        let arc_json =
-            serde_json::to_string_pretty(arc).map_err(|e| MetisError::JsonError(e.to_string()))?;
-        let profile = AppDataRepo::get("user_profile")?.unwrap_or_default();
-        let reference_material = load_topic_content(&artifacts.chapter_dir, &topic.name);
-
-        let recent_dialogue_content = recent_dialogues
-            .iter()
-            .map(|dialogue| dialogue.content.clone())
-            .collect::<Vec<String>>()
-            .join("\n\n---\n\n");
         let narration = self
             .narrator
             .narrate(NarrateRequest {
-                profile: &profile,
-                arc: &arc_json,
-                dialogue_so_far: &recent_dialogue_content,
-                reference_material: &reference_material,
-                blackboard_state: &blackboard.description,
+                dialogue_reference: request.dialogue_reference.clone(),
+                parent_id: request.parent_id,
             })
             .await?;
 
-        let instruction = match &narration.blackboard_instructions {
+        let blackboard_instruction = match &narration.blackboard_instructions {
             BlackboardInstructions::Detailed(s) => s.as_str(),
             BlackboardInstructions::Clear => "",
         };
@@ -66,139 +51,92 @@ impl DialgoueGenerator {
         let curated = self
             .curator
             .curate(CuratorRequest {
-                dialogue: &narration.dialogue,
-                instruction,
-                topic: &topic.name,
-                previous_image_url: blackboard.image_url.as_deref(),
+                dialogue_content: &narration.dialogue,
+                blackboard_instruction,
             })
             .await?;
 
+        let directory = request.dialogue_reference.get_directory()?;
+
         let illustration = self
-            .illustrate(
-                &narration,
-                &curated.dialogue,
-                &blackboard,
-                &artifacts.chapter_dir,
-                &topic.name,
-                &curated.parts,
-            )
+            .illustrator
+            .illustrate(IllustrationRequest {
+                dialogue: &narration.dialogue,
+                instruction: blackboard_instruction,
+                directory: &directory,
+                parts: &curated.parts,
+            })
             .await?;
 
         let enhanced = self
-            .enhance(
-                illustration,
-                curated.parts,
-                curated.segments,
-                &curated.dialogue,
-                instruction,
-                &topic.name,
-                &artifacts.chapter_dir,
-            )
+            .enhancer
+            .enhance(EnhancerRequest {
+                source_code: illustration.source_code.as_deref(),
+                library: illustration.library.as_deref(),
+                fallback_blackboard: illustration.blackboard,
+                parts: curated.parts,
+                segments: curated.segments,
+                dialogue: &curated.dialogue,
+                instruction: blackboard_instruction,
+                title: &narration.title,
+                chapter_dir: &directory,
+            })
             .await?;
 
-        let (final_parts, final_segments) =
-            self.finalize_parts_and_segments(enhanced.parts, enhanced.segments, &enhanced.blackboard);
+        let (final_parts, final_segments) = self.finalize_parts_and_segments(
+            enhanced.parts,
+            enhanced.segments,
+            &enhanced.blackboard,
+        );
 
         let dialogue = self.build_dialogue(
-            &artifacts,
+            narration.title,
             curated.dialogue,
             enhanced.blackboard,
             narration.topic_complete,
             final_segments,
             final_parts,
+            request.dialogue_reference.clone()
         )?;
         Ok(dialogue)
     }
 
-    async fn enhance(
-        &mut self,
-        illustration: IllustrationResult,
-        parts: Vec<ElementDescriptor>,
-        segments: Vec<Segment>,
-        dialogue: &str,
-        instruction: &str,
-        topic: &str,
-        chapter_dir: &str,
-    ) -> Result<EnhancementResult> {
-        self.enhancer
-            .enhance(EnhancerRequest {
-                source_code: illustration.source_code.as_deref(),
-                library: illustration.library.as_deref(),
-                fallback_blackboard: illustration.blackboard,
-                parts,
-                segments,
-                dialogue,
-                instruction,
-                topic,
-                chapter_dir,
-            })
-            .await
-    }
-
     fn build_dialogue(
         &self,
-        artifacts: &JourneyArtifacts,
+        heading: String,
         content: String,
         blackboard: Blackboard,
         topic_complete: bool,
         segments: Vec<Segment>,
         elements: Vec<ElementDescriptor>,
+        reference: DialogueReference,
     ) -> Result<Dialogue> {
-        let progress = &artifacts.progress;
-        let heading = artifacts
-            .get_topic(progress.arc_idx, progress.topic_idx)
-            .map(|t| t.name.clone())
-            .unwrap_or_default();
-
-        let last = DialoguesRepo::get_last_for_journey(progress.journey_id)?;
-        let idx = match last {
-            Some(d) if d.arc_idx == progress.arc_idx && d.topic_idx == progress.topic_idx => {
-                d.idx + 1
-            }
+        let dialogues = DialoguesRepo::get_for_parent(reference.kind(), reference.parent_id())?;
+        let last_dialogue = dialogues.last();
+        let idx = match last_dialogue {
+            Some(d) => d.idx + 1,
             _ => 0,
         };
 
+        let mut dialogue_blackboard = blackboard;
+        dialogue_blackboard.elements = elements;
+
         Ok(Dialogue {
             id: None,
-            journey_id: progress.journey_id,
-            arc_idx: progress.arc_idx,
-            topic_idx: progress.topic_idx,
+            reference,
             idx,
+            is_ready: true,
             content,
-            blackboard,
+            blackboard: dialogue_blackboard,
             heading,
             marked_complete: topic_complete,
             visible: false,
             segments,
-            elements,
         })
     }
-    async fn illustrate(
-        &mut self,
-        narration: &NarratorOutput,
-        dialogue: &str,
-        previous: &Blackboard,
-        chapter_dir: &str,
-        topic: &str,
-        parts: &[ElementDescriptor],
-    ) -> Result<IllustrationResult> {
-        let instruction = match &narration.blackboard_instructions {
-            BlackboardInstructions::Clear => return Ok(IllustrationResult::empty()),
-            BlackboardInstructions::Detailed(s) => s.as_str(),
-        };
-        self.illustrator
-            .illustrate(IllustrationRequest {
-                dialogue,
-                instruction,
-                previous_instruction: &previous.description,
-                chapter_dir,
-                topic,
-                parts,
-            })
-            .await
-    }
+
     fn finalize_parts_and_segments(
-        &self, 
+        &self,
         parts: Vec<ElementDescriptor>,
         segments: Vec<Segment>,
         blackboard: &Blackboard,

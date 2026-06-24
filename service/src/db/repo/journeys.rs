@@ -3,8 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
 
 use crate::{
-    app::journey::{
-        artifact::JourneyArtifacts, progress::JourneyProgress, Journey, JourneyArc,
+    app::{
+        dialogue::{DialogueReference, ReferenceKind},
+        journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey, JourneyArc},
     },
     db::{get_database, repo::dialogue::DialoguesRepo},
     error::{MetisError, Result},
@@ -25,9 +26,28 @@ pub struct JourneyRow {
 
 pub struct JourneysRepo;
 
-fn build_row(id: i64, chapter_title: String, chapter_dir: String, journey: Journey, created_at: i64, advisor_notes: String, tutor_notes: String, completed_topics: usize) -> JourneyRow {
+fn build_row(
+    id: i64,
+    chapter_title: String,
+    chapter_dir: String,
+    journey: Journey,
+    created_at: i64,
+    advisor_notes: String,
+    tutor_notes: String,
+    completed_topics: usize,
+) -> JourneyRow {
     let total_topics = journey.arcs.iter().map(|a| a.topics.len()).sum();
-    JourneyRow { id, chapter_title, chapter_dir, journey, created_at, advisor_notes, tutor_notes, completed_topics, total_topics }
+    JourneyRow {
+        id,
+        chapter_title,
+        chapter_dir,
+        journey,
+        created_at,
+        advisor_notes,
+        tutor_notes,
+        completed_topics,
+        total_topics,
+    }
 }
 
 impl JourneysRepo {
@@ -57,50 +77,14 @@ impl JourneysRepo {
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
-                 SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
-                 GROUP BY journey_id
-             ) d ON d.journey_id = j.id
+                 SELECT parent_id, COUNT(*) AS cnt
+                 FROM dialogues
+                 WHERE reference_kind = 'journey' AND marked_complete = 1 AND visible = 1
+                 GROUP BY parent_id
+             ) d ON d.parent_id = j.id
              WHERE j.id = ?1",
         )?;
         let mut rows = stmt.query(rusqlite::params![id])?;
-        if let Some(row) = rows.next()? {
-            Ok(Some(build_row(
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                serde_json::from_str(&row.get::<_, String>(3)?)?,
-                row.get(4)?,
-                row.get(5)?,
-                row.get(6)?,
-                row.get::<_, i64>(7)? as usize,
-            )))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn get_arc(journey_id: i64, arc_idx: usize) -> Result<Option<JourneyArc>> {
-        let Some(row) = Self::get(journey_id)? else {
-            return Ok(None);
-        };
-        Ok(row.journey.arcs.get(arc_idx).cloned())
-    }
-
-    pub fn get_latest() -> Result<Option<JourneyRow>> {
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
-                    COALESCE(d.cnt, 0)
-             FROM journeys j
-             LEFT JOIN (
-                 SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
-                 GROUP BY journey_id
-             ) d ON d.journey_id = j.id
-             ORDER BY j.created_at DESC LIMIT 1",
-        )?;
-        let mut rows = stmt.query([])?;
         if let Some(row) = rows.next()? {
             Ok(Some(build_row(
                 row.get(0)?,
@@ -124,10 +108,11 @@ impl JourneysRepo {
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
-                 SELECT journey_id, COUNT(DISTINCT arc_idx || '-' || topic_idx) AS cnt
-                 FROM dialogues WHERE marked_complete = 1 AND visible = 1
-                 GROUP BY journey_id
-             ) d ON d.journey_id = j.id
+                 SELECT parent_id, COUNT(*) AS cnt
+                 FROM dialogues
+                 WHERE reference_kind = 'journey' AND marked_complete = 1 AND visible = 1
+                 GROUP BY parent_id
+             ) d ON d.parent_id = j.id
              ORDER BY j.created_at DESC",
         )?;
         let mut rows = stmt.query([])?;
@@ -179,60 +164,99 @@ impl JourneysRepo {
         Ok(())
     }
 
-    pub fn get_artifacts(journey_id: i64) -> Result<Option<JourneyArtifacts>> {
+    pub fn get_artifacts(journey_id: i64) -> Result<JourneyArtifacts> {
         let row = match Self::get(journey_id)? {
             Some(r) => r,
-            None => return Ok(None),
+            None => {
+                return Err(MetisError::InternalDataError(format!(
+                    "journey not found for journey id: {} ",
+                    journey_id
+                )))
+            }
         };
 
-        let last = DialoguesRepo::get_last_for_journey(journey_id)?;
-        let (mut arc_idx, mut topic_idx, mut is_journey_complete) = last
-            .as_ref()
-            .map(|d| (d.arc_idx, d.topic_idx, false))
-            .unwrap_or((0, 0, false));
+        let dialogues = DialoguesRepo::get_for_parent(ReferenceKind::Journey, journey_id)?;
+        let last = dialogues.last();
 
-        if let Some(last) = last {
-            if last.marked_complete {
-                let next_topic = topic_idx + 1;
-                if row.journey.arcs.get(arc_idx).and_then(|a| a.topics.get(next_topic)).is_some() {
-                    topic_idx = next_topic;
-                } else {
-                    let next_arc = arc_idx + 1;
-                    if row.journey.arcs.get(next_arc).and_then(|a| a.topics.first()).is_some() {
-                        arc_idx = next_arc;
-                        topic_idx = 0;
+        match last {
+            Some(dialogue) => {
+                let DialogueReference::Journey {
+                    arc_idx: last_arc,
+                    topic_idx: last_topic,
+                    ..
+                } = &dialogue.reference
+                else {
+                    return Err(MetisError::InternalDataError(
+                        "journey dialogue has a non-journey reference".to_string(),
+                    ));
+                };
+                let (mut arc_idx, mut topic_idx, mut is_journey_complete) =
+                    (*last_arc, *last_topic, false);
+
+                if dialogue.marked_complete {
+                    let next_topic = topic_idx + 1;
+                    if row
+                        .journey
+                        .arcs
+                        .get(arc_idx)
+                        .and_then(|a| a.topics.get(next_topic))
+                        .is_some()
+                    {
+                        topic_idx = next_topic;
                     } else {
-                        is_journey_complete = true;
+                        let next_arc = arc_idx + 1;
+                        if row
+                            .journey
+                            .arcs
+                            .get(next_arc)
+                            .and_then(|a| a.topics.first())
+                            .is_some()
+                        {
+                            arc_idx = next_arc;
+                            topic_idx = 0;
+                        } else {
+                            is_journey_complete = true;
+                        }
                     }
                 }
+
+                let progress = JourneyProgress {
+                    journey_id,
+                    arc_idx,
+                    topic_idx,
+                    is_journey_complete,
+                };
+
+                Ok(JourneyArtifacts {
+                    id: Some(row.id),
+                    chapter_title: row.chapter_title,
+                    chapter_dir: row.chapter_dir,
+                    journey: row.journey,
+                    advisor_notes: row.advisor_notes,
+                    tutor_notes: row.tutor_notes,
+                    progress,
+                })
+            },
+            None => {
+                let progress = JourneyProgress::new(journey_id);
+
+                Ok(JourneyArtifacts {
+                    id: Some(row.id),
+                    chapter_title: row.chapter_title,
+                    chapter_dir: row.chapter_dir,
+                    journey: row.journey,
+                    advisor_notes: row.advisor_notes,
+                    tutor_notes: row.tutor_notes,
+                    progress,
+                })
             }
         }
-
-        let progress = JourneyProgress {
-            journey_id,
-            arc_idx,
-            topic_idx,
-            is_journey_complete,
-        };
-
-        Ok(Some(JourneyArtifacts {
-            id: Some(row.id),
-            chapter_title: row.chapter_title,
-            chapter_dir: row.chapter_dir,
-            journey: row.journey,
-            advisor_notes: row.advisor_notes,
-            tutor_notes: row.tutor_notes,
-            progress,
-        }))
     }
 
     pub fn delete_single(id: i64) -> Result<()> {
-        DialoguesRepo::delete_all_for_journey(id)?;
+        DialoguesRepo::delete_for_parent(ReferenceKind::Journey, id)?;
         let conn = get_database().conn.lock().unwrap();
-        conn.execute(
-            "DELETE FROM journeys WHERE id = ?1",
-            rusqlite::params![id],
-        )?;
+        conn.execute("DELETE FROM journeys WHERE id = ?1", rusqlite::params![id])?;
         Ok(())
     }
 }

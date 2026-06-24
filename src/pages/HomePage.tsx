@@ -23,17 +23,17 @@ export default function HomePage() {
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
 
   const goToChatFresh = async () => {
-    if (context) await setChat({ ...context.chat, phase: "Exploring", is_done: false });
+    if (context) await setChat({ ...context.chat, phase: "Exploring", is_done: false, pending_action: null });
     navigate("/chat");
   };
 
   const createJourney = async () => {
-    if (context) await setChat({ ...context.chat, phase: "Advising", is_done: false });
+    if (context) await setChat({ ...context.chat, phase: "Advising", is_done: false, pending_action: null });
     navigate("/chat");
   };
 
   const handleGetStarted = async () => {
-    if (context) await setChat({ ...context.chat, phase: "Onboarding", is_done: false });
+    if (context) await setChat({ ...context.chat, phase: "Onboarding", is_done: false, pending_action: null });
     navigate("/chat");
   };
 
@@ -64,7 +64,7 @@ export default function HomePage() {
               We begin not with answers, but with questions.
             </p>
             <p className="text-sm text-text-secondary leading-relaxed max-w-md mb-12">
-              Tell me what you know, and what you do not — and we shall find our way.
+              Tell me what you know, and what you do not, and we shall find our way.
             </p>
             <Button
               variant="outline"
@@ -92,7 +92,7 @@ export default function HomePage() {
               We begin not with answers, but with questions.
             </p>
             <p className="text-sm text-text-secondary leading-relaxed mb-8 max-w-xs">
-              Tell me what you know, and what you do not — and we shall find our way.
+              Tell me what you know, and what you do not, and we shall find our way.
             </p>
             <Button
               variant="outline"

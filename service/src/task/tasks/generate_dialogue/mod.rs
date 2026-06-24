@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    app::journey::dialogue::Dialogue,
+    app::dialogue::{Dialogue, DialogueReference, ReferenceKind},
     db::repo::{dialogue::DialoguesRepo, task::TasksRepo},
     task::{
         context::TaskContext,
@@ -24,7 +24,8 @@ pub mod templates;
 
 #[derive(Deserialize, Serialize)]
 pub struct GenerationParams {
-    id: i64,
+    parent_id: i64,
+    dialogue_reference: DialogueReference,
     num_dialogues: usize,
 }
 
@@ -47,7 +48,7 @@ pub fn generate_dialogues(context: TaskContext) -> TaskFuture {
                 .progress_tx
                 .send(TaskProgress {
                     task_id: context.id.clone(),
-                    message: format!("Dialgoue generate for journey: {}", params.id),
+                    message: format!("Dialgoue generate for journey: {}", params.parent_id),
                     checkpoint: serde_json::to_value(&checkpoint)?,
                     status: TaskStatus::Running,
                 })
@@ -65,6 +66,6 @@ impl Default for GenerationCheckpoint {
 
 impl TaskGaurd for GenerationParams {
     fn identity(&self) -> Option<String> {
-        Some(format!("GenerateDialogues:{}", self.id))
+        Some(format!("GenerateDialogues:{}:{}", self.parent_id, self.dialogue_reference.kind().as_str()))
     }
 }

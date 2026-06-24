@@ -35,5 +35,14 @@ pub enum ServiceRequestType {
     SetDialogue,
     SubmitUserInput,
     CancelUserInput,
-    DeleteJourney
+    DeleteJourney,
+    GetArtifact,
+    GetAllExplanations,
+    DeleteExplanation,
+    MoveExplanation,
+    GetFolders,
+    CreateFolder,
+    RenameFolder,
+    MoveFolder,
+    DeleteFolder,
 }

@@ -1,35 +1,29 @@
-use std::fs;
-
 use serde::Deserialize;
 
 use crate::{
-    app::journey::blackboard::{ElementDescriptor, Segment, SegmentAction},
+    app::dialogue::{
+        blackboard::ElementDescriptor,
+        segment::{Segment, SegmentAction},
+    },
     error::Result,
     llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
     },
     prompts::get_prompt_provider,
-    utils::{
-        format::{fix_json_escapes, strip_json_block},
-        svg::svg_tree,
-    },
+    utils::format::{fix_json_escapes, strip_json_block},
 };
 
 #[derive(Deserialize)]
 struct CuratorOutput {
     dialogue: String,
-    #[serde(default)]
     parts: Vec<ElementDescriptor>,
-    #[serde(default)]
     segments: Vec<Segment>,
 }
 
 pub struct CuratorRequest<'a> {
-    pub dialogue: &'a str,
-    pub instruction: &'a str,
-    pub topic: &'a str,
-    pub previous_image_url: Option<&'a str>,
+    pub dialogue_content: &'a str,
+    pub blackboard_instruction: &'a str,
 }
 
 pub struct CuratedResult {
@@ -49,18 +43,8 @@ impl<'a> Curator {
     }
 
     pub async fn curate(&mut self, request: CuratorRequest<'a>) -> Result<CuratedResult> {
-        let previous_svg_structure = request
-            .previous_image_url
-            .and_then(|url| fs::read_to_string(url).ok())
-            .map(|svg| svg_tree(&svg))
-            .unwrap_or_default();
-
-        let prompt = get_prompt_provider().get_curator_prompt(
-            request.dialogue,
-            request.instruction,
-            request.topic,
-            &previous_svg_structure,
-        );
+        let prompt = get_prompt_provider()
+            .get_curator_prompt(request.dialogue_content, request.blackboard_instruction);
 
         self.client.set_system_prompt(prompt);
         self.client.set_json_mode(true);
@@ -78,10 +62,10 @@ impl<'a> Curator {
             Err(e) => {
                 log::error!("[curator] failed to parse LLM response: {e}\nRaw: {raw}");
                 return Ok(CuratedResult {
-                    dialogue: request.dialogue.to_string(),
+                    dialogue: request.dialogue_content.to_string(),
                     parts: Vec::new(),
                     segments: vec![Segment {
-                        text: request.dialogue.to_string(),
+                        text: request.dialogue_content.to_string(),
                         actions: Vec::new(),
                     }],
                 });
@@ -153,3 +137,4 @@ fn ensure_all_parts_revealed(segments: &mut Vec<Segment>, parts: &[ElementDescri
         }
     }
 }
+

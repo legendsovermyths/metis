@@ -27,22 +27,18 @@ fn event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
 }
 
 impl DialogueEventsRepo {
-    pub fn insert_events(
-        journey_id: Option<i64>,
-        dialogue_id: Option<i64>,
-        events: &[Event],
-    ) -> Result<()> {
+    pub fn insert_events(parent_id: i64, dialogue_id: i64, events: &[Event]) -> Result<()> {
         if events.is_empty() {
             return Ok(());
         }
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "INSERT INTO dialogue_events (journey_id, dialogue_id, name, event_type, content, timestamp)
+            "INSERT INTO dialogue_events (parent_id, dialogue_id, name, event_type, content, timestamp)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         )?;
         for event in events {
             stmt.execute(rusqlite::params![
-                journey_id,
+                parent_id,
                 dialogue_id,
                 event.name,
                 event.event_type.to_string(),
@@ -69,15 +65,15 @@ impl DialogueEventsRepo {
         Ok(history)
     }
 
-    pub fn get_for_journey(journey_id: i64) -> Result<EventHistory> {
+    pub fn get_for_parent(parent_id: i64) -> Result<EventHistory> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT name, event_type, content, timestamp
              FROM dialogue_events
-             WHERE journey_id = ?1
+             WHERE parent_id = ?1
              ORDER BY id",
         )?;
-        let mut rows = stmt.query(rusqlite::params![journey_id])?;
+        let mut rows = stmt.query(rusqlite::params![parent_id])?;
         let mut history = EventHistory::new();
         while let Some(row) = rows.next()? {
             history.add_event(event_from_row(&row)?);

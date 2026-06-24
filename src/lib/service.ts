@@ -24,12 +24,19 @@ export interface EventHistory {
   events: ChatEvent[];
 }
 
+export type ReferenceKind = "Journey" | "Explanation" | "None";
+
+export type PendingAction =
+  | { kind: "explainer"; problem_resource_id: number; solution_resource_id: number }
+  | { kind: "journey"; resource_id: number };
+
 export interface ChatContext {
   phase: MetisPhase;
   notes: string | null;
   is_done: boolean;
   event_history: EventHistory;
   dialogue_id: number | null;
+  pending_action: PendingAction | null;
 }
 
 export interface SessionContext {
@@ -38,7 +45,8 @@ export interface SessionContext {
 }
 
 export interface TeachingContext {
-  artifacts: { data: JourneyArtifacts } | null;
+  artifact_id: number | null;
+  artifact_kind: ReferenceKind | null;
 }
 
 export interface AppContext {
@@ -72,14 +80,15 @@ export interface ArcTopic {
   mode: "reinvent" | "discover" | "derive" | "connect" | "introduce";
 }
 
-export interface Blackboard {
-  description: string;
-  image_url?: string | null;
-}
-
 export interface ElementDescriptor {
   id: string;
   desc: string;
+}
+
+export interface Blackboard {
+  elements: ElementDescriptor[];
+  description: string;
+  image_url?: string | null;
 }
 
 export type SegmentAction =
@@ -95,11 +104,14 @@ export interface Segment {
   actions: SegmentAction[];
 }
 
+export type DialogueReference =
+  | { Journey: { journey_id: number; arc_idx: number; topic_idx: number } }
+  | { Explanation: { explanation_id: number; step_idx: number } }
+  | "None";
+
 export interface Dialogue {
   id: number | null;
-  journey_id: number;
-  arc_idx: number;
-  topic_idx: number;
+  reference: DialogueReference;
   idx: number;
   content: string;
   blackboard: Blackboard;
@@ -107,7 +119,19 @@ export interface Dialogue {
   marked_complete: boolean;
   visible: boolean;
   segments: Segment[];
-  elements: ElementDescriptor[];
+  is_ready: boolean;
+}
+
+export function journeyRef(
+  ref: DialogueReference,
+): { journey_id: number; arc_idx: number; topic_idx: number } | null {
+  return typeof ref === "object" && "Journey" in ref ? ref.Journey : null;
+}
+
+export function explanationRef(
+  ref: DialogueReference,
+): { explanation_id: number; step_idx: number } | null {
+  return typeof ref === "object" && "Explanation" in ref ? ref.Explanation : null;
 }
 
 export interface JourneyProgress {
@@ -130,11 +154,74 @@ export interface JourneyRow {
   total_topics: number;
 }
 
+// -- Explanations & folders --
+
+export type ExplanationLabel =
+  | "Grasp"
+  | "Observation"
+  | "Deduction"
+  | "Conclusion"
+  | "Application";
+
+export interface ExplanationStep {
+  name: string;
+  label: ExplanationLabel;
+  brief: string;
+}
+
+export interface Explanation {
+  steps: ExplanationStep[];
+}
+
+/** Row from `explanations` table (API). */
+export interface ExplanationRow {
+  id: number;
+  title: string;
+  explanation_dir: string;
+  explanation: Explanation;
+  created_at: number;
+  tutor_notes: string;
+  folder_id: number | null;
+  completed_steps: number;
+  total_steps: number;
+}
+
+export interface Folder {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  created_at: number;
+}
+
+export interface ExplanationProgress {
+  explanation_id: number;
+  step_idx: number;
+  is_complete: boolean;
+}
+
+export interface ExplanationArtifacts {
+  id: number | null;
+  title: string;
+  explanation_directory: string;
+  explanation: Explanation;
+  progress: ExplanationProgress;
+  tutor_notes: string;
+}
+
+/** Artifact-with-progress for the active teaching session (journey or explanation). */
+export type TeachingArtifact =
+  | { kind: "Journey"; journey: JourneyArtifacts }
+  | { kind: "Explanation"; explanation: ExplanationArtifacts };
+
 // -- Background tasks --
 
 export type TaskStatus = "Pending" | "Running" | "Completed" | "Failed";
 
-export type TaskName = "analyse_book" | "create_journey" | "generate_dialogues";
+export type TaskName =
+  | "analyse_book"
+  | "create_journey"
+  | "generate_dialogues"
+  | "create_explanation";
 
 export interface BackgroundTask {
   id: string;
@@ -266,10 +353,68 @@ export async function deleteJourney(id: number): Promise<void> {
   await callService("DeleteJourney", { id });
 }
 
+// -- API: explanations & folders --
+
+export async function getArtifact(
+  kind: ReferenceKind,
+  parentId: number,
+): Promise<TeachingArtifact> {
+  return (await callService("GetArtifact", { kind, parent_id: parentId })) as TeachingArtifact;
+}
+
+export async function getAllExplanations(): Promise<ExplanationRow[]> {
+  return (await callService("GetAllExplanations")) as ExplanationRow[];
+}
+
+export async function deleteExplanation(id: number): Promise<void> {
+  await callService("DeleteExplanation", { id });
+}
+
+export async function moveExplanation(id: number, folderId: number | null): Promise<void> {
+  await callService("MoveExplanation", { id, folder_id: folderId });
+}
+
+/** Build an explanation from a problem + solution resource. Returns a task id. */
+export async function createExplanation(
+  problemResourceId: number,
+  solutionResourceId: number,
+): Promise<string> {
+  return callTask("create_explanation", {
+    problem_resource_id: problemResourceId,
+    solution_resource_id: solutionResourceId,
+  });
+}
+
+export async function getFolders(): Promise<Folder[]> {
+  return (await callService("GetFolders")) as Folder[];
+}
+
+export async function createFolder(name: string, parentId: number | null): Promise<number> {
+  const data = (await callService("CreateFolder", { name, parent_id: parentId })) as {
+    id: number;
+  };
+  return data.id;
+}
+
+export async function renameFolder(id: number, name: string): Promise<void> {
+  await callService("RenameFolder", { id, name });
+}
+
+export async function moveFolder(id: number, parentId: number | null): Promise<void> {
+  await callService("MoveFolder", { id, parent_id: parentId });
+}
+
+export async function deleteFolder(id: number): Promise<void> {
+  await callService("DeleteFolder", { id });
+}
+
 // -- API: dialogues --
 
-export async function getAllDialogues(journeyId: number): Promise<Dialogue[]> {
-  return (await callService("GetAllDialogues", { journey_id: journeyId })) as Dialogue[];
+export async function getAllDialogues(
+  kind: ReferenceKind,
+  parentId: number,
+): Promise<Dialogue[]> {
+  return (await callService("GetAllDialogues", { kind, parent_id: parentId })) as Dialogue[];
 }
 
 /**
@@ -277,13 +422,12 @@ export async function getAllDialogues(journeyId: number): Promise<Dialogue[]> {
  * ready yet. When null, the backend has already spawned a `generate_dialogues`
  * task — callers should listen to task events and retry.
  */
-export async function getNextDialogue(journeyId: number): Promise<Dialogue | null> {
-  const data = await callService("GetNextDialogue", { journey_id: journeyId });
+export async function getNextDialogue(
+  kind: ReferenceKind,
+  parentId: number,
+): Promise<Dialogue | null> {
+  const data = await callService("GetNextDialogue", { kind, parent_id: parentId });
   return (data ?? null) as Dialogue | null;
-}
-
-export async function generateDialogues(journeyId: number, numDialogues = 20): Promise<string> {
-  return callTask("generate_dialogues", { id: journeyId, num_dialogues: numDialogues });
 }
 
 // -- API: context & state --
@@ -304,8 +448,11 @@ export async function setTeaching(teaching: TeachingContext): Promise<void> {
   await callService("SetTeaching", teaching as unknown as Record<string, unknown>);
 }
 
-export async function teachingInit(journeyId: number): Promise<void> {
-  await callService("TeachingInit", { journey_id: journeyId });
+export async function teachingInit(
+  artifactKind: ReferenceKind,
+  artifactId: number,
+): Promise<void> {
+  await callService("TeachingInit", { artifact_kind: artifactKind, artifact_id: artifactId });
 }
 
 export async function setDialogue(dialogueId: number): Promise<void> {

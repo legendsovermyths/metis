@@ -9,9 +9,7 @@ Your figures are drawn on a **blackboard** that the student sees alongside the l
 You receive:
 
 1. **The professor's instruction** — a natural-language description of what to draw.
-2. **The current topic** being taught, for context.
-3. **The professor's current dialogue** - professor's speech to go along with your visual
-4. **The current description blackboard visual** - Current description of the visual that is displayed on the blackboard(Professor might ask to alter the current visual also, or create a complete new one)
+2. **The professor's current dialogue** - professor's speech to go along with your visual
 
 You produce a single figure.
 
@@ -124,17 +122,9 @@ The experience director has designed the following semantic parts for this figur
 
 {instruction}
 
-## Current Topic
-
-{topic}
-
 ## Professor's Dialgoue
 
 {dialogue}
-
-## Previous Blackboard Instruction
-
-{previous_instruction}
 
 ## Generate
 

@@ -17,6 +17,7 @@ import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
 import JourneysPage from "./pages/JourneysPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
+import ExplainerPage from "./pages/ExplainerPage";
 import TeachingPage from "./pages/TeachingPage";
 import TasksPage from "./pages/TasksPage";
 import NotFound from "./pages/NotFound";
@@ -52,6 +53,7 @@ function AppLayout() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/journeys" element={<JourneysPage />} />
           <Route path="/journeys/:id" element={<JourneyDetailPage />} />
+          <Route path="/explainer" element={<ExplainerPage />} />
           <Route path="/teach" element={<TeachingPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="*" element={<NotFound />} />

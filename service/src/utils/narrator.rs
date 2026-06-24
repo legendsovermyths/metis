@@ -28,3 +28,7 @@ pub fn load_topic_content(chapter_dir: &str, topic_name: &str) -> String {
 
     content[start_pos..end_pos].to_string()
 }
+
+pub fn load_explanation_material(explanation_dir: &str) -> String {
+    std::fs::read_to_string(format!("{}/content.md", explanation_dir)).unwrap_or_default()
+}

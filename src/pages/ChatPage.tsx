@@ -3,8 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
-import { sendMessage } from "@/lib/service";
+import { createExplanation, sendMessage, setChat } from "@/lib/service";
 import { useJourneyCreation } from "@/context/JourneyCreationContext";
+import { toast } from "sonner";
 import { useMasthead, mastheadStyle, toRomanLower } from "@/lib/editorial";
 import "katex/dist/katex.min.css";
 import Latex from "react-latex-next";
@@ -53,14 +54,14 @@ const modeGreeting: Record<Mode, {
     label: "Onboarding",
     heading: "Tell me about yourself",
     verse: "We begin not with answers, but with questions.",
-    whisper: "Speak of what you know — and what you do not.",
+    whisper: "Speak of what you know, and what you do not.",
     glyph: "∂",
   },
   teaching: {
     label: "Teaching",
     heading: "Let us examine an idea",
     verse: "Two minds bent over the same page.",
-    whisper: "Think aloud — there are no wrong steps.",
+    whisper: "Think aloud; there are no wrong steps.",
     glyph: "∑",
   },
   advising: {
@@ -81,7 +82,7 @@ const modeGreeting: Record<Mode, {
     label: "The Crossroads",
     heading: "What do you want to make sense of?",
     verse: "Bring the knot; we'll find the thread.",
-    whisper: "A problem, a paper, a page — set it down here.",
+    whisper: "A problem, a paper, a page. Set it down here.",
     glyph: "∴",
   },
 };
@@ -256,6 +257,30 @@ export default function ChatPage() {
           navigate("/journeys");
         },
       };
+    }
+    if (phase === "Exploring") {
+      const pending = context?.chat.pending_action ?? null;
+      if (pending?.kind === "explainer") {
+        return {
+          label: "Compose the explanation",
+          disabled: false,
+          onClick: async () => {
+            try {
+              await createExplanation(pending.problem_resource_id, pending.solution_resource_id);
+              if (context) {
+                await setChat({ ...context.chat, is_done: false, pending_action: null });
+              }
+              toast.success("Composing your explanation", {
+                description: "Metis is charting the route. It will appear in Explanations.",
+              });
+              navigate("/explainer");
+            } catch {
+              // Error already surfaced via toast by callBackend.
+            }
+          },
+        };
+      }
+      return null;
     }
     return {
       label: "Get started",
@@ -440,7 +465,11 @@ export default function ChatPage() {
           </div>
           <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4 md:px-10">
             <span className="label-whisper text-text-tertiary">
-              {phase === "Advising" ? "the path is clear" : "the conversation is at rest"}
+              {phase === "Advising"
+                ? "the path is clear"
+                : phase === "Exploring"
+                  ? "the thread is found"
+                  : "the conversation is at rest"}
             </span>
             <Button
               onClick={endAction.onClick}

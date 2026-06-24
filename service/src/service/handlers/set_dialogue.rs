@@ -20,22 +20,6 @@ pub fn set_dialogue(params: SetDialogueParams, context: &AppContext) -> BoxFutur
             return Err(MetisError::InvalidRequest);
         }
 
-        let journey_id = {
-            let teaching = context.teaching.lock().await;
-            teaching
-                .artifacts
-                .as_ref()
-                .and_then(|a| a.read().id)
-                .ok_or(MetisError::InvalidRequest)?
-        };
-
-        let dialogue = DialoguesRepo::get_by_id(params.dialogue_id)?
-            .ok_or_else(|| MetisError::NotFound(format!("dialogue {}", params.dialogue_id)))?;
-
-        if dialogue.journey_id != journey_id {
-            return Err(MetisError::InvalidRequest);
-        }
-
         let history = DialogueEventsRepo::get_for_dialogue(params.dialogue_id)?;
 
         let mut chat = context.chat.lock().await;

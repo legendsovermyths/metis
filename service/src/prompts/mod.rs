@@ -20,11 +20,14 @@ pub struct PromptProvider {
     text_to_markdown_prompt: String,
     topic_mapper_prompt: String,
     content_to_topics_prompt: String,
-    narrator_system_prompt: String,
+    journey_narrator_system_prompt: String,
+    explainer_narrator_system_prompt: String,
     blackboard_system_prompt: String,
     curator_system_prompt: String,
     enhancer_system_prompt: String,
     tutor_system_prompt: String,
+    explainer_tutor_system_prompt: String,
+    explanation_architect_prompt: String,
 }
 
 impl PromptProvider {
@@ -41,11 +44,17 @@ impl PromptProvider {
             text_to_markdown_prompt: include_str!("markdowns/text_to_markdown.md").to_string(),
             topic_mapper_prompt: include_str!("markdowns/topic_mapper.md").to_string(),
             content_to_topics_prompt: include_str!("markdowns/content_to_topics.md").to_string(),
-            narrator_system_prompt: include_str!("markdowns/narrator.md").to_string(),
+            journey_narrator_system_prompt: include_str!("markdowns/journey_narrator.md")
+                .to_string(),
+            explainer_narrator_system_prompt: include_str!("markdowns/explainer_narrator.md")
+                .to_string(),
             blackboard_system_prompt: include_str!("markdowns/blackboard.md").to_string(),
             curator_system_prompt: include_str!("markdowns/curator.md").to_string(),
             enhancer_system_prompt: include_str!("markdowns/enhancer.md").to_string(),
             tutor_system_prompt: include_str!("markdowns/tutor.md").to_string(),
+            explainer_tutor_system_prompt: include_str!("markdowns/explainer_tutor.md").to_string(),
+            explanation_architect_prompt: include_str!("markdowns/explanation_architect.md")
+                .to_string(),
         })
     }
 
@@ -82,17 +91,19 @@ impl PromptProvider {
     pub fn get_content_to_topics_prompt(&self) -> String {
         self.content_to_topics_prompt.clone()
     }
-    pub fn get_narrator_prompt(
+    pub fn get_journey_narrator_prompt(
         &self,
         profile: &str,
         arc: &str,
+        current_topic: &str,
         dialogue_so_far: &str,
         reference_material: &str,
         blackboard_state: &str,
     ) -> String {
-        self.narrator_system_prompt
+        self.journey_narrator_system_prompt
             .replace("{profile}", profile)
             .replace("{arc}", arc)
+            .replace("{current_topic}", current_topic)
             .replace("{dialogue_so_far}", dialogue_so_far)
             .replace(
                 "{reference_material}",
@@ -112,19 +123,42 @@ impl PromptProvider {
             )
     }
 
-    pub fn get_blackboard_prompt(
+    pub fn get_explainer_narrator_prompt(
         &self,
-        instruction: &str,
-        topic: &str,
-        dialogue: &str,
-        previous_instruction: &str,
-        parts: &str,
+        profile: &str,
+        plan: &str,
+        current_step: &str,
+        dialogue_so_far: &str,
+        reference_material: &str,
+        blackboard_state: &str,
     ) -> String {
+        self.explainer_narrator_system_prompt
+            .replace("{profile}", profile)
+            .replace("{plan}", plan)
+            .replace("{current_step}", current_step)
+            .replace("{dialogue_so_far}", dialogue_so_far)
+            .replace(
+                "{reference_material}",
+                if reference_material.is_empty() {
+                    "No reference material available for this explanation."
+                } else {
+                    reference_material
+                },
+            )
+            .replace(
+                "{blackboard_state}",
+                if blackboard_state.is_empty() {
+                    "The blackboard is empty."
+                } else {
+                    blackboard_state
+                },
+            )
+    }
+
+    pub fn get_blackboard_prompt(&self, instruction: &str, dialogue: &str, parts: &str) -> String {
         self.blackboard_system_prompt
             .replace("{instruction}", instruction)
-            .replace("{topic}", topic)
             .replace("{dialogue}", dialogue)
-            .replace("{previous_instruction}", previous_instruction)
             .replace("{parts}", parts)
     }
 
@@ -149,38 +183,56 @@ impl PromptProvider {
             )
     }
 
+    pub fn get_explainer_tutor_system_prompt(
+        &self,
+        explanation_title: &str,
+        step_name: &str,
+        step_label: &str,
+        step_brief: &str,
+        last_10_dialogues: &str,
+    ) -> String {
+        self.explainer_tutor_system_prompt
+            .replace("{explanation_title}", explanation_title)
+            .replace("{step_name}", step_name)
+            .replace("{step_label}", step_label)
+            .replace("{step_brief}", step_brief)
+            .replace(
+                "{last_10_dialogues}",
+                if last_10_dialogues.trim().is_empty() {
+                    "(No chunks yet for this explanation.)"
+                } else {
+                    last_10_dialogues
+                },
+            )
+    }
+
+    pub fn get_explanation_architect_prompt(
+        &self,
+        profile: &str,
+        reference_material: &str,
+    ) -> String {
+        self.explanation_architect_prompt
+            .replace("{profile}", profile)
+            .replace("{reference_material}", reference_material)
+    }
+
     pub fn get_enhancer_prompt(
         &self,
         instruction: &str,
-        topic: &str,
+        title: &str,
         dialogue: &str,
         parts: &str,
     ) -> String {
         self.enhancer_system_prompt
             .replace("{instruction}", instruction)
-            .replace("{topic}", topic)
+            .replace("{title}", title)
             .replace("{dialogue}", dialogue)
             .replace("{parts}", parts)
     }
 
-    pub fn get_curator_prompt(
-        &self,
-        dialogue: &str,
-        instruction: &str,
-        topic: &str,
-        previous_tree: &str,
-    ) -> String {
+    pub fn get_curator_prompt(&self, dialogue: &str, instruction: &str) -> String {
         self.curator_system_prompt
             .replace("{dialogue}", dialogue)
             .replace("{instruction}", instruction)
-            .replace("{topic}", topic)
-            .replace(
-                "{previous_tree}",
-                if previous_tree.trim().is_empty() {
-                    "(No previous blackboard — this is a fresh figure.)"
-                } else {
-                    previous_tree
-                },
-            )
     }
 }

@@ -335,7 +335,7 @@ export function AgentInputDialog() {
               <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-amber-soft/95 backdrop-blur-sm animate-fade-in">
                 <ImageIcon className="h-6 w-6 text-amber" strokeWidth={1.5} />
                 <p className="font-display italic text-sm text-foreground">
-                  Release — Metis will take it from here.
+                  Release, and Metis will take it from here.
                 </p>
               </div>
             )}

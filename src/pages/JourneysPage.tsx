@@ -115,7 +115,7 @@ export default function JourneysPage() {
                 No paths charted yet.
               </p>
               <p className="text-sm text-text-tertiary max-w-xs leading-relaxed">
-                Begin one from the home page — your advisor will help you plan its course.
+                Begin one from the home page; your advisor will help you plan its course.
               </p>
             </div>
           )}

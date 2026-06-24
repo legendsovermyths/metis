@@ -1,25 +1,21 @@
+use crate::{
+    app::{
+        dialogue::{DialogueReference, ReferenceKind},
+        journey::artifact,
+        AppContext,
+    },
+    db::repo::{dialogue::DialoguesRepo, explanations::ExplanationsRepo, journeys::JourneysRepo},
+    utils::dialogue::{dialogue_to_summary, get_after_dialogue, get_before_dialogue},
+};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
 use crate::{
-    app::{journey::dialogue::Dialogue, AppContext},
-    db::repo::dialogue::DialoguesRepo,
+    app::dialogue::Dialogue,
     error::{MetisError, Result},
     llm_client::tool::{Parameter, Tool},
-    utils::narrator::load_topic_content,
+    utils::narrator::{load_explanation_material, load_topic_content},
 };
-
-fn dialogue_to_summary(d: &Dialogue) -> Value {
-    json!({
-        "id": d.id,
-        "arc_idx": d.arc_idx,
-        "topic_idx": d.topic_idx,
-        "idx": d.idx,
-        "heading": d.heading,
-        "content": d.content,
-        "blackboard": d.blackboard.description,
-    })
-}
 
 pub struct FetchMoreDialoguesTool;
 
@@ -31,10 +27,7 @@ impl Tool for FetchMoreDialoguesTool {
             .and_then(|v| v.as_str())
             .unwrap_or("before")
             .to_string();
-        let n = value
-            .get("n")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(5) as usize;
+        let n = value.get("n").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
 
         let dialogue_id = match context.chat.lock().await.dialogue_id {
             Some(id) => id,
@@ -46,8 +39,8 @@ impl Tool for FetchMoreDialoguesTool {
         };
 
         let dialogues = match direction.as_str() {
-            "before" => DialoguesRepo::get_before_dialogue(dialogue_id, n, false)?,
-            "after" => DialoguesRepo::get_after_dialogue(dialogue_id, n)?,
+            "before" => get_before_dialogue(dialogue_id, n, false)?,
+            "after" => get_after_dialogue(dialogue_id, n)?,
             other => {
                 return Ok(json!({
                     "error": format!("Unknown direction '{other}'. Use 'before' or 'after'.")
@@ -72,7 +65,8 @@ impl Tool for FetchMoreDialoguesTool {
             Parameter {
                 name: "direction".to_string(),
                 parameter_type: "string".to_string(),
-                description: "Either 'before' (earlier dialogues) or 'after' (later dialogues).".to_string(),
+                description: "Either 'before' (earlier dialogues) or 'after' (later dialogues)."
+                    .to_string(),
             },
             Parameter {
                 name: "n".to_string(),
@@ -87,29 +81,41 @@ pub struct FetchReferenceMaterialTool;
 
 #[async_trait]
 impl Tool for FetchReferenceMaterialTool {
-    async fn execute(&self, value: Value, context: &AppContext) -> Result<Value> {
-        let topic_title = value
-            .get("topic_title")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| MetisError::ToolError("missing required parameter: topic_title".into()))?
-            .to_string();
+    async fn execute(&self, value: Value, _context: &AppContext) -> Result<Value> {
+        let dialogue_id = value
+            .get("dialogue_id")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| MetisError::ToolError("missing required parameter: dialogue_id".into()))?;
 
-        let chapter_dir = {
-            let teaching = context.teaching.lock().await;
-            teaching
-                .artifacts
-                .as_ref()
-                .map(|a| a.read().chapter_dir.clone())
-                .ok_or_else(|| MetisError::ToolError("No journey is loaded.".into()))?
+        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+
+        let content = match &dialogue.reference {
+            DialogueReference::Journey {
+                journey_id,
+                arc_idx,
+                topic_idx,
+            } => {
+                let artifacts = JourneysRepo::get_artifacts(*journey_id)?;
+                let topic = artifacts.get_topic(*arc_idx, *topic_idx).ok_or(
+                    MetisError::ToolError("Referenced topic does not exist.".to_string()),
+                )?;
+                load_topic_content(&artifacts.chapter_dir, &topic.name)
+            }
+            DialogueReference::Explanation { explanation_id, .. } => {
+                let artifacts = ExplanationsRepo::get_artifacts(*explanation_id)?;
+                load_explanation_material(&artifacts.explanation_directory)
+            }
+            DialogueReference::None => {
+                return Ok(json!({
+                    "error": "Dialogue has no reference material."
+                }));
+            }
         };
 
-        let excerpt = load_topic_content(&chapter_dir, &topic_title);
-        if excerpt.is_empty() {
-            return Ok(json!({
-                "error": format!("No reference material found for topic '{topic_title}'.")
-            }));
+        if content.is_empty() {
+            return Ok(json!({ "error": "No reference material found." }));
         }
-        Ok(json!({ "topic": topic_title, "content": excerpt }))
+        Ok(json!({ "content": content }))
     }
 
     fn name(&self) -> &str {
@@ -117,15 +123,39 @@ impl Tool for FetchReferenceMaterialTool {
     }
 
     fn description(&self) -> &str {
-        "Look up the underlying textbook pages for a specific topic by title. Returns the markdown excerpt of those pages. Use sparingly — only when the student's question needs precise grounding in the source material."
+        "Fetch the source material behind a dialogue — for a course, the textbook pages for its topic; for an explanation, the full problem and worked solution."
     }
 
     fn parameters(&self) -> Vec<Parameter> {
         vec![Parameter {
-            name: "topic_title".to_string(),
-            parameter_type: "string".to_string(),
-            description: "Exact topic title as listed in the course's topic map.".to_string(),
+            name: "dialogue_id".to_string(),
+            parameter_type: "integer".to_string(),
+            description: "The id of the dialogue whose source material you want.".to_string(),
         }]
+    }
+}
+
+pub struct GetCurrentDialogueIdTool;
+
+#[async_trait]
+impl Tool for GetCurrentDialogueIdTool {
+    async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
+        match context.chat.lock().await.dialogue_id {
+            Some(id) => Ok(json!({ "dialogue_id": id })),
+            None => Ok(json!({ "error": "No dialogue is currently selected." })),
+        }
+    }
+
+    fn name(&self) -> &str {
+        "get_current_dialogue_id"
+    }
+
+    fn description(&self) -> &str {
+        "Get the id of the dialogue the student is currently looking at."
+    }
+
+    fn parameters(&self) -> Vec<Parameter> {
+        vec![]
     }
 }
 
@@ -134,13 +164,28 @@ pub struct ReadTutorNotesTool;
 #[async_trait]
 impl Tool for ReadTutorNotesTool {
     async fn execute(&self, _value: Value, context: &AppContext) -> Result<Value> {
-        let teaching = context.teaching.lock().await;
-        let notes = teaching
-            .artifacts
-            .as_ref()
-            .map(|a| a.read().tutor_notes.clone())
-            .ok_or_else(|| MetisError::ToolError("No journey is loaded.".into()))?;
-        Ok(json!({ "notes": notes }))
+        let chat = context.chat.lock().await;
+        let dialogue_id = chat.dialogue_id.ok_or(MetisError::ToolError(
+            "chat context doesn't contain dialogue id".to_string(),
+        ))?;
+
+        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+
+        match dialogue.reference.kind() {
+            ReferenceKind::Journey => {
+                let journey_artifacts =
+                    JourneysRepo::get_artifacts(dialogue.reference.parent_id())?;
+                Ok(json!({"notes": journey_artifacts.tutor_notes}))
+            }
+            ReferenceKind::Explanation => {
+                let explanation_artifacts =
+                    ExplanationsRepo::get_artifacts(dialogue.reference.parent_id())?;
+                Ok(json!({"notes": explanation_artifacts.tutor_notes}))
+            }
+            ReferenceKind::None => Err(MetisError::InternalDataError(
+                "Dialgoue doesn't have reference kind set".to_string(),
+            )),
+        }
     }
 
     fn name(&self) -> &str {
@@ -167,14 +212,29 @@ impl Tool for SetTutorNotesTool {
             .ok_or_else(|| MetisError::ToolError("missing required parameter: content".into()))?
             .to_string();
 
-        let mut teaching = context.teaching.lock().await;
-        let artifacts = teaching
-            .artifacts
-            .as_mut()
-            .ok_or_else(|| MetisError::ToolError("No journey is loaded.".into()))?;
-        {
-            let mut guard = artifacts.write();
-            guard.tutor_notes = content;
+        let dialogue_id = context.chat.lock().await.dialogue_id.ok_or(MetisError::ToolError(
+            "chat context doesn't contain dialogue id".to_string(),
+        ))?;
+
+        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+
+        match dialogue.reference.kind() {
+            ReferenceKind::Journey => {
+                let mut artifacts = JourneysRepo::get_artifacts(dialogue.reference.parent_id())?;
+                artifacts.tutor_notes = content;
+                JourneysRepo::update(&artifacts)?;
+            }
+            ReferenceKind::Explanation => {
+                let mut artifacts =
+                    ExplanationsRepo::get_artifacts(dialogue.reference.parent_id())?;
+                artifacts.tutor_notes = content;
+                ExplanationsRepo::update(&artifacts)?;
+            }
+            ReferenceKind::None => {
+                return Err(MetisError::InternalDataError(
+                    "Dialgoue doesn't have reference kind set".to_string(),
+                ));
+            }
         }
         Ok(json!({ "success": true }))
     }

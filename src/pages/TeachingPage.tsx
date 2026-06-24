@@ -6,13 +6,17 @@ import { useAppContext } from "@/context/AppContext";
 import { GLYPHS, toRoman } from "@/lib/editorial";
 import {
   getAllDialogues,
+  getArtifact,
   getNextDialogue,
+  journeyRef,
+  explanationRef,
   sendMessage,
   setDialogue,
   type Dialogue,
   type ElementDescriptor,
   type Segment,
   type SegmentAction,
+  type TeachingArtifact,
 } from "@/lib/service";
 import { useTasks } from "@/context/TasksContext";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -539,25 +543,27 @@ export default function TeachingPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isAsking, dismissAside]);
 
-  const artifacts = ts?.artifacts?.data;
-  const journeyId = artifacts?.id;
-  const progress = artifacts?.progress;
-  const journey = artifacts?.journey;
+  const artifactKind = ts?.artifact_kind ?? null;
+  const parentId = ts?.artifact_id ?? null;
 
+  const [artifact, setArtifact] = useState<TeachingArtifact | null>(null);
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
   const [waitingForNext, setWaitingForNext] = useState(false);
   const { byType } = useTasks();
-  const seedJourneyIdRef = useRef<number | null>(null);
+  const seedKeyRef = useRef<string | null>(null);
 
-  // Seed dialogue history on mount / journey change.
+  // Seed the artifact + dialogue history on mount / artifact change.
   useEffect(() => {
-    if (journeyId == null) return;
-    if (seedJourneyIdRef.current === journeyId) return;
-    seedJourneyIdRef.current = journeyId;
+    if (artifactKind == null || artifactKind === "None" || parentId == null) return;
+    const key = `${artifactKind}:${parentId}`;
+    if (seedKeyRef.current === key) return;
+    seedKeyRef.current = key;
     let cancelled = false;
-    getAllDialogues(journeyId)
-      .then((rows) => {
-        if (!cancelled) setDialogues(rows);
+    Promise.all([getArtifact(artifactKind, parentId), getAllDialogues(artifactKind, parentId)])
+      .then(([art, rows]) => {
+        if (cancelled) return;
+        setArtifact(art);
+        setDialogues(rows);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -565,42 +571,77 @@ export default function TeachingPage() {
     return () => {
       cancelled = true;
     };
-  }, [journeyId]);
+  }, [artifactKind, parentId]);
 
   const allDialogues = dialogues;
 
-  // Active generate_dialogues task targeting our journey, if any.
+  // Active generate_dialogues task targeting our artifact, if any.
   const generationTask = useMemo(() => {
-    if (journeyId == null) return null;
+    if (parentId == null) return null;
     return (
       byType("generate_dialogues").find((t) => {
-        const id = t.params?.id;
-        return typeof id === "number" && id === journeyId;
+        const pid = t.params?.parent_id;
+        return typeof pid === "number" && pid === parentId;
       }) ?? null
     );
-  }, [byType, journeyId]);
+  }, [byType, parentId]);
 
-  const currentArcIdx = progress?.arc_idx ?? 0;
-  const currentTopicIdx = progress?.topic_idx ?? 0;
-  const currentArc = journey?.arcs[currentArcIdx];
-  const isJourneyComplete = progress?.is_journey_complete ?? false;
-
-  const totalTopics = useMemo(() => {
-    if (!journey) return 0;
-    return journey.arcs.reduce((sum, arc) => sum + arc.topics.length, 0);
-  }, [journey]);
-
-  const completedTopics = useMemo(() => {
-    if (!journey) return 0;
-    let count = 0;
-    for (let a = 0; a < currentArcIdx; a++) {
-      count += journey.arcs[a]?.topics.length ?? 0;
+  // Normalize journey/explanation into one shape the rendering reads from:
+  // a segmented progress rail, group labels for the masthead, and completion copy.
+  const model = useMemo(() => {
+    if (!artifact) return null;
+    if (artifact.kind === "Journey") {
+      const a = artifact.journey;
+      const arcs = a.journey.arcs;
+      const arcIdx = a.progress.arc_idx;
+      const topicIdx = a.progress.topic_idx;
+      const total = arcs.reduce((sum, arc) => sum + arc.topics.length, 0);
+      return {
+        kind: "Journey" as const,
+        backLink: parentId != null ? `/journeys/${parentId}` : "/journeys",
+        backLabel: "the Course",
+        isComplete: a.progress.is_journey_complete,
+        completeTitle: "Journey complete.",
+        completeSubtitle: `You've worked through all ${total} topics.`,
+        glyphSeed: parentId ?? 0,
+        segments: arcs.map((arc, idx) =>
+          idx < arcIdx
+            ? 1
+            : idx === arcIdx
+              ? arc.topics.length
+                ? topicIdx / arc.topics.length
+                : 0
+              : 0,
+        ),
+        groupOf: (d: Dialogue) => journeyRef(d.reference)?.arc_idx ?? 0,
+        groupLabel: (d: Dialogue | undefined) => {
+          const idx = d ? (journeyRef(d.reference)?.arc_idx ?? arcIdx) : arcIdx;
+          return arcs[idx]?.arc_title ?? "";
+        },
+        headingFallback:
+          arcs[arcIdx]?.topics[topicIdx]?.name ?? arcs[arcIdx]?.topics[0]?.name ?? "A passage waits…",
+      };
     }
-    count += currentTopicIdx;
-    return count;
-  }, [journey, currentArcIdx, currentTopicIdx]);
-
-  const progressPct = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+    const a = artifact.explanation;
+    const steps = a.explanation.steps;
+    const stepIdx = a.progress.step_idx;
+    return {
+      kind: "Explanation" as const,
+      backLink: "/explainer",
+      backLabel: "Explanations",
+      isComplete: a.progress.is_complete,
+      completeTitle: "Explanation complete.",
+      completeSubtitle: `You've walked all ${steps.length} steps of the route.`,
+      glyphSeed: parentId ?? 0,
+      segments: steps.map((_, idx) => (idx < stepIdx ? 1 : 0)),
+      groupOf: (d: Dialogue) => explanationRef(d.reference)?.step_idx ?? 0,
+      groupLabel: (d: Dialogue | undefined) => {
+        const idx = d ? (explanationRef(d.reference)?.step_idx ?? stepIdx) : stepIdx;
+        return steps[idx]?.label ?? "";
+      },
+      headingFallback: steps[stepIdx]?.name ?? steps[0]?.name ?? "A passage waits…",
+    };
+  }, [artifact, parentId]);
 
   useEffect(() => {
     if (allDialogues.length > 0) {
@@ -676,18 +717,18 @@ export default function TeachingPage() {
   }, [reveal?.segmentIndex, reveal?.segments]);
 
   const fetchNextDialogue = useCallback(async (): Promise<boolean> => {
-    if (journeyId == null) return false;
+    if (parentId == null || artifactKind == null || artifactKind === "None") return false;
     setIsLoading(true);
     setError(null);
     try {
-      const next = await getNextDialogue(journeyId);
+      const next = await getNextDialogue(artifactKind, parentId);
       if (next) {
         setDialogues((prev) => [...prev, next]);
         setWaitingForNext(false);
         if (next.segments && next.segments.length > 0) {
           setReveal({
             dialogueCount: allDialogues.length + 1,
-            elements: next.elements ?? [],
+            elements: next.blackboard?.elements ?? [],
             segments: next.segments,
             segmentIndex: 0,
             typedLen: 0,
@@ -706,17 +747,17 @@ export default function TeachingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [journeyId, allDialogues.length]);
+  }, [artifactKind, parentId, allDialogues.length]);
 
   // While waiting for generation to produce a dialogue, retry whenever the
   // generate_dialogues checkpoint advances (each progress event = one new
   // dialogue inserted into the DB).
   const generationCount = (generationTask?.checkpoint as { count?: number } | null)?.count ?? null;
   useEffect(() => {
-    if (!waitingForNext || journeyId == null) return;
+    if (!waitingForNext || parentId == null) return;
     if (generationCount == null) return;
     void fetchNextDialogue();
-  }, [waitingForNext, generationCount, journeyId, fetchNextDialogue]);
+  }, [waitingForNext, generationCount, parentId, fetchNextDialogue]);
 
   const handleNext = useCallback(async () => {
     if (isLoading) return;
@@ -741,15 +782,15 @@ export default function TeachingPage() {
       return;
     }
 
-    if (isJourneyComplete) return;
+    if (model?.isComplete) return;
     await fetchNextDialogue();
-  }, [isLoading, pageIndex, allDialogues.length, isJourneyComplete, reveal, fetchNextDialogue]);
+  }, [isLoading, pageIndex, allDialogues.length, model?.isComplete, reveal, fetchNextDialogue]);
 
   const handlePrev = useCallback(() => {
     if (pageIndex > 0) setPageIndex((p) => p - 1);
   }, [pageIndex]);
 
-  if (!ts || !artifacts || !journey) {
+  if (!ts || artifactKind == null || artifactKind === "None" || parentId == null || !model) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 paper-texture px-6">
         <p className="text-text-tertiary">No active teaching session.</p>
@@ -767,13 +808,11 @@ export default function TeachingPage() {
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
   const currentDialogue: Dialogue | undefined = allDialogues[pageIndex];
-  const displayHeading = currentDialogue?.heading || currentArc?.topics[0]?.name || "A passage waits…";
-  const displayArc = currentDialogue
-    ? journey.arcs[currentDialogue.arc_idx]?.arc_title
-    : currentArc?.arc_title;
-  // Drop cap on the opening passage of each arc — same flourish as the first Metis utterance in chat.
+  const displayHeading = currentDialogue?.heading || model.headingFallback;
+  const displayArc = model.groupLabel(currentDialogue);
+  // Drop cap on the opening passage of each group (arc / step) — same flourish as the first Metis utterance in chat.
   const isFirstOfArc = currentDialogue
-    ? allDialogues.findIndex((d) => d.arc_idx === currentDialogue.arc_idx) === pageIndex
+    ? allDialogues.findIndex((d) => model.groupOf(d) === model.groupOf(currentDialogue)) === pageIndex
     : false;
 
   return (
@@ -787,11 +826,11 @@ export default function TeachingPage() {
       <div className="sticky top-0 z-50 border-b border-border/20 bg-background/60 backdrop-blur-xl">
         <div className="relative flex items-center justify-between px-4 py-3">
           <Link
-            to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
+            to={model.backLink}
             className="flex items-center gap-1.5 text-text-tertiary hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="label-whisper hidden sm:inline">Back to the Course</span>
+            <span className="label-whisper hidden sm:inline">Back to {model.backLabel}</span>
           </Link>
 
           {/* Arc · Topic context — replaces generic "Teaching" badge */}
@@ -807,27 +846,16 @@ export default function TeachingPage() {
           <div className="w-24" />
         </div>
 
-        {/* Segmented arc progress */}
+        {/* Segmented progress — one cell per arc (journey) or step (explanation) */}
         <div className="flex items-center gap-1 px-4 pb-2.5">
-          {journey.arcs.map((arc, idx) => {
-            const arcTopics = arc.topics.length;
-            let fill: number;
-            if (idx < currentArcIdx) {
-              fill = 1;
-            } else if (idx === currentArcIdx) {
-              fill = arcTopics > 0 ? currentTopicIdx / arcTopics : 0;
-            } else {
-              fill = 0;
-            }
-            return (
-              <div key={idx} className="h-[3px] flex-1 overflow-hidden rounded-full bg-surface">
-                <div
-                  className="h-full rounded-full transition-all duration-700 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
-                  style={{ width: `${fill * 100}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.65 }}
-                />
-              </div>
-            );
-          })}
+          {model.segments.map((fill, idx) => (
+            <div key={idx} className="h-[3px] flex-1 overflow-hidden rounded-full bg-surface">
+              <div
+                className="h-full rounded-full transition-all duration-700 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{ width: `${fill * 100}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.65 }}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -922,7 +950,7 @@ export default function TeachingPage() {
                 {hasNoPages && !isLoading && (
                   <div className="py-20 animate-blur-in">
                     <p className="font-display italic text-base text-foreground/70 leading-relaxed max-w-md">
-                      Ready when you are — the first passage waits to be opened.
+                      Ready when you are. The first passage waits to be opened.
                     </p>
                   </div>
                 )}
@@ -1014,21 +1042,21 @@ export default function TeachingPage() {
                   </div>
                 )}
 
-                {isJourneyComplete && isOnLastPage && (
+                {model.isComplete && isOnLastPage && (
                   <div className="relative mt-16 flex flex-col items-center text-center py-20 overflow-hidden animate-blur-in">
                     <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display text-[14rem] italic leading-none text-foreground/[0.035]">
-                      {GLYPHS[Math.abs(journeyId ?? 0) % GLYPHS.length]}
+                      {GLYPHS[Math.abs(model.glyphSeed) % GLYPHS.length]}
                     </span>
-                    <p className="relative font-display text-3xl italic text-foreground mb-3">Journey complete.</p>
+                    <p className="relative font-display text-3xl italic text-foreground mb-3">{model.completeTitle}</p>
                     <p className="relative text-sm text-text-tertiary/55 mb-12">
-                      You've worked through all {totalTopics} topics.
+                      {model.completeSubtitle}
                     </p>
                     <Link
-                      to={journeyId ? `/journeys/${journeyId}` : "/journeys"}
+                      to={model.backLink}
                       className="group relative font-display italic text-sm text-text-tertiary transition-colors hover:text-foreground"
                     >
                       <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-                      <span className="ml-1">back to the Course</span>
+                      <span className="ml-1">back to {model.backLabel}</span>
                     </Link>
                   </div>
                 )}
@@ -1068,9 +1096,9 @@ export default function TeachingPage() {
           )}
 
           {/* Right side — Finish, primary CTA, or Next text-link */}
-          {isJourneyComplete && isOnLastPage ? (
+          {model.isComplete && isOnLastPage ? (
             <Button
-              onClick={() => navigate(journeyId ? `/journeys/${journeyId}` : "/journeys")}
+              onClick={() => navigate(model.backLink)}
               variant="outline"
               className="rounded-xl px-6 text-sm font-medium"
               style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
@@ -1150,7 +1178,7 @@ export default function TeachingPage() {
                   What would you like to ask?
                 </p>
                 <p className="text-sm text-text-tertiary leading-relaxed">
-                  The lecture stays beside you — refer to it as you write.
+                  The lecture stays beside you; refer to it as you write.
                 </p>
               </div>
             )}

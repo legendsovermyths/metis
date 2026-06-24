@@ -1,6 +1,8 @@
 pub mod appdata;
 pub mod books;
 pub mod journeys;
+pub mod explanations;
+pub mod folders;
 pub mod dialogue;
 pub mod dialogue_events;
 pub mod task;

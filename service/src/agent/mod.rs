@@ -3,12 +3,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::{
-    app::journey::{
-        blackboard::{ElementDescriptor, Segment},
-        dialogue::Dialogue,
-    },
-    error::Result,
-    logs::EventHistory,
+    app::dialogue::{segment::Segment, Dialogue}, error::Result, logs::EventHistory
 };
 
 pub mod advisor;
@@ -51,35 +46,6 @@ impl AgentResponse {
         Ok(Self {
             content: serde_json::to_value(ChatMessage::new(message))?,
             message_type: MessageType::Chat,
-        })
-    }
-
-    pub fn dialogue(dialogue: Dialogue) -> Result<Self> {
-        Self::animated_dialogue(dialogue, Vec::new(), Vec::new())
-    }
-
-    pub fn animated_dialogue(
-        dialogue: Dialogue,
-        elements: Vec<ElementDescriptor>,
-        segments: Vec<Segment>,
-    ) -> Result<Self> {
-        let payload = Dialogue {
-            id: None,
-            idx: dialogue.idx,
-            visible: false,
-            topic_idx: dialogue.topic_idx,
-            heading: dialogue.heading,
-            journey_id: dialogue.journey_id,
-            marked_complete: dialogue.marked_complete,
-            arc_idx: dialogue.arc_idx,
-            blackboard: dialogue.blackboard,
-            content: dialogue.content,
-            elements,
-            segments
-        };
-        Ok(Self {
-            content: serde_json::to_value(payload)?,
-            message_type: MessageType::Dialogue,
         })
     }
 }

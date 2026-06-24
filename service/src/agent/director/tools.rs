@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 
 use crate::{
-    app::AppContext,
+    app::{AppContext, PendingAction},
     bridges::user_input::UserInputBridge,
     db::repo::resources::ResourcesRepo,
     error::{MetisError, Result},
@@ -167,7 +167,7 @@ impl Tool for CreateExplainerTool {
         ]
     }
 
-    async fn execute(&self, params: Value, _context: &AppContext) -> Result<Value> {
+    async fn execute(&self, params: Value, context: &AppContext) -> Result<Value> {
         let problem_id = params
             .get("problem_resource_id")
             .and_then(|v| v.as_i64())
@@ -180,6 +180,12 @@ impl Tool for CreateExplainerTool {
             .ok_or_else(|| {
                 MetisError::ToolError("missing required parameter: solution_resource_id".into())
             })?;
+        let mut chat = context.chat.lock().await;
+        chat.is_done = true;
+        chat.pending_action = Some(PendingAction::Explainer {
+            problem_resource_id: problem_id,
+            solution_resource_id: solution_id,
+        });
 
         log::info!(
             "create_explainer called for problem_resource_id={} solution_resource_id={}",

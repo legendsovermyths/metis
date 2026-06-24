@@ -1,23 +1,16 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use crate::{
-    app::journey::blackboard::{Blackboard, ElementDescriptor, Segment, SegmentAction},
-    error::{MetisError, Result},
-    llm_client::{
+    app::dialogue::{blackboard::{Blackboard, ElementDescriptor}, segment::{Segment, SegmentAction}}, error::{MetisError, Result}, llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
-    },
-    prompts::get_prompt_provider,
-    task::tasks::generate_dialogue::{
+    }, prompts::get_prompt_provider, task::tasks::generate_dialogue::{
         annotation::EnhancerOutput,
         layout::{layout, LayoutInput, LayoutOutput},
         templates::COORDINATE_SAVE,
-    },
-    utils::{
-        latex::execute_latex,
-        format::{fix_json_escapes, strip_json_block},
-        svg::{extract_part_bboxes, svg_dimensions},
-    },
+    }, utils::{
+        format::{fix_json_escapes, strip_json_block}, latex::execute_latex, svg::{extract_part_bboxes, svg_dimensions}
+    }
 };
 
 const TIKZPICTURE_END: &str = "\\end{tikzpicture}";
@@ -31,7 +24,7 @@ pub struct EnhancerRequest<'a> {
     pub segments: Vec<Segment>,
     pub dialogue: &'a str,
     pub instruction: &'a str,
-    pub topic: &'a str,
+    pub title: &'a str,
     pub chapter_dir: &'a str,
 }
 
@@ -61,7 +54,7 @@ impl<'a> Enhancer {
         let parts_listing = Self::format_parts(&request.parts);
         let prompt = get_prompt_provider().get_enhancer_prompt(
             request.instruction,
-            request.topic,
+            request.title,
             request.dialogue,
             &parts_listing,
         );

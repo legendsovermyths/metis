@@ -30,5 +30,10 @@ service/gen/schemas/
 data/
 books/
 
+# Generated content (PDFs, markdowns, explanations)
+Resources/
+tmp/
+explanations/
+
 #claude file
 CLAUDE.md

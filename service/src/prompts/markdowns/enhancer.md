@@ -93,9 +93,9 @@ You may attach multiple annotations to the same target. You may also leave parts
 
 {instruction}
 
-### Current topic
+### Title
 
-{topic}
+{title}
 
 ### Professor's dialogue
 

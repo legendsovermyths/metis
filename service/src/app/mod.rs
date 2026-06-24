@@ -18,7 +18,9 @@ use crate::utils::python::ensure_venv;
 pub mod book;
 pub mod journey;
 pub mod state;
+pub mod explanation;
 pub mod user_input;
+pub mod dialogue;
 
 static APP_CONTEXT: OnceLock<AppContext> = OnceLock::new();
 
@@ -105,12 +107,25 @@ impl SessionContext {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PendingAction {
+    Explainer {
+        problem_resource_id: i64,
+        solution_resource_id: i64,
+    },
+    Journey {
+        resource_id: i64,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ChatContext {
     pub phase: MetisPhase,
     pub notes: Option<String>,
     pub is_done: bool,
     pub event_history: EventHistory,
     pub dialogue_id: Option<i64>,
+    pub pending_action: Option<PendingAction>,
 }
 
 impl ChatContext {
@@ -121,6 +136,7 @@ impl ChatContext {
             is_done: false,
             event_history: EventHistory::new(),
             dialogue_id: None,
+            pending_action: None,
         }
     }
     pub fn set_done(&mut self) {
@@ -142,7 +158,7 @@ impl AppContext {
                 MetisPhase::Onboarding
             }))),
             session: Arc::new(Mutex::new(SessionContext::new())),
-            teaching: Arc::new(Mutex::new(TeachingContext::new())),
+            teaching: Arc::new(Mutex::new(TeachingContext::default())),
         })
     }
 

@@ -149,17 +149,7 @@ The dialogue is markdown with embedded LaTeX. When you copy segment text from th
 
 When you concatenate all segments' `text` fields in order, the result must equal your `dialogue` field character-for-character.
 
-## Using the previous blackboard
-
-You may be given a **tree structure of the previous blackboard's SVG** — an indented list of the ids that were on the board during the previous dialogue. This is for context: if the narrator's instruction asks you to extend or alter an existing figure, you can see what's already there.
-
-The previous board's figure is going to be replaced by a new figure generated from your `parts` list — the student will see a full new figure for this dialogue. You're not carrying ids over from the previous board; you're producing a fresh parts list. But knowing what the student was just looking at helps you design a figure that feels continuous (same conventions, similar layout choices, etc.).
-
 ## Inputs
-
-### Current topic
-
-{topic}
 
 ### Narrator's blackboard instruction (natural language)
 
@@ -168,10 +158,6 @@ The previous board's figure is going to be replaced by a new figure generated fr
 ### Narrator's dialogue (your starting script)
 
 {dialogue}
-
-### Previous blackboard tree (for context)
-
-{previous_tree}
 
 ## Output
 
