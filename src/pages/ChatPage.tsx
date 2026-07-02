@@ -254,7 +254,7 @@ export default function ChatPage() {
               ]);
             },
           );
-          navigate("/journeys");
+          navigate("/studies");
         },
       };
     }
@@ -271,9 +271,9 @@ export default function ChatPage() {
                 await setChat({ ...context.chat, is_done: false, pending_action: null });
               }
               toast.success("Composing your explanation", {
-                description: "Metis is charting the route. It will appear in Explanations.",
+                description: "Metis is charting the route. It will appear in your study.",
               });
-              navigate("/explainer");
+              navigate("/studies");
             } catch {
               // Error already surfaced via toast by callBackend.
             }

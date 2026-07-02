@@ -1,11 +1,12 @@
 use std::{env::VarError, fs};
 
 use thiserror::Error;
+use tokio::task::JoinError;
 
 pub type Result<T: Send + Sync> = std::result::Result<T, MetisError>;
 
 #[derive(Error, Debug)]
-pub enum MetisError{
+pub enum MetisError {
     #[error("Environment variable is not set")]
     EnvironmentVariableError(#[from] VarError),
     #[error("Request error, some error came in making a request: {0}")]
@@ -42,13 +43,14 @@ pub enum MetisError{
     NotFound(String),
     #[error("Internal error: {0}")]
     InternalError(String),
-    #[error ("IOError: {0}")]
+    #[error("IOError: {0}")]
     IOError(#[from] std::io::Error),
     #[error("Invalid enum type: {0}")]
     InvalidEnumType(String),
     #[error("Internal data error: {0}")]
     InternalDataError(String),
     #[error("App context error")]
-    AppContextError(String)
+    AppContextError(String),
+    #[error("Join Error: {0}")]
+    JoinError(#[from] JoinError),
 }
-

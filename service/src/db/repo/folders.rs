@@ -9,29 +9,32 @@ fn folder_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Folder> {
         id: row.get(0)?,
         name: row.get(1)?,
         parent_id: row.get(2)?,
-        created_at: row.get(3)?,
+        scope: row.get(3)?,
+        created_at: row.get(4)?,
     })
 }
 
 impl FoldersRepo {
-    pub fn insert(name: &str, parent_id: Option<i64>) -> Result<i64> {
+    pub fn insert(name: &str, parent_id: Option<i64>, scope: &str) -> Result<i64> {
         let created_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64;
         let conn = get_database().conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO folders (name, parent_id, created_at) VALUES (?1, ?2, ?3)",
-            rusqlite::params![name, parent_id, created_at],
+            "INSERT INTO folders (name, parent_id, scope, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![name, parent_id, scope, created_at],
         )?;
         Ok(conn.last_insert_rowid())
     }
 
-    pub fn get_all() -> Result<Vec<Folder>> {
+    pub fn get_all(scope: &str) -> Result<Vec<Folder>> {
         let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare("SELECT id, name, parent_id, created_at FROM folders ORDER BY name COLLATE NOCASE")?;
-        let mut rows = stmt.query([])?;
+        let mut stmt = conn.prepare(
+            "SELECT id, name, parent_id, scope, created_at FROM folders
+             WHERE scope = ?1 ORDER BY name COLLATE NOCASE",
+        )?;
+        let mut rows = stmt.query(rusqlite::params![scope])?;
         let mut out = Vec::new();
         while let Some(row) = rows.next()? {
             out.push(folder_from_row(row)?);
@@ -73,6 +76,14 @@ impl FoldersRepo {
         )?;
         conn.execute(
             "UPDATE explanations SET folder_id = ?2 WHERE folder_id = ?1",
+            rusqlite::params![id, parent_id],
+        )?;
+        conn.execute(
+            "UPDATE journeys SET folder_id = ?2 WHERE folder_id = ?1",
+            rusqlite::params![id, parent_id],
+        )?;
+        conn.execute(
+            "UPDATE notes SET folder_id = ?2 WHERE folder_id = ?1",
             rusqlite::params![id, parent_id],
         )?;
         conn.execute("DELETE FROM folders WHERE id = ?1", rusqlite::params![id])?;

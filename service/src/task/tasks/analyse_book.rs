@@ -14,7 +14,7 @@ use crate::{
         progress::{TaskProgress, TaskStatus},
     },
     utils::{
-        format::strip_json_block,
+        format::sanitize_json,
         pdf::{copy_pdf, truncated_copy},
     },
 };
@@ -58,14 +58,13 @@ pub fn analyse_book(context: TaskContext) -> TaskFuture {
         let truncated_path = checkpoint.truncated_path.unwrap();
 
         let mut client = GeminiClient::new();
-        let (file_uri, _uploaded_at) = client.upload_file(&truncated_path).await?;
         client.set_system_prompt(get_prompt_provider().get_analyse_book_prompt());
         let response = client
-            .generate_with_file("Analyse this book.".to_string(), &file_uri)
+            .generate_with_file("Analyse this book.".to_string(), &truncated_path)
             .await?;
         let text = response.text();
-        let text = strip_json_block(&text);
-        let parsed: AnalyseBookResponse = serde_json::from_str(text)?;
+        let text = sanitize_json(&text);
+        let parsed: AnalyseBookResponse = serde_json::from_str(&text)?;
         if truncated_path != book_path {
             let _ = fs::remove_file(&truncated_path);
         }

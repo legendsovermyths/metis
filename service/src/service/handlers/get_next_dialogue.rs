@@ -20,22 +20,28 @@ pub struct GetNextDialogueParams {
     pub parent_id: i64,
 }
 
-fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<DialogueReference> {
+fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueReference, bool)> {
     match kind {
         ReferenceKind::Journey => {
             let progress = JourneysRepo::get_artifacts(parent_id)?.progress;
-            Ok(DialogueReference::Journey {
-                journey_id: parent_id,
-                arc_idx: progress.arc_idx,
-                topic_idx: progress.topic_idx,
-            })
+            Ok((
+                DialogueReference::Journey {
+                    journey_id: parent_id,
+                    arc_idx: progress.arc_idx,
+                    topic_idx: progress.topic_idx,
+                },
+                progress.is_journey_complete,
+            ))
         }
         ReferenceKind::Explanation => {
             let progress = ExplanationsRepo::get_artifacts(parent_id)?.progress;
-            Ok(DialogueReference::Explanation {
-                explanation_id: parent_id,
-                step_idx: progress.step_idx,
-            })
+            Ok((
+                DialogueReference::Explanation {
+                    explanation_id: parent_id,
+                    step_idx: progress.step_idx,
+                },
+                progress.is_complete,
+            ))
         }
         ReferenceKind::None => Err(MetisError::ParamsError(
             "cannot fetch a dialogue for reference kind none".to_string(),
@@ -57,7 +63,14 @@ pub fn get_next_dialogue(params: GetNextDialogueParams, _: &AppContext) -> BoxFu
                 })
             }
             None => {
-                let dialogue_reference = seed_reference(params.kind, params.parent_id)?;
+                let (dialogue_reference, is_complete) =
+                    seed_reference(params.kind, params.parent_id)?;
+                if is_complete {
+                    return Ok(ServiceResponse {
+                        response: Value::Null,
+                        task_request: None,
+                    });
+                }
                 Ok(ServiceResponse {
                     response: Value::Null,
                     task_request: Some(vec![TaskRequest {

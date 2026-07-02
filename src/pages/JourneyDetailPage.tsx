@@ -71,8 +71,8 @@ export default function JourneyDetailPage() {
     return (
       <div className="flex min-h-[calc(100vh-57px)] flex-col items-center justify-center gap-4 paper-texture px-6">
         <p className="text-text-secondary">{error || "Journey not found"}</p>
-        <Link to="/journeys" className="text-sm font-medium text-foreground underline-offset-4 hover:underline">
-          Return to the Itinerary
+        <Link to="/studies" className="text-sm font-medium text-foreground underline-offset-4 hover:underline">
+          Return to the study
         </Link>
       </div>
     );
@@ -110,11 +110,11 @@ export default function JourneyDetailPage() {
 
         {/* Back nav */}
         <Link
-          to="/journeys"
+          to="/studies"
           className="mb-10 inline-flex items-center gap-1.5 text-text-tertiary transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          <span className="label-whisper">Return to the Itinerary</span>
+          <span className="label-whisper">Return to the study</span>
         </Link>
 
         {/* Header — journey glyph watermark behind */}
@@ -270,7 +270,7 @@ export default function JourneyDetailPage() {
             </span>
             <Button
               onClick={() => void handleContinue()}
-              disabled={starting || allDone}
+              disabled={starting}
               className="rounded-xl px-6 shadow-soft"
             >
               {starting ? (
@@ -285,7 +285,7 @@ export default function JourneyDetailPage() {
               ) : allDone ? (
                 <>
                   <Check className="mr-2 h-4 w-4" />
-                  Completed
+                  Revisit
                 </>
               ) : completedTopics > 0 ? (
                 <>

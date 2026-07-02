@@ -10,7 +10,7 @@ use crate::{
     prompts::get_prompt_provider,
     task::tasks::create_journey::PageRange,
     utils::{
-        format::{clean_page_output, strip_json_block},
+        format::{clean_page_output, sanitize_json},
         pdf::{extract_page_range, truncated_copy},
     },
 };
@@ -65,8 +65,8 @@ pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<Topic
         .await?;
 
     let response_text = response.text();
-    let json_text = strip_json_block(&response_text);
-    let ranges: Vec<TopicRange> = serde_json::from_str(json_text).map_err(|e| {
+    let json_text = sanitize_json(&response_text);
+    let ranges: Vec<TopicRange> = serde_json::from_str(&json_text).map_err(|e| {
         MetisError::JsonError(format!(
             "Failed to parse topic map: {e}\nResponse: {response_text}"
         ))
@@ -78,14 +78,13 @@ pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<P
     let truncated = truncated_copy(book_path)?;
     let mut client = GeminiClient::new();
     client.set_json_mode(true);
-    let (file_uri, _) = client.upload_file(&truncated).await?;
     let prompt = get_prompt_provider().get_page_range_prompt(chapter_title);
     client.set_system_prompt(prompt);
 
     let response = client
         .generate_with_file(
             format!("Find the page range for chapter \"{}\".", chapter_title),
-            &file_uri,
+            &truncated,
         )
         .await?;
 
@@ -137,8 +136,6 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
 
         set.spawn(async move {
             let client = GeminiClient::new();
-            let (file_uri, _) = client.upload_file(&batch_pdf).await?;
-            let _ = fs::remove_file(&batch_pdf);
 
             let _permit = sem
                 .acquire()
@@ -158,7 +155,8 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
                 )
             };
 
-            let response = client.generate_with_file(prompt, &file_uri).await?;
+            let response = client.generate_with_file(prompt, &batch_pdf).await?;
+            let _ = fs::remove_file(&batch_pdf);
             Ok::<(usize, String), MetisError>((batch_start, response.text()))
         });
     }
@@ -232,8 +230,8 @@ pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>
         .await?;
 
     let text = response.text();
-    let json_text = strip_json_block(&text);
-    let topics: Vec<String> = serde_json::from_str(json_text).map_err(|e| {
+    let json_text = sanitize_json(&text);
+    let topics: Vec<String> = serde_json::from_str(&json_text).map_err(|e| {
         MetisError::JsonError(format!("Failed to parse topic list: {e}\nResponse: {text}"))
     })?;
     Ok(topics)
@@ -251,10 +249,10 @@ pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
 
     let response = client.generate("Generate the journey.".to_string()).await?;
     let text = response.text();
-    let text = strip_json_block(&text);
+    let text = sanitize_json(&text);
 
     let journey: Journey =
-        serde_json::from_str(text).map_err(|e| MetisError::JsonError(e.to_string()))?;
+        serde_json::from_str(&text).map_err(|e| MetisError::JsonError(e.to_string()))?;
     log::info!(
         "[generate_journey] parsed journey: {} arcs",
         journey.arcs.len()

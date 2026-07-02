@@ -39,6 +39,7 @@ impl Db {
         conn.execute_batch(include_str!("../../migrations/0007_create_resources.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0008_create_explanations.sql"))?;
         conn.execute_batch(include_str!("../../migrations/0009_create_folders.sql"))?;
+        conn.execute_batch(include_str!("../../migrations/0010_create_notes.sql"))?;
         Ok(())
     }
 }

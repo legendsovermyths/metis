@@ -18,7 +18,7 @@ use crate::{
     },
     prompts::get_prompt_provider,
     utils::{
-        format::{fix_json_escapes, strip_json_block},
+        format::sanitize_json,
         narrator::{load_explanation_material, load_topic_content},
     },
 };
@@ -130,8 +130,7 @@ impl Narrator {
             .await?;
 
         let raw = response.text();
-        let json_str = strip_json_block(&raw);
-        let fixed = fix_json_escapes(json_str);
+        let fixed = sanitize_json(&raw);
         Ok(serde_json::from_str(&fixed)?)
     }
 }

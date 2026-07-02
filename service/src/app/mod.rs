@@ -21,6 +21,7 @@ pub mod state;
 pub mod explanation;
 pub mod user_input;
 pub mod dialogue;
+pub mod notes;
 
 static APP_CONTEXT: OnceLock<AppContext> = OnceLock::new();
 

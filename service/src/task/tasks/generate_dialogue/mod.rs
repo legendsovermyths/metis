@@ -3,7 +3,11 @@ use serde_json::json;
 
 use crate::{
     app::dialogue::{Dialogue, DialogueReference, ReferenceKind},
-    db::repo::{dialogue::DialoguesRepo, task::TasksRepo},
+    db::repo::{
+        dialogue::DialoguesRepo, explanations::ExplanationsRepo, journeys::JourneysRepo,
+        task::TasksRepo,
+    },
+    error::Result,
     task::{
         context::TaskContext,
         gaurd::TaskGaurd,
@@ -21,6 +25,7 @@ pub mod illustrator;
 pub mod layout;
 pub mod narrator;
 pub mod templates;
+pub mod audio_renderer;
 
 #[derive(Deserialize, Serialize)]
 pub struct GenerationParams {
@@ -34,14 +39,49 @@ pub struct GenerationCheckpoint {
     count: usize,
 }
 
+fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueReference>> {
+    match reference {
+        DialogueReference::Explanation { explanation_id, .. } => {
+            let progress = ExplanationsRepo::get_artifacts(*explanation_id)?.progress;
+            if progress.is_complete {
+                Ok(None)
+            } else {
+                Ok(Some(DialogueReference::Explanation {
+                    explanation_id: *explanation_id,
+                    step_idx: progress.step_idx,
+                }))
+            }
+        }
+        DialogueReference::Journey { journey_id, .. } => {
+            let progress = JourneysRepo::get_artifacts(*journey_id)?.progress;
+            if progress.is_journey_complete {
+                Ok(None)
+            } else {
+                Ok(Some(DialogueReference::Journey {
+                    journey_id: *journey_id,
+                    arc_idx: progress.arc_idx,
+                    topic_idx: progress.topic_idx,
+                }))
+            }
+        }
+        DialogueReference::None => Ok(None),
+    }
+}
+
 pub fn generate_dialogues(context: TaskContext) -> TaskFuture {
     Box::pin(async move {
         let params: GenerationParams = serde_json::from_value(context.params)?;
         let mut checkpoint: GenerationCheckpoint = serde_json::from_value(context.checkpoint)?;
         let mut generator = DialgoueGenerator::new();
+        let mut dialogue_reference = params.dialogue_reference.clone();
         let count = checkpoint.count;
         for _ in count..params.num_dialogues {
-            let dialogue: Dialogue = generator.generate(&params).await?;
+            let iteration_params = GenerationParams {
+                parent_id: params.parent_id,
+                dialogue_reference: dialogue_reference.clone(),
+                num_dialogues: params.num_dialogues,
+            };
+            let dialogue: Dialogue = generator.generate(&iteration_params).await?;
             checkpoint.count += 1;
             DialoguesRepo::insert(&dialogue)?;
             let _ = context
@@ -53,6 +93,11 @@ pub fn generate_dialogues(context: TaskContext) -> TaskFuture {
                     status: TaskStatus::Running,
                 })
                 .await;
+
+            match refresh_reference(&dialogue_reference)? {
+                Some(next) => dialogue_reference = next,
+                None => break,
+            }
         }
         Ok(json!({}))
     })

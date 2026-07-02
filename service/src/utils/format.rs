@@ -86,6 +86,10 @@ pub fn strip_json_block(text: &str) -> &str {
     text
 }
 
+pub fn sanitize_json(raw: &str) -> String {
+    fix_json_escapes(strip_json_block(raw))
+}
+
 pub fn clean_page_output(text: &str) -> String {
     let mut s = text.trim().to_string();
 

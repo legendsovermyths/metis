@@ -27,6 +27,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![handle_request])
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|tauri_app| {
             let log_level = if cfg!(debug_assertions) {
                 log::LevelFilter::Debug

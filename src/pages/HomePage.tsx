@@ -1,13 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
+import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
+import { useTheme } from "@/hooks/use-theme";
 import { setChat } from "@/lib/service";
 import { useMasthead, mastheadStyle } from "@/lib/editorial";
 
 const tableOfContents = [
   { numeral: "i.",   title: "begin a dialogue",      folio: "f. i",   path: "/chat" },
   { numeral: "ii.",  title: "the library",           folio: "f. ii",  path: "/library" },
-  { numeral: "iii.", title: "journeys in progress",  folio: "f. iii", path: "/journeys" },
+  { numeral: "iii.", title: "the study",             folio: "f. iii", path: "/studies" },
 ];
 
 // Placeholder until a profile-aware, LLM-authored greeting replaces this.
@@ -20,6 +22,7 @@ export default function HomePage() {
   const { context } = useAppContext();
   const navigate = useNavigate();
   const masthead = useMasthead();
+  const { theme, toggle } = useTheme();
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
 
   const goToChatFresh = async () => {
@@ -109,7 +112,16 @@ export default function HomePage() {
         <footer className="relative z-10 px-6 md:px-16 pb-10 md:pb-12">
           <div className="h-px w-full bg-border/30 mb-4" />
           <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
-            <span>μῆτις · gr. mêtis — cunning intelligence</span>
+            <span className="flex items-center gap-2.5">
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="text-text-tertiary/45 transition-colors duration-200 hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+            </button>
+            μῆτις · gr. mêtis — cunning intelligence
+          </span>
             <span>—  i  —</span>
           </div>
         </footer>
@@ -128,7 +140,7 @@ export default function HomePage() {
 
   // ── Onboarded — reading desk ──────────────────────────────────────────────
   return (
-    <div className="paper-texture relative overflow-hidden min-h-[calc(100vh-57px)] flex flex-col">
+    <div className="paper-texture relative overflow-hidden min-h-screen flex flex-col">
       {/* Masthead */}
       <header className="relative z-10 px-6 md:px-16 pt-8 md:pt-10">
         <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
@@ -165,7 +177,7 @@ export default function HomePage() {
               className="w-fit rounded-xl px-8 py-5 text-sm font-medium"
               style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
             >
-              Create a journey
+              Take up a book
             </Button>
             <button
               onClick={() => void goToChatFresh()}
@@ -237,7 +249,7 @@ export default function HomePage() {
             className="w-full rounded-xl px-6 py-5 text-sm font-medium mb-2"
             style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
           >
-            Create a journey
+            Take up a book
           </Button>
           <button
             onClick={() => void goToChatFresh()}
@@ -283,7 +295,16 @@ export default function HomePage() {
       <footer className="relative z-10 px-6 md:px-16 pb-8 md:pb-10">
         <div className="h-px w-full bg-border/30 mb-4" />
         <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
-          <span>μῆτις · gr. mêtis — cunning intelligence</span>
+          <span className="flex items-center gap-2.5">
+            <button
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="text-text-tertiary/45 transition-colors duration-200 hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+            </button>
+            μῆτις · gr. mêtis — cunning intelligence
+          </span>
           <span>—  fol. i  —</span>
         </div>
       </footer>

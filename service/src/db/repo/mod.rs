@@ -7,3 +7,4 @@ pub mod dialogue;
 pub mod dialogue_events;
 pub mod task;
 pub mod resources;
+pub mod notes;

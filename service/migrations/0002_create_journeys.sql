@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS journeys (
     journey_json    TEXT    NOT NULL,  -- JSON: serialized Journey struct
     created_at      INTEGER NOT NULL,  -- Unix timestamp (seconds)
     advisor_notes   TEXT    NOT NULL,
-    tutor_notes     TEXT    NOT NULL DEFAULT ''
+    tutor_notes     TEXT    NOT NULL DEFAULT '',
+    folder_id       INTEGER            -- NULL = root; FK folders(id)
 );

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    env,
-};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use reqwest::Client;
@@ -9,9 +6,12 @@ use serde_json::{json, Value};
 
 use crate::{
     app::AppContext,
-    constants::GEMINI_BASE_URL,
     error::{MetisError, Result},
     llm_client::{
+        clients::gemini::{
+            auth::{ServiceAccount, get_access_token, load_service_account},
+            client::VERTEX_BASE_URL,
+        },
         llm_client::{LLMChatClient, LLMResponse},
         tool::Tool,
     },
@@ -19,7 +19,6 @@ use crate::{
 };
 
 pub struct GeminiChat<'a> {
-    base_url: String,
     client: Client,
     system_prompt: String,
     model_name: String,
@@ -28,6 +27,7 @@ pub struct GeminiChat<'a> {
     event_history: EventHistory,
     context: &'a AppContext,
     contents: Vec<Value>,
+    sa: ServiceAccount,
 }
 
 impl<'a> GeminiChat<'a> {
@@ -36,8 +36,8 @@ impl<'a> GeminiChat<'a> {
     }
 
     pub fn with_model(model: &str, context: &'a AppContext) -> Self {
+        let sa = load_service_account().expect("VERTEX_AI_SERVICE_ACCOUNT must be set");
         Self {
-            base_url: GEMINI_BASE_URL.to_string(),
             client: Client::new(),
             system_prompt: String::new(),
             model_name: model.to_string(),
@@ -46,7 +46,15 @@ impl<'a> GeminiChat<'a> {
             event_history: EventHistory::new(),
             context,
             contents: Vec::new(),
+            sa,
         }
+    }
+
+    fn vertex_url(&self) -> String {
+        format!(
+            "{}/v1/projects/{}/locations/global/publishers/google/models/{}:generateContent",
+            VERTEX_BASE_URL, self.sa.project_id, self.model_name
+        )
     }
 
     fn build_request(&self) -> Value {
@@ -132,16 +140,12 @@ impl<'a> GeminiChat<'a> {
     }
 
     async fn call_api(&self) -> Result<Value> {
-        let api_key = env::var("GEMINI_API_KEY")?;
-        let url = format!(
-            "{}/v1beta/models/{}:generateContent",
-            self.base_url, self.model_name
-        );
+        let token = get_access_token(&self.sa).await?;
         let request = self.build_request();
         let response = self
             .client
-            .post(&url)
-            .header("x-goog-api-key", &api_key)
+            .post(self.vertex_url())
+            .bearer_auth(&token)
             .header("Content-Type", "application/json")
             .json(&request)
             .send()

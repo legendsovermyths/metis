@@ -8,7 +8,7 @@ use crate::{
     app::AppContext,
     error::{MetisError, Result},
     service::handlers::{
-        cancel_user_input::cancel_user_input, create_folder::create_folder, delete_explanation::delete_explanation, delete_folder::delete_folder, delete_journey::{self, delete_journey}, get_all_books::get_all_books, get_all_dialogues::get_all_dialogues, get_all_explanations::get_all_explanations, get_all_journeys::get_all_journeys, get_artifact::get_artifact, get_context::get_context, get_folders::get_folders, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, move_explanation::move_explanation, move_folder::move_folder, rename_folder::rename_folder, set_chat::set_chat, set_dialogue::set_dialogue, set_session::set_session, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init
+        cancel_user_input::cancel_user_input, create_folder::create_folder, create_note::create_note, delete_explanation::delete_explanation, delete_folder::delete_folder, delete_journey::{self, delete_journey}, delete_note::delete_note, move_note::move_note, get_all_books::get_all_books, get_all_dialogues::get_all_dialogues, get_all_explanations::get_all_explanations, get_explanation::get_explanation, get_all_journeys::get_all_journeys, get_all_notes::get_all_notes, get_artifact::get_artifact, get_context::get_context, get_folders::get_folders, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, move_explanation::move_explanation, move_journey::move_journey, move_folder::move_folder, rename_folder::rename_folder, set_chat::set_chat, set_dialogue::set_dialogue, set_session::set_session, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init, update_note::update_note
     },
     task::{task_type::TaskType, TaskRequest},
 };
@@ -50,13 +50,20 @@ impl<'a> ServiceHandler<'a> {
         handler.register(ServiceRequestType::CancelUserInput, cancel_user_input);
         handler.register(ServiceRequestType::GetArtifact, get_artifact);
         handler.register(ServiceRequestType::GetAllExplanations, get_all_explanations);
+        handler.register(ServiceRequestType::GetExplanation, get_explanation);
         handler.register(ServiceRequestType::DeleteExplanation, delete_explanation);
         handler.register(ServiceRequestType::MoveExplanation, move_explanation);
+        handler.register(ServiceRequestType::MoveJourney, move_journey);
         handler.register(ServiceRequestType::GetFolders, get_folders);
         handler.register(ServiceRequestType::CreateFolder, create_folder);
         handler.register(ServiceRequestType::RenameFolder, rename_folder);
         handler.register(ServiceRequestType::MoveFolder, move_folder);
         handler.register(ServiceRequestType::DeleteFolder, delete_folder);
+        handler.register(ServiceRequestType::CreateNote, create_note);
+        handler.register(ServiceRequestType::GetAllNotes, get_all_notes);
+        handler.register(ServiceRequestType::UpdateNote, update_note);
+        handler.register(ServiceRequestType::DeleteNote, delete_note);
+        handler.register(ServiceRequestType::MoveNote, move_note);
         handler
     }
     fn register<T, F>(&mut self, request: ServiceRequestType, func: F)

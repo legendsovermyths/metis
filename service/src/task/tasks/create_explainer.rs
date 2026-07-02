@@ -13,7 +13,7 @@ use crate::{
     },
     prompts::get_prompt_provider,
     task::{context::TaskContext, gaurd::TaskGaurd, manager::TaskFuture},
-    utils::format::strip_json_block,
+    utils::format::sanitize_json,
 };
 
 #[derive(Deserialize)]
@@ -62,9 +62,9 @@ pub fn create_explanation(context: TaskContext) -> TaskFuture {
             .generate("Plan the explanation route.".to_string())
             .await?;
         let raw = response.text();
-        let text = strip_json_block(&raw);
+        let text = sanitize_json(&raw);
         let output: ArchitectOutput =
-            serde_json::from_str(text).map_err(|e| MetisError::JsonError(e.to_string()))?;
+            serde_json::from_str(&text).map_err(|e| MetisError::JsonError(e.to_string()))?;
 
         let explanation = Explanation { steps: output.steps };
         let id = ExplanationsRepo::insert(&output.title, &explanation_dir, &explanation)?;

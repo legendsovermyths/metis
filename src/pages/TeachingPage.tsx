@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
-import { ArrowLeft, Hand, X } from "lucide-react";
+import { ArrowLeft, Hand, X, SlidersHorizontal, Play, Pause, Repeat, ListVideo, Projector } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
 import { GLYPHS, toRoman } from "@/lib/editorial";
@@ -17,8 +18,11 @@ import {
   type Segment,
   type SegmentAction,
   type TeachingArtifact,
+  type Note,
 } from "@/lib/service";
 import { useTasks } from "@/context/TasksContext";
+import { useNoteAnchor } from "@/context/NoteAnchorContext";
+import { ContentNotes } from "@/components/notes/ContentNotes";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Link, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
@@ -80,12 +84,16 @@ function safeTypedSlice(text: string, len: number): string {
 }
 
 type RevealState = {
-  dialogueCount: number;
+  pageIndex: number;
   elements: ElementDescriptor[];
   segments: Segment[];
   segmentIndex: number;
   typedLen: number;
 };
+
+type Playback = { active: boolean; continuous: boolean; playing: boolean };
+const PLAYBACK_OFF: Playback = { active: false, continuous: false, playing: false };
+const NARRATION_RATE = 1.3;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -475,6 +483,9 @@ export default function TeachingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reveal, setReveal] = useState<RevealState | null>(null);
+  const [immersive, setImmersive] = useState(false);
+  const [playback, setPlayback] = useState<Playback>(PLAYBACK_OFF);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   type Exchange = { question: string; answer: string };
   const [isAsking, setIsAsking] = useState(false);
@@ -575,6 +586,29 @@ export default function TeachingPage() {
 
   const allDialogues = dialogues;
 
+  // Seed (or re-seed) the segment reveal for any page, optionally starting a
+  // hands-free playback session. Used by replay / play-from-here / immersive
+  // and by auto-advance across passages.
+  const beginReveal = useCallback(
+    (idx: number, opts: { active: boolean; continuous: boolean }) => {
+      const d = dialogues[idx];
+      if (!d || !d.segments || d.segments.length === 0) return;
+      setReveal({
+        pageIndex: idx,
+        elements: d.blackboard?.elements ?? [],
+        segments: d.segments,
+        segmentIndex: 0,
+        typedLen: 0,
+      });
+      setPlayback(
+        opts.active
+          ? { active: true, continuous: opts.continuous, playing: true }
+          : PLAYBACK_OFF,
+      );
+    },
+    [dialogues],
+  );
+
   // Active generate_dialogues task targeting our artifact, if any.
   const generationTask = useMemo(() => {
     if (parentId == null) return null;
@@ -598,11 +632,12 @@ export default function TeachingPage() {
       const total = arcs.reduce((sum, arc) => sum + arc.topics.length, 0);
       return {
         kind: "Journey" as const,
-        backLink: parentId != null ? `/journeys/${parentId}` : "/journeys",
+        backLink: parentId != null ? `/journeys/${parentId}` : "/studies",
         backLabel: "the Course",
         isComplete: a.progress.is_journey_complete,
         completeTitle: "Journey complete.",
         completeSubtitle: `You've worked through all ${total} topics.`,
+        completeThanks: "Thank you for staying the course.",
         glyphSeed: parentId ?? 0,
         segments: arcs.map((arc, idx) =>
           idx < arcIdx
@@ -627,11 +662,12 @@ export default function TeachingPage() {
     const stepIdx = a.progress.step_idx;
     return {
       kind: "Explanation" as const,
-      backLink: "/explainer",
-      backLabel: "Explanations",
+      backLink: parentId != null ? `/explanations/${parentId}` : "/studies",
+      backLabel: "the Route",
       isComplete: a.progress.is_complete,
       completeTitle: "Explanation complete.",
       completeSubtitle: `You've walked all ${steps.length} steps of the route.`,
+      completeThanks: "Thank you for walking it through.",
       glyphSeed: parentId ?? 0,
       segments: steps.map((_, idx) => (idx < stepIdx ? 1 : 0)),
       groupOf: (d: Dialogue) => explanationRef(d.reference)?.step_idx ?? 0,
@@ -658,8 +694,38 @@ export default function TeachingPage() {
   const segIdx = reveal?.segmentIndex ?? -1;
   const segsRef = reveal?.segments;
 
+  // Provenance: a note born now attaches to the dialogue+segment on screen.
+  const { setAnchor } = useNoteAnchor();
+  useEffect(() => {
+    if (selectedDialogueId != null) {
+      setAnchor({ Dialogue: { dialogue_id: selectedDialogueId, segment_idx: Math.max(0, segIdx) } });
+    } else if (artifactKind === "Journey" && parentId != null) {
+      setAnchor({ Journey: { journey_id: parentId } });
+    } else if (artifactKind === "Explanation" && parentId != null) {
+      setAnchor({ Explanation: { explanation_id: parentId, step_idx: 0 } });
+    } else {
+      setAnchor(null);
+    }
+    return () => setAnchor(null);
+  }, [selectedDialogueId, segIdx, artifactKind, parentId, setAnchor]);
+
+  // Which notes belong to the content currently on screen.
+  const notesMatchHere = useCallback(
+    (note: Note) => {
+      const a = note.anchor;
+      if (!a) return false;
+      if ("Dialogue" in a) return a.Dialogue.dialogue_id === selectedDialogueId;
+      if ("Journey" in a) return artifactKind === "Journey" && a.Journey.journey_id === parentId;
+      if ("Explanation" in a)
+        return artifactKind === "Explanation" && a.Explanation.explanation_id === parentId;
+      return false;
+    },
+    [selectedDialogueId, artifactKind, parentId],
+  );
+
   useEffect(() => {
     if (segIdx < 0 || !segsRef) return;
+    if (playback.active && !playback.playing) return;
     const id = window.setInterval(() => {
       setReveal((r) => {
         if (!r) return r;
@@ -669,7 +735,7 @@ export default function TeachingPage() {
       });
     }, 14);
     return () => window.clearInterval(id);
-  }, [segIdx, segsRef]);
+  }, [segIdx, segsRef, playback.active, playback.playing]);
 
   const currentImageUrl = allDialogues[pageIndex]?.blackboard?.image_url ?? null;
 
@@ -727,7 +793,7 @@ export default function TeachingPage() {
         setWaitingForNext(false);
         if (next.segments && next.segments.length > 0) {
           setReveal({
-            dialogueCount: allDialogues.length + 1,
+            pageIndex: allDialogues.length,
             elements: next.blackboard?.elements ?? [],
             segments: next.segments,
             segmentIndex: 0,
@@ -738,7 +804,20 @@ export default function TeachingPage() {
         }
         return true;
       }
-      // No prefetched dialogue ready — backend has spawned a generation task.
+      // No dialogue returned. Re-check progress to tell "complete" from "still generating".
+      const fresh = await getArtifact(artifactKind, parentId);
+      if (fresh) {
+        setArtifact(fresh);
+        const done =
+          fresh.kind === "Journey"
+            ? fresh.journey.progress.is_journey_complete
+            : fresh.explanation.progress.is_complete;
+        if (done) {
+          setWaitingForNext(false);
+          return false;
+        }
+      }
+      // Backend has spawned a generation task — wait for it.
       setWaitingForNext(true);
       return false;
     } catch (err) {
@@ -759,11 +838,174 @@ export default function TeachingPage() {
     void fetchNextDialogue();
   }, [waitingForNext, generationCount, parentId, fetchNextDialogue]);
 
+  // Advance the active playback session: next segment, or — at the end of a
+  // passage — into the following one when continuous, else stop.
+  const handleSegmentComplete = useCallback(() => {
+    if (!reveal) return;
+    if (reveal.segmentIndex < reveal.segments.length - 1) {
+      setReveal({ ...reveal, segmentIndex: reveal.segmentIndex + 1, typedLen: 0 });
+      return;
+    }
+    if (playback.continuous) {
+      if (pageIndex < allDialogues.length - 1) {
+        const ni = pageIndex + 1;
+        setPageIndex(ni);
+        beginReveal(ni, { active: true, continuous: true });
+        return;
+      }
+      if (!model?.isComplete) {
+        void fetchNextDialogue();
+        return;
+      }
+    }
+    setPlayback(PLAYBACK_OFF);
+  }, [reveal, playback.continuous, pageIndex, allDialogues.length, model?.isComplete, fetchNextDialogue, beginReveal]);
+
+  // Immersive narration: load and play the current segment's audio.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!immersive || !playback.active) {
+      audio.pause();
+      return;
+    }
+    const seg = reveal?.segments[reveal.segmentIndex];
+    if (!seg?.audio_path) {
+      audio.pause();
+      audio.removeAttribute("src");
+      return;
+    }
+    audio.src = convertFileSrc(seg.audio_path);
+    audio.currentTime = 0;
+    audio.playbackRate = NARRATION_RATE;
+    if (playback.playing) audio.play().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [immersive, playback.active, reveal?.pageIndex, reveal?.segmentIndex]);
+
+  // Pause / resume narration without reloading the source.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !immersive || !playback.active) return;
+    const seg = reveal?.segments[reveal.segmentIndex];
+    if (!seg?.audio_path) return;
+    if (playback.playing) audio.play().catch(() => {});
+    else audio.pause();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playback.playing, immersive, playback.active, reveal?.segmentIndex]);
+
+  // Silent playback (split view, or immersive passage with no narration):
+  // advance on a dwell timer once the segment has finished typing.
+  useEffect(() => {
+    if (!playback.active || !playback.playing || !reveal) return;
+    if (isLoading || waitingForNext) return;
+    const seg = reveal.segments[reveal.segmentIndex];
+    if (!seg) return;
+    if (immersive && seg.audio_path) return; // audio onEnded drives advance
+    if (reveal.typedLen < seg.text.length) return;
+    const dwell = Math.min(4500, 900 + seg.text.length * 16);
+    const id = window.setTimeout(handleSegmentComplete, dwell);
+    return () => window.clearTimeout(id);
+  }, [playback.active, playback.playing, immersive, reveal, isLoading, waitingForNext, handleSegmentComplete]);
+
+  const replayPassage = useCallback(
+    () => beginReveal(pageIndex, { active: true, continuous: false }),
+    [beginReveal, pageIndex],
+  );
+  const playFromHere = useCallback(
+    () => beginReveal(pageIndex, { active: true, continuous: true }),
+    [beginReveal, pageIndex],
+  );
+  const togglePlay = useCallback(() => {
+    const goingToPlay = !playback.playing;
+    // Resuming on a passage that has already played out replays it from the
+    // top, so play always does something on the passage you're looking at.
+    if (goingToPlay && reveal) {
+      const last = reveal.segments.length - 1;
+      const settled =
+        reveal.segmentIndex === last &&
+        reveal.typedLen >= (reveal.segments[last]?.text.length ?? 0);
+      if (settled) setReveal({ ...reveal, segmentIndex: 0, typedLen: 0 });
+    }
+    setPlayback((p) => ({ ...p, playing: goingToPlay }));
+  }, [playback.playing, reveal]);
+
+  // Browse passages while immersive: move to the target and show its board in
+  // the fully-revealed, paused state — never auto-play just from navigating.
+  const immersiveGoTo = useCallback(
+    (idx: number) => {
+      setPageIndex(idx);
+      const d = dialogues[idx];
+      if (d?.segments?.length) {
+        const lastIdx = d.segments.length - 1;
+        setReveal({
+          pageIndex: idx,
+          elements: d.blackboard?.elements ?? [],
+          segments: d.segments,
+          segmentIndex: lastIdx,
+          typedLen: d.segments[lastIdx]?.text.length ?? 0,
+        });
+      }
+      setPlayback((p) => ({ ...p, playing: false }));
+    },
+    [dialogues],
+  );
+  const immersivePrev = useCallback(() => {
+    if (pageIndex > 0) immersiveGoTo(pageIndex - 1);
+  }, [pageIndex, immersiveGoTo]);
+  const immersiveNext = useCallback(async () => {
+    if (pageIndex < allDialogues.length - 1) {
+      immersiveGoTo(pageIndex + 1);
+      return;
+    }
+    if (!model?.isComplete && !isLoading) await fetchNextDialogue();
+  }, [pageIndex, allDialogues.length, immersiveGoTo, model?.isComplete, isLoading, fetchNextDialogue]);
+  const exitPlayback = useCallback(() => {
+    setPlayback(PLAYBACK_OFF);
+    setImmersive(false);
+    audioRef.current?.pause();
+  }, []);
+  const toggleImmersive = useCallback(() => {
+    if (immersive) {
+      exitPlayback();
+      return;
+    }
+    const d = dialogues[pageIndex];
+    if (!d?.segments?.length) return;
+    setImmersive(true);
+    // Preserve where the reader already is. If a reveal is in progress on this
+    // page, keep its segment/typed position; otherwise the board is showing the
+    // fully-revealed state, so seed at the last segment to match it. Enter
+    // paused so the board expands calmly before any narration begins.
+    const hasActive = reveal && reveal.pageIndex === pageIndex;
+    if (!hasActive) {
+      const lastIdx = d.segments.length - 1;
+      setReveal({
+        pageIndex,
+        elements: d.blackboard?.elements ?? [],
+        segments: d.segments,
+        segmentIndex: lastIdx,
+        typedLen: d.segments[lastIdx]?.text.length ?? 0,
+      });
+    }
+    setPlayback({ active: true, continuous: false, playing: false });
+  }, [immersive, pageIndex, reveal, dialogues, exitPlayback]);
+
   const handleNext = useCallback(async () => {
     if (isLoading) return;
 
-    const isRevealActive =
-      reveal && reveal.dialogueCount === allDialogues.length && pageIndex === allDialogues.length - 1;
+    // During playback, Next means the next passage — segments self-advance.
+    if (playback.active) {
+      if (pageIndex < allDialogues.length - 1) {
+        const ni = pageIndex + 1;
+        setPageIndex(ni);
+        beginReveal(ni, { active: true, continuous: playback.continuous });
+        return;
+      }
+      if (!model?.isComplete) await fetchNextDialogue();
+      return;
+    }
+
+    const isRevealActive = reveal && reveal.pageIndex === pageIndex;
 
     if (isRevealActive && reveal) {
       const currentText = reveal.segments[reveal.segmentIndex]?.text ?? "";
@@ -784,21 +1026,37 @@ export default function TeachingPage() {
 
     if (model?.isComplete) return;
     await fetchNextDialogue();
-  }, [isLoading, pageIndex, allDialogues.length, model?.isComplete, reveal, fetchNextDialogue]);
+  }, [isLoading, pageIndex, allDialogues.length, model?.isComplete, reveal, fetchNextDialogue, playback.active, playback.continuous, beginReveal]);
 
   const handlePrev = useCallback(() => {
     if (pageIndex > 0) setPageIndex((p) => p - 1);
   }, [pageIndex]);
+
+  useEffect(() => {
+    if (!immersive && !playback.active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (isAsking) return;
+      if (e.key === "Escape") exitPlayback();
+      if (e.key === " ") {
+        e.preventDefault();
+        togglePlay();
+      }
+      if (immersive && e.key === "ArrowLeft") immersivePrev();
+      if (immersive && e.key === "ArrowRight") void immersiveNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [immersive, playback.active, isAsking, exitPlayback, togglePlay, immersivePrev, immersiveNext]);
 
   if (!ts || artifactKind == null || artifactKind === "None" || parentId == null || !model) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 paper-texture px-6">
         <p className="text-text-tertiary">No active teaching session.</p>
         <Link
-          to="/journeys"
+          to="/studies"
           className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
         >
-          Go to journeys
+          Go to the study
         </Link>
       </div>
     );
@@ -807,6 +1065,11 @@ export default function TeachingPage() {
   const totalPages = allDialogues.length;
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
+  // When complete, a standalone coda page lives one past the last passage.
+  const hasCompletionPage = Boolean(model.isComplete);
+  const completionPageIndex = allDialogues.length;
+  const onCompletionPage = hasCompletionPage && pageIndex >= completionPageIndex;
+  const isOnLastContentPage = totalPages > 0 && pageIndex === totalPages - 1;
   const currentDialogue: Dialogue | undefined = allDialogues[pageIndex];
   const displayHeading = currentDialogue?.heading || model.headingFallback;
   const displayArc = model.groupLabel(currentDialogue);
@@ -815,13 +1078,31 @@ export default function TeachingPage() {
     ? allDialogues.findIndex((d) => model.groupOf(d) === model.groupOf(currentDialogue)) === pageIndex
     : false;
 
+  const currentSegments = currentDialogue?.segments ?? [];
+  const currentHasSegments = currentSegments.length > 0;
+  const currentHasAudio = currentSegments.some((s) => !!s.audio_path);
+  const currentHasBoard = Boolean(currentImageUrl);
+  const atVeryEnd = isOnLastPage && Boolean(model.isComplete);
+
   return (
     <div
       className={cn(
-        "flex h-screen flex-col transition-[margin] duration-300 ease-out",
-        isAsking && "md:mr-[400px]"
+        "flex h-screen flex-col transition-[margin,background-color] duration-500 ease-out",
+        isAsking && "md:mr-[400px]",
+        immersive && "bg-foreground/[0.04] dark:bg-background"
       )}
     >
+      <audio
+        ref={audioRef}
+        className="hidden"
+        onEnded={() => {
+          if (immersive && playback.active) handleSegmentComplete();
+        }}
+        onError={() => {
+          if (immersive && playback.active && playback.playing) handleSegmentComplete();
+        }}
+      />
+      <ContentNotes match={notesMatchHere} />
       {/* Top bar */}
       <div className="sticky top-0 z-50 border-b border-border/20 bg-background/60 backdrop-blur-xl">
         <div className="relative flex items-center justify-between px-4 py-3">
@@ -842,8 +1123,103 @@ export default function TeachingPage() {
             </p>
           )}
 
-          {/* Placeholder to balance flex */}
-          <div className="w-24" />
+          {/* The hall — playback & stage controls */}
+          <div className="flex w-24 items-center justify-end">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-text-tertiary transition-colors hover:text-foreground",
+                    (immersive || playback.active) && "text-amber hover:text-amber"
+                  )}
+                  aria-label="The hall — playback and stage controls"
+                >
+                  <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                sideOffset={10}
+                className="w-72 overflow-hidden rounded-lg border-border/40 p-0 shadow-medium"
+              >
+                <div className="px-5 pt-5 pb-3">
+                  <p className="label-whisper text-text-tertiary">The hall</p>
+                </div>
+
+                {/* Immersive board toggle */}
+                <button
+                  onClick={toggleImmersive}
+                  disabled={!currentHasBoard}
+                  className="group flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <Projector className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  <span className="flex-1">
+                    <span className="block font-display text-sm italic text-foreground">
+                      Immersive board
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-text-tertiary">
+                      {!currentHasBoard
+                        ? "This passage has no board to enlarge."
+                        : currentHasAudio
+                          ? "The board fills the room; the lecture is read aloud."
+                          : "The board fills the room; this passage plays silently."}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      "relative mt-1 h-4 w-7 shrink-0 rounded-full transition-colors duration-200",
+                      immersive ? "bg-amber" : "bg-border"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 h-3 w-3 rounded-full bg-background transition-all duration-200",
+                        immersive ? "left-[14px]" : "left-0.5"
+                      )}
+                    />
+                  </span>
+                </button>
+
+                <div className="mx-5 h-px bg-border/30" />
+
+                {/* Replay this passage */}
+                <button
+                  onClick={replayPassage}
+                  disabled={!currentHasSegments}
+                  className="group flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <Repeat className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  <span className="flex-1">
+                    <span className="block font-display text-sm italic text-foreground">
+                      Replay this passage
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-text-tertiary">
+                      Run the reveal and its animation from the top.
+                    </span>
+                  </span>
+                </button>
+
+                {/* Play from here */}
+                <button
+                  onClick={playFromHere}
+                  disabled={!currentHasSegments || atVeryEnd}
+                  className="group flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                >
+                  <ListVideo className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
+                  <span className="flex-1">
+                    <span className="block font-display text-sm italic text-foreground">
+                      Play from here
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-text-tertiary">
+                      Sit back — passages advance on their own.
+                    </span>
+                  </span>
+                </button>
+
+                <div className="h-2" />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
         {/* Segmented progress — one cell per arc (journey) or step (explanation) */}
@@ -872,10 +1248,7 @@ export default function TeachingPage() {
           "[&_.katex]:text-foreground"
         );
 
-        const isRevealing =
-          reveal &&
-          reveal.dialogueCount === allDialogues.length &&
-          pageIndex === allDialogues.length - 1;
+        const isRevealing = Boolean(reveal && reveal.pageIndex === pageIndex);
 
         const isSettled = Boolean(
           isRevealing &&
@@ -887,13 +1260,41 @@ export default function TeachingPage() {
         const { revealed, focused, justRevealed, currentActions, pastConnects } = revealFocusSets;
 
         const hasBoard = Boolean(currentImageUrl);
+        const boardOnly = immersive && hasBoard;
+
+        if (onCompletionPage) {
+          return (
+            <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in">
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display italic leading-none text-foreground/[0.03]" style={{ fontSize: "min(60vh, 60vw)" }}>
+                {GLYPHS[Math.abs(model.glyphSeed) % GLYPHS.length]}
+              </span>
+              <p className="label-whisper text-text-tertiary/70 mb-5 relative">Fin</p>
+              <p className="relative font-display text-4xl italic text-foreground mb-5">{model.completeTitle}</p>
+              <div
+                className="h-px w-12 mb-6 relative animate-reveal-line"
+                style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "center" }}
+              />
+              <p className="relative text-sm text-text-tertiary/60 mb-3 max-w-md leading-relaxed">
+                {model.completeSubtitle}
+              </p>
+              <p className="relative font-display italic text-sm text-text-tertiary/80 max-w-md leading-relaxed">
+                {model.completeThanks}
+              </p>
+            </div>
+          );
+        }
 
         return (
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <div className="relative flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* Board pane — only shown when a blackboard image exists */}
             {hasBoard && (
               <div
-                className="relative lg:w-[55%] border-b lg:border-b-0 lg:border-r border-border/20 flex items-center justify-center p-4 lg:p-8 min-h-[42vh] overflow-hidden bg-background"
+                className={cn(
+                  "relative flex items-center justify-center overflow-hidden bg-background min-h-[42vh] p-4 transition-all duration-700 ease-in-out",
+                  boardOnly
+                    ? "flex-1 lg:flex-none lg:w-full lg:p-12"
+                    : "lg:flex-none lg:w-[55%] border-b lg:border-b-0 lg:border-r border-border/20 lg:p-8"
+                )}
               >
                 <div key={currentImageUrl!} className="w-full h-full animate-blur-in">
                   {isRevealing && reveal ? (
@@ -925,8 +1326,18 @@ export default function TeachingPage() {
               </div>
             )}
 
-            {/* Dialogue pane — expands to full width when no board */}
-            <div ref={dialogueScrollRef} className={cn("overflow-y-auto", hasBoard ? "flex-1 lg:w-[45%] lg:border-l lg:border-border/20" : "flex-1")}>
+            {/* Dialogue pane — collapses away as the board fills the room */}
+            <div
+              ref={dialogueScrollRef}
+              className={cn(
+                "overflow-y-auto transition-all duration-700 ease-in-out",
+                boardOnly
+                  ? "max-h-0 opacity-0 pointer-events-none lg:max-h-none lg:w-0 lg:flex-none"
+                  : hasBoard
+                    ? "flex-1 lg:flex-none lg:w-[45%] lg:border-l lg:border-border/20"
+                    : "flex-1"
+              )}
+            >
               <div className={cn("mx-auto px-6 py-10 md:px-8", hasBoard ? "max-w-2xl" : "max-w-2xl lg:max-w-3xl")}>
                 <header className="relative mb-10 animate-blur-in">
                   <p className="label-whisper text-text-tertiary mb-3">
@@ -998,8 +1409,8 @@ export default function TeachingPage() {
                   </div>
                 )}
 
-                {/* Segment progress dots — visible during active reveal */}
-                {isRevealing && reveal && reveal.segments.length > 1 && (
+                {/* Segment progress dots — visible during active reveal (the lectern rail owns them in playback) */}
+                {isRevealing && !playback.active && reveal && reveal.segments.length > 1 && (
                   <div className="mt-10 flex items-center justify-center gap-1.5">
                     {reveal.segments.map((_, i) => {
                       const isPast = i < reveal.segmentIndex;
@@ -1042,24 +1453,6 @@ export default function TeachingPage() {
                   </div>
                 )}
 
-                {model.isComplete && isOnLastPage && (
-                  <div className="relative mt-16 flex flex-col items-center text-center py-20 overflow-hidden animate-blur-in">
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display text-[14rem] italic leading-none text-foreground/[0.035]">
-                      {GLYPHS[Math.abs(model.glyphSeed) % GLYPHS.length]}
-                    </span>
-                    <p className="relative font-display text-3xl italic text-foreground mb-3">{model.completeTitle}</p>
-                    <p className="relative text-sm text-text-tertiary/55 mb-12">
-                      {model.completeSubtitle}
-                    </p>
-                    <Link
-                      to={model.backLink}
-                      className="group relative font-display italic text-sm text-text-tertiary transition-colors hover:text-foreground"
-                    >
-                      <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-                      <span className="ml-1">back to {model.backLabel}</span>
-                    </Link>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1076,7 +1469,95 @@ export default function TeachingPage() {
       </button>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 border-t border-border/20 bg-background/60 backdrop-blur-xl px-4 py-3.5">
+      <div
+        className={cn(
+          "sticky bottom-0 border-t border-border/20 backdrop-blur-xl px-4 py-3.5 transition-colors duration-500",
+          immersive ? "bg-background/30" : "bg-background/60"
+        )}
+      >
+        {playback.active ? (
+          /* Lectern rail — hands-free session controls */
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+            {/* Leave the hall */}
+            <button
+              onClick={exitPlayback}
+              className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors"
+            >
+              <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+              <span className="ml-1 hidden sm:inline">leave the hall</span>
+            </button>
+
+            {/* Prev · play/pause + dots · next */}
+            <div className="flex items-center gap-5">
+              <button
+                onClick={immersivePrev}
+                disabled={pageIndex <= 0}
+                aria-label="Previous passage"
+                className="group font-display italic text-lg text-text-tertiary transition-colors hover:text-foreground disabled:opacity-25 disabled:hover:text-text-tertiary"
+              >
+                <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+              </button>
+
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={togglePlay}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-foreground transition-colors hover:border-amber/50 hover:text-amber"
+                  aria-label={playback.playing ? "Pause" : "Resume"}
+                >
+                  {playback.playing ? (
+                    <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 translate-x-px" strokeWidth={1.5} />
+                  )}
+                </button>
+                {reveal && reveal.segments.length > 1 && (
+                  <div className="hidden items-center gap-1.5 sm:flex">
+                    {reveal.segments.map((_, i) => {
+                      const isPast = i < reveal.segmentIndex;
+                      const isCurrent = i === reveal.segmentIndex;
+                      return (
+                        <span
+                          key={i}
+                          className="rounded-full transition-all duration-300 ease-out"
+                          style={{
+                            height: "0.3rem",
+                            width: isCurrent ? "1.25rem" : "0.3rem",
+                            backgroundColor: isPast || isCurrent ? "hsl(var(--amber))" : "hsl(var(--border))",
+                            opacity: isPast ? 0.5 : 1,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => void immersiveNext()}
+                disabled={isLoading || waitingForNext || atVeryEnd}
+                aria-label="Next passage"
+                className="group font-display italic text-lg text-text-tertiary transition-colors hover:text-foreground disabled:opacity-25 disabled:hover:text-text-tertiary"
+              >
+                {isLoading || waitingForNext ? (
+                  <span className="flex items-center gap-0.5">
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                  </span>
+                ) : (
+                  <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+                )}
+              </button>
+            </div>
+
+            {/* Passage counter */}
+            {totalPages > 0 && (
+              <span className="font-display italic text-xs text-text-tertiary tabular-nums">
+                passage {pageIndex + 1} of {totalPages}
+              </span>
+            )}
+          </div>
+        ) : (
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
           {/* Previous — italic text-link */}
           <button
@@ -1091,12 +1572,12 @@ export default function TeachingPage() {
           {/* Counter — italic Lora */}
           {totalPages > 0 && (
             <span className="font-display italic text-xs text-text-tertiary tabular-nums">
-              passage {pageIndex + 1} of {totalPages}
+              {onCompletionPage ? "fin" : `passage ${pageIndex + 1} of ${totalPages}`}
             </span>
           )}
 
-          {/* Right side — Finish, primary CTA, or Next text-link */}
-          {model.isComplete && isOnLastPage ? (
+          {/* Right side — Finish, Conclude, primary CTA, or Next text-link */}
+          {onCompletionPage ? (
             <Button
               onClick={() => navigate(model.backLink)}
               variant="outline"
@@ -1104,6 +1585,16 @@ export default function TeachingPage() {
               style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
             >
               Finish
+            </Button>
+          ) : isOnLastContentPage && model.isComplete ? (
+            <Button
+              onClick={() => setPageIndex(completionPageIndex)}
+              variant="outline"
+              className="group rounded-xl px-6 text-sm font-medium"
+              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
+            >
+              Conclude
+              <span className="ml-2 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
             </Button>
           ) : isOnLastPage || hasNoPages ? (
             <Button
@@ -1148,6 +1639,7 @@ export default function TeachingPage() {
             </button>
           )}
         </div>
+        )}
       </div>
 
       {isAsking && (

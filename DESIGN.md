@@ -264,7 +264,41 @@ Easing is `cubic-bezier(0.16, 1, 0.3, 1)` — snappy-out, no bounce. Keep durati
 
 ---
 
-## 8. Checklist for a new screen or modal
+## 8. Studies — the unified teaching surface
+
+Everything the user learns is a **Study**. A journey and an explainer are *kinds* of
+Study, not separate concepts — they share one page, one nav entry, one set of folders.
+The room that holds them is **The Study** (`/studies`); "the library" (`/library`) remains
+the shelf of *books*, distinct from the shelf of *studies*.
+
+**The rule that keeps this from sprawling:** a kind never earns its own page or nav entry.
+A new teachable kind contributes exactly two things — a **card projection** and an **open
+path** — and nothing else. When you add kind #3, you do *not* add a route.
+
+- **Projection.** [`src/lib/studies.ts`](src/lib/studies.ts) defines `StudyItem` and one
+  adapter per kind (`journeyToStudy`, `explanationToStudy`). Each adapter collapses a
+  backend row (`JourneyRow` / `ExplanationRow`) into the common shape: `title`, `kindLabel`,
+  `subtitle`, `folderId`, `createdAt`, `completed`/`total`, and `segments`. The library only
+  ever renders `StudyItem`s.
+- **The page** ([`StudiesPage.tsx`](src/pages/StudiesPage.tsx)) is the folder shell — nested
+  folders, pointer-based drag-and-drop (see [reference: Tauri DnD]), breadcrumbs, inline
+  folder create/rename — holding a **mixed** set of studies **sorted by recency across
+  kinds**. That interleaving is the whole thesis made visible: they are one class of thing.
+- **Kind reads as a byline, not a badge.** The meta line is `KIND · source` — the kind in
+  `label-whisper` (tertiary), a middot, then the source in serif italic
+  (`from Chapter 4` / `a route of 5 steps`). The **identity glyph stays per-item**
+  (`journeyGlyph(id)`, amber, opacity tied to progress) — kind is carried by the byline and
+  the rail, never by swapping the glyph.
+- **One rail, two signatures.** The progress rail is equal-width `flex-1` tracks, each with
+  an inner amber fill of `width: fill*100%`. Cells are a journey's *arcs* (partial fills) or
+  an explainer's *steps* (binary fills) — same renderer, kind-specific segmentation, so each
+  kind keeps its natural texture without a second code path.
+- **Folders are shelves, and hold any kind.** Membership is a nullable `folder_id` on each
+  kind's row, all referencing the one `folders` table. A per-kind `move*` handler
+  (`moveJourney`, `moveExplanation`) files an item; folder deletion reparents every kind's
+  members up one level.
+
+## 9. Checklist for a new screen or modal
 
 Before you open a PR, confirm:
 
@@ -285,6 +319,8 @@ Before you open a PR, confirm:
   `soft`/`medium`/`large`.
 - [ ] Empty states use a faded glyph + an italic line.
 - [ ] Reused `editorial.ts` helpers and `cn()`; didn't reinvent mastheads, romans, or glyphs.
+- [ ] **New teachable kind**: added a `StudyItem` adapter + an open path (§8) — *not* a new
+  page or nav entry.
 
 When in doubt, open [`JourneysPage.tsx`](src/pages/JourneysPage.tsx) (pages) or
 [`AgentInputDialog.tsx`](src/components/AgentInputDialog.tsx) (modals) and follow the pattern.

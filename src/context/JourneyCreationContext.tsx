@@ -28,6 +28,7 @@ interface JourneyCreationContextValue {
   pendingJourneys: PendingJourney[];
   lastCreatedId: number | null;
   clearLastCreatedId: () => void;
+  refreshJourneys: () => Promise<void>;
   startJourneyCreation: (
     params: CreateJourneyParams,
     onError?: (msg: string) => void,
@@ -86,6 +87,11 @@ export function JourneyCreationProvider({ children }: { children: React.ReactNod
 
   const clearLastCreatedId = useCallback(() => setLastCreatedId(null), []);
 
+  // Re-pull after a move/folder-delete reparents journeys in the DB.
+  const refreshJourneys = useCallback(async () => {
+    await fetchJourneys(true);
+  }, [fetchJourneys]);
+
   const startJourneyCreation = useCallback(
     async (params: CreateJourneyParams, onError?: (msg: string) => void) => {
       try {
@@ -121,6 +127,7 @@ export function JourneyCreationProvider({ children }: { children: React.ReactNod
         pendingJourneys,
         lastCreatedId,
         clearLastCreatedId,
+        refreshJourneys,
         startJourneyCreation,
         removeJourney,
       }}

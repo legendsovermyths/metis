@@ -28,6 +28,7 @@ pub struct PromptProvider {
     tutor_system_prompt: String,
     explainer_tutor_system_prompt: String,
     explanation_architect_prompt: String,
+    content_to_transcript_prompt: String,
 }
 
 impl PromptProvider {
@@ -54,6 +55,8 @@ impl PromptProvider {
             tutor_system_prompt: include_str!("markdowns/tutor.md").to_string(),
             explainer_tutor_system_prompt: include_str!("markdowns/explainer_tutor.md").to_string(),
             explanation_architect_prompt: include_str!("markdowns/explanation_architect.md")
+                .to_string(),
+            content_to_transcript_prompt: include_str!("markdowns/content_to_transcript.md")
                 .to_string(),
         })
     }
@@ -90,6 +93,9 @@ impl PromptProvider {
     }
     pub fn get_content_to_topics_prompt(&self) -> String {
         self.content_to_topics_prompt.clone()
+    }
+    pub fn get_content_to_transcript_prompt(&self) -> String {
+        self.content_to_transcript_prompt.clone()
     }
     pub fn get_journey_narrator_prompt(
         &self,

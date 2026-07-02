@@ -7,7 +7,7 @@ use crate::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
     }, prompts::get_prompt_provider, utils::{
-        format::{fix_json_escapes, fix_mathtext_shorthands, strip_json_block},
+        format::{fix_mathtext_shorthands, sanitize_json},
         latex::execute_latex,
         python::execute_python,
     }
@@ -167,8 +167,7 @@ impl<'a> Illustrator {
 
             let response = self.client.generate(user_message.clone()).await?;
             let raw = response.text();
-            let json_str = strip_json_block(&raw);
-            let fixed = fix_json_escapes(json_str);
+            let fixed = sanitize_json(&raw);
             let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
                 Ok(v) => v,
                 Err(e) => {

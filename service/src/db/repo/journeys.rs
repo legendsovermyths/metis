@@ -20,6 +20,7 @@ pub struct JourneyRow {
     pub created_at: i64,
     pub advisor_notes: String,
     pub tutor_notes: String,
+    pub folder_id: Option<i64>,
     pub completed_topics: usize,
     pub total_topics: usize,
 }
@@ -34,6 +35,7 @@ fn build_row(
     created_at: i64,
     advisor_notes: String,
     tutor_notes: String,
+    folder_id: Option<i64>,
     completed_topics: usize,
 ) -> JourneyRow {
     let total_topics = journey.arcs.iter().map(|a| a.topics.len()).sum();
@@ -45,6 +47,7 @@ fn build_row(
         created_at,
         advisor_notes,
         tutor_notes,
+        folder_id,
         completed_topics,
         total_topics,
     }
@@ -73,7 +76,7 @@ impl JourneysRepo {
     pub fn get(id: i64) -> Result<Option<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes, j.folder_id,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
@@ -94,7 +97,8 @@ impl JourneysRepo {
                 row.get(4)?,
                 row.get(5)?,
                 row.get(6)?,
-                row.get::<_, i64>(7)? as usize,
+                row.get(7)?,
+                row.get::<_, i64>(8)? as usize,
             )))
         } else {
             Ok(None)
@@ -104,7 +108,7 @@ impl JourneysRepo {
     pub fn get_all() -> Result<Vec<JourneyRow>> {
         let conn = get_database().conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes,
+            "SELECT j.id, j.chapter_title, j.chapter_dir, j.journey_json, j.created_at, j.advisor_notes, j.tutor_notes, j.folder_id,
                     COALESCE(d.cnt, 0)
              FROM journeys j
              LEFT JOIN (
@@ -126,7 +130,8 @@ impl JourneysRepo {
                 row.get(4)?,
                 row.get(5)?,
                 row.get(6)?,
-                row.get::<_, i64>(7)? as usize,
+                row.get(7)?,
+                row.get::<_, i64>(8)? as usize,
             ));
         }
         Ok(out)
@@ -251,6 +256,15 @@ impl JourneysRepo {
                 })
             }
         }
+    }
+
+    pub fn set_folder(id: i64, folder_id: Option<i64>) -> Result<()> {
+        let conn = get_database().conn.lock().unwrap();
+        conn.execute(
+            "UPDATE journeys SET folder_id = ?2 WHERE id = ?1",
+            rusqlite::params![id, folder_id],
+        )?;
+        Ok(())
     }
 
     pub fn delete_single(id: i64) -> Result<()> {

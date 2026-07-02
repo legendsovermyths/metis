@@ -9,7 +9,7 @@ use crate::{
         layout::{layout, LayoutInput, LayoutOutput},
         templates::COORDINATE_SAVE,
     }, utils::{
-        format::{fix_json_escapes, strip_json_block}, latex::execute_latex, svg::{extract_part_bboxes, svg_dimensions}
+        format::sanitize_json, latex::execute_latex, svg::{extract_part_bboxes, svg_dimensions}
     }
 };
 
@@ -156,8 +156,7 @@ impl<'a> Enhancer {
     }
 
     fn parse_output(raw: &str) -> Option<EnhancerOutput> {
-        let json_str = strip_json_block(raw);
-        let fixed = fix_json_escapes(json_str);
+        let fixed = sanitize_json(raw);
         match serde_json::from_str::<EnhancerOutput>(&fixed) {
             Ok(v) => Some(v),
             Err(e) => {

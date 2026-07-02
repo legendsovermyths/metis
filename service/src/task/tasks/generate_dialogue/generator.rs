@@ -1,15 +1,13 @@
 use crate::{
-    app::{
-        dialogue::{
-            blackboard::{Blackboard, BlackboardInstructions, ElementDescriptor},
-            segment::Segment,
-            Dialogue, DialogueReference,
-        },
-        journey::artifact::JourneyArtifacts,
+    app::dialogue::{
+        blackboard::{Blackboard, BlackboardInstructions, ElementDescriptor},
+        segment::Segment,
+        Dialogue, DialogueReference,
     },
-    db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, journeys::JourneysRepo},
-    error::{MetisError, Result},
+    db::repo::dialogue::DialoguesRepo,
+    error::Result,
     task::tasks::generate_dialogue::{
+        audio_renderer::{AudioRenderer, AudioRendererInput},
         curator::{Curator, CuratorRequest},
         enhancer::{Enhancer, EnhancerRequest},
         illustrator::{IllustrationRequest, IllustrationResult, Illustrator},
@@ -23,6 +21,7 @@ pub struct DialgoueGenerator {
     curator: Curator,
     illustrator: Illustrator,
     enhancer: Enhancer,
+    audio_renderer: AudioRenderer,
 }
 
 impl DialgoueGenerator {
@@ -32,6 +31,7 @@ impl DialgoueGenerator {
             curator: Curator::new(),
             illustrator: Illustrator::new(),
             enhancer: Enhancer::new(),
+            audio_renderer: AudioRenderer::new(),
         }
     }
     pub async fn generate(&mut self, request: &GenerationParams) -> Result<Dialogue> {
@@ -89,14 +89,23 @@ impl DialgoueGenerator {
             &enhanced.blackboard,
         );
 
+        let segments = self
+            .audio_renderer
+            .render(AudioRendererInput {
+                segments: final_segments,
+                directory,
+            })
+            .await?
+            .segments;
+
         let dialogue = self.build_dialogue(
             narration.title,
             curated.dialogue,
             enhanced.blackboard,
             narration.topic_complete,
-            final_segments,
+            segments,
             final_parts,
-            request.dialogue_reference.clone()
+            request.dialogue_reference.clone(),
         )?;
         Ok(dialogue)
     }
@@ -152,6 +161,8 @@ impl DialgoueGenerator {
         let fallback = vec![Segment {
             text: joined_text,
             actions: Vec::new(),
+            transcript: None,
+            audio_path: None,
         }];
         (Vec::new(), fallback)
     }

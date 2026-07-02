@@ -39,6 +39,10 @@ pub enum SegmentAction {
 pub struct Segment {
     pub text: String,
     pub actions: Vec<SegmentAction>,
+    #[serde(default)]
+    pub transcript: Option<String>,
+    #[serde(default)]
+    pub audio_path: Option<String>,
 }
 
 fn default_morph_ms() -> u32 { 2000 }

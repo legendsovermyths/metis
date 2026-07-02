@@ -11,7 +11,7 @@ use crate::{
         llm_client::LLMClient,
     },
     prompts::get_prompt_provider,
-    utils::format::{fix_json_escapes, strip_json_block},
+    utils::format::sanitize_json,
 };
 
 #[derive(Deserialize)]
@@ -55,8 +55,7 @@ impl<'a> Curator {
             .await?;
 
         let raw = response.text();
-        let json_str = strip_json_block(&raw);
-        let fixed = fix_json_escapes(json_str);
+        let fixed = sanitize_json(&raw);
         let parsed: CuratorOutput = match serde_json::from_str(&fixed) {
             Ok(v) => v,
             Err(e) => {
@@ -67,6 +66,8 @@ impl<'a> Curator {
                     segments: vec![Segment {
                         text: request.dialogue_content.to_string(),
                         actions: Vec::new(),
+                        transcript: None,
+                        audio_path: None,
                     }],
                 });
             }

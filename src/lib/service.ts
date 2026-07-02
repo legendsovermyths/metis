@@ -102,6 +102,8 @@ export type SegmentAction =
 export interface Segment {
   text: string;
   actions: SegmentAction[];
+  transcript?: string | null;
+  audio_path?: string | null;
 }
 
 export type DialogueReference =
@@ -150,6 +152,7 @@ export interface JourneyRow {
   created_at: number;
   advisor_notes: string;
   tutor_notes: string;
+  folder_id: number | null;
   completed_topics: number;
   total_topics: number;
 }
@@ -186,10 +189,13 @@ export interface ExplanationRow {
   total_steps: number;
 }
 
+export type FolderScope = "study" | "note";
+
 export interface Folder {
   id: number;
   name: string;
   parent_id: number | null;
+  scope: FolderScope;
   created_at: number;
 }
 
@@ -353,6 +359,10 @@ export async function deleteJourney(id: number): Promise<void> {
   await callService("DeleteJourney", { id });
 }
 
+export async function moveJourney(id: number, folderId: number | null): Promise<void> {
+  await callService("MoveJourney", { id, folder_id: folderId });
+}
+
 // -- API: explanations & folders --
 
 export async function getArtifact(
@@ -364,6 +374,10 @@ export async function getArtifact(
 
 export async function getAllExplanations(): Promise<ExplanationRow[]> {
   return (await callService("GetAllExplanations")) as ExplanationRow[];
+}
+
+export async function getExplanation(id: number): Promise<ExplanationRow> {
+  return (await callService("GetExplanation", { id })) as ExplanationRow;
 }
 
 export async function deleteExplanation(id: number): Promise<void> {
@@ -385,14 +399,20 @@ export async function createExplanation(
   });
 }
 
-export async function getFolders(): Promise<Folder[]> {
-  return (await callService("GetFolders")) as Folder[];
+export async function getFolders(scope: FolderScope = "study"): Promise<Folder[]> {
+  return (await callService("GetFolders", { scope })) as Folder[];
 }
 
-export async function createFolder(name: string, parentId: number | null): Promise<number> {
-  const data = (await callService("CreateFolder", { name, parent_id: parentId })) as {
-    id: number;
-  };
+export async function createFolder(
+  name: string,
+  parentId: number | null,
+  scope: FolderScope = "study",
+): Promise<number> {
+  const data = (await callService("CreateFolder", {
+    name,
+    parent_id: parentId,
+    scope,
+  })) as { id: number };
   return data.id;
 }
 
@@ -457,6 +477,55 @@ export async function teachingInit(
 
 export async function setDialogue(dialogueId: number): Promise<void> {
   await callService("SetDialogue", { dialogue_id: dialogueId });
+}
+
+// -- Notes --
+
+export type NoteAnchor =
+  | { Journey: { journey_id: number } }
+  | { Dialogue: { dialogue_id: number; segment_idx: number | null } }
+  | { Explanation: { explanation_id: number; step_idx: number | null } };
+
+/** Row from `notes` table. `content` is a serialized TipTap document. */
+export interface Note {
+  id: number | null;
+  title: string;
+  content: string;
+  anchor: NoteAnchor | null;
+  folder_id: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export async function getAllNotes(): Promise<Note[]> {
+  return (await callService("GetAllNotes")) as Note[];
+}
+
+export async function createNote(
+  title: string,
+  content: string,
+  anchor: NoteAnchor | null = null,
+  folderId: number | null = null,
+): Promise<number> {
+  const data = (await callService("CreateNote", {
+    title,
+    content,
+    anchor,
+    folder_id: folderId,
+  })) as { id: number };
+  return data.id;
+}
+
+export async function updateNote(id: number, title: string, content: string): Promise<void> {
+  await callService("UpdateNote", { id, title, content });
+}
+
+export async function deleteNote(id: number): Promise<void> {
+  await callService("DeleteNote", { id });
+}
+
+export async function moveNote(id: number, folderId: number | null): Promise<void> {
+  await callService("MoveNote", { id, folder_id: folderId });
 }
 
 // -- API: tasks --
