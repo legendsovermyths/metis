@@ -54,6 +54,8 @@ impl<'a> AgentHandler<'a> {
         })?;
 
         let mut agent = agent_slot.lock().await;
+        let seed = self.context.chat.lock().await.event_history.clone();
+        agent.set_event_history(seed).await;
         let response = agent.generate(params.message).await?;
         self.context.chat.lock().await.event_history = agent.get_event_history().await;
         Ok(serde_json::to_value(response)?)

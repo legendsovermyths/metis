@@ -145,20 +145,16 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const seededRef = useRef(false);
 
   const isBusy = isWaiting || isStreaming;
   const exchanges = useMemo(() => groupExchanges(messages), [messages]);
   const turnCount = exchanges.length;
 
   useEffect(() => {
-    if (seededRef.current || !context) return;
+    if (!context) return;
     const events = context.chat.event_history?.events ?? [];
-    if (events.length > 0) {
-      setMessages(historyToMessages(events));
-    }
-    seededRef.current = true;
-  }, [context]);
+    setMessages(events.length > 0 ? historyToMessages(events) : []);
+  }, [context?.chat.phase, context?.chat.dialogue_id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

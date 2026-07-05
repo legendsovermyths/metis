@@ -62,4 +62,7 @@ impl<'a> Agent for Advisor<'a> {
     async fn get_event_history(&mut self) -> crate::logs::EventHistory {
         self.client.get_event_history()
     }
+    async fn set_event_history(&mut self, history: crate::logs::EventHistory) {
+        self.client.set_event_history(history);
+    }
 }

@@ -9,6 +9,7 @@ import { SlashCommand } from "./extensions/SlashCommand";
 import { Spine } from "./extensions/Spine";
 import { Notation } from "./extensions/Notation";
 import { MathInline, MathBlock } from "./extensions/Math";
+import { Calc } from "./extensions/Calc";
 import { Structure } from "./extensions/Structure";
 import { Mention } from "./extensions/Mention";
 import { registerMentionTargets, type MentionTarget } from "./mentionRegistry";
@@ -95,6 +96,7 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
         Notation,
         MathInline,
         MathBlock,
+        Calc,
         Structure,
         Mention,
       ],

@@ -183,6 +183,8 @@ impl<'a> ClaudeChat<'a> {
         self.messages
             .push(json!({"role": "user", "content": event.content}));
 
+        let mut last_text: Option<String> = None;
+
         loop {
             let response = self.call_api().await?;
             let content = response
@@ -196,6 +198,11 @@ impl<'a> ClaudeChat<'a> {
 
             if stop_reason == "tool_use" {
                 let tool_uses = Self::collect_tool_uses(&content);
+                if let Some(text) = Self::extract_text(&content) {
+                    let event = Event::new("model", EventType::LlmMessage, &text);
+                    self.event_history.events.push(event);
+                    last_text = Some(text);
+                }
                 self.messages
                     .push(json!({"role": "assistant", "content": content}));
                 let result_blocks = self.execute_tool_uses(&tool_uses).await?;
@@ -209,6 +216,10 @@ impl<'a> ClaudeChat<'a> {
                     .push(json!({"role": "assistant", "content": content}));
                 let event = Event::new("model", EventType::LlmMessage, &text);
                 self.event_history.events.push(event);
+                return Ok(LLMResponse::from(text));
+            }
+
+            if let Some(text) = last_text {
                 return Ok(LLMResponse::from(text));
             }
 

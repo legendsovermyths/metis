@@ -60,4 +60,7 @@ impl<'a> Agent for Director<'a> {
     async fn get_event_history(&mut self) -> EventHistory {
         self.client.get_event_history()
     }
+    async fn set_event_history(&mut self, history: EventHistory) {
+        self.client.set_event_history(history);
+    }
 }

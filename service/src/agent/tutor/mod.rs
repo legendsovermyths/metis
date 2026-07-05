@@ -146,14 +146,12 @@ impl<'a> Agent for Tutor<'a> {
             MetisError::AgentError("Message is required for tutor agent".to_string())
         })?;
 
-        let chat = self.context.chat.lock().await;
-        let (dialogue_id, fallback_history) = (
+        let dialogue_id = {
+            let chat = self.context.chat.lock().await;
             chat.dialogue_id.ok_or(MetisError::AppContextError(
                 "App context doesn't contain a dialgoue id for tutor".to_string(),
-            ))?,
-            chat.event_history.clone(),
-        );
-
+            ))?
+        };
 
         let history = DialogueEventsRepo::get_for_dialogue(dialogue_id)?;
         let pre_count = history.events.len();
@@ -174,4 +172,5 @@ impl<'a> Agent for Tutor<'a> {
     async fn get_event_history(&mut self) -> EventHistory {
         self.client.get_event_history()
     }
+    async fn set_event_history(&mut self, _history: EventHistory) {}
 }

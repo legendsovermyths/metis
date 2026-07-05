@@ -1,7 +1,7 @@
 use serde_json::json;
 
 use crate::{
-    app::{state::MetisPhase, AppContext, ChatContext}, service::handler::BoxFuture,
+    app::{state::MetisPhase, AppContext, ChatContext}, logs::EventHistory, service::handler::BoxFuture,
 };
 
 pub fn set_chat(mut chat: ChatContext, context: &AppContext) -> BoxFuture {
@@ -9,7 +9,11 @@ pub fn set_chat(mut chat: ChatContext, context: &AppContext) -> BoxFuture {
         if chat.phase != MetisPhase::Teaching {
             chat.dialogue_id = None;
         }
-        *context.chat.lock().await = chat;
+        let mut current = context.chat.lock().await;
+        if chat.phase != current.phase {
+            chat.event_history = EventHistory::new();
+        }
+        *current = chat;
         Ok(json!({"success" : true}).into())
     })
 }

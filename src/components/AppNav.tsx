@@ -15,7 +15,7 @@ export function AppNav() {
   const { theme, toggle } = useTheme();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-xl md:relative md:bottom-auto md:border-t-0 md:border-b md:border-border/20 md:bg-background/60 md:backdrop-blur-xl">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-xl md:sticky md:top-0 md:bottom-auto md:border-t-0 md:border-b md:border-border/20 md:bg-background/60 md:backdrop-blur-xl">
       <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 md:px-10">
         {/* Logo — desktop only */}
         <Link to="/" className="hidden items-center md:flex">

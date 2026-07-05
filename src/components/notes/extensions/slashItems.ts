@@ -93,6 +93,13 @@ export const SLASH_ITEMS: SlashItem[] = [
     run: (e, r) => e.chain().focus().deleteRange(r).setBlockMath().run(),
   },
   {
+    title: "Compute",
+    hint: "A live calculator — or just type >>>",
+    section: "Insert",
+    keywords: ["calc", "compute", "calculator", "math", "eval", "sum", "combinatorics", "binary"],
+    run: (e, r) => e.chain().focus().deleteRange(r).setCalc().run(),
+  },
+  {
     title: "Link",
     hint: "Add or edit a link — or press ⌘K",
     section: "Insert",

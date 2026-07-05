@@ -16,6 +16,7 @@ pub mod tutor;
 pub trait Agent: Send + Sync {
     async fn generate(&mut self, message: Option<String>) -> Result<AgentResponse>;
     async fn get_event_history(&mut self) -> EventHistory;
+    async fn set_event_history(&mut self, history: EventHistory);
 }
 
 #[derive(Serialize)]

@@ -606,6 +606,56 @@
 .math-palette-name { font-size: 0.82rem; color: hsl(var(--text-secondary)); }
 .math-palette-item.is-active .math-palette-name { color: hsl(var(--foreground)); }
 
+/* ── Compute cell (>>>): a quiet inline calculator ── */
+.calc-node { display: inline; }
+.calc-chip {
+  display: inline;
+  cursor: text;
+  white-space: nowrap;
+}
+.calc-expr {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  color: hsl(var(--text-tertiary));
+}
+.calc-eq { color: hsl(var(--text-tertiary)); font-size: 0.88em; padding: 0 0.25em; }
+.calc-result {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+}
+.calc-chip:hover .calc-result { border-bottom-color: hsl(var(--text-tertiary)); }
+.calc-node.is-selected .calc-result { border-bottom-color: hsl(var(--amber)); }
+.calc-result.is-error { color: hsl(var(--text-tertiary)); border-bottom-style: dotted; }
+
+.calc-edit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.calc-prompt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78em;
+  letter-spacing: -0.06em;
+  color: hsl(var(--text-tertiary) / 0.7);
+  user-select: none;
+}
+.calc-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  color: hsl(var(--foreground));
+  min-width: 2.5rem;
+}
+.calc-input::placeholder { color: hsl(var(--text-tertiary) / 0.45); }
+.calc-live { display: inline-flex; align-items: baseline; gap: 0.3em; }
+.calc-hint { font-size: 0.78em; color: hsl(var(--text-tertiary) / 0.6); user-select: none; }
+.calc-hint-error { color: hsl(var(--text-tertiary) / 0.7); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
 /* ── Structures: the sub-editor chrome ── */
 .structure {
   margin: 1em 0;
