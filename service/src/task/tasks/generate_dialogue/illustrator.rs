@@ -172,7 +172,13 @@ impl<'a> Illustrator {
                 Ok(v) => v,
                 Err(e) => {
                     log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
-                    return Ok(IllustrationResult::empty());
+                    user_message = format!(
+                        "Your previous response failed to parse as JSON with error: {e}\n\n\
+                         Respond with ONLY the JSON object {{\"library\": \"...\", \"code\": \"...\"}} \
+                         — no markdown fences, no commentary, no trailing characters. Ensure the \
+                         object is complete and every brace is balanced."
+                    );
+                    continue;
                 }
             };
 

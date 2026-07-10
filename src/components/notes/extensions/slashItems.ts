@@ -117,6 +117,13 @@ export const SLASH_ITEMS: SlashItem[] = [
     run: (e, r) => e.chain().focus().deleteRange(r).setStructure("array").run(),
   },
   {
+    title: "Grid",
+    hint: "A 2D array / matrix",
+    section: "Structures",
+    keywords: ["grid", "matrix", "2d", "table", "array", "rows", "columns", "dp"],
+    run: (e, r) => e.chain().focus().deleteRange(r).setStructure("grid").run(),
+  },
+  {
     title: "Tree",
     hint: "A rooted tree",
     section: "Structures",

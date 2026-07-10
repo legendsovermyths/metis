@@ -274,10 +274,10 @@ export default function NotebookPage() {
     !notesLoading && !notebookEmpty && shelf.childFolders.length === 0 && currentNotes.length === 0;
 
   return (
-    <div className="paper-texture relative min-h-[calc(100vh-57px)] overflow-hidden flex flex-col pb-20 md:pb-0">
+    <div className="paper-texture relative min-h-[calc(100vh-57px)] flex flex-col pb-20 md:pb-0">
       <div
         className={`relative mx-auto w-full flex-1 flex flex-col px-6 md:px-8 ${
-          selected ? "max-w-5xl" : "max-w-3xl"
+          selected ? "max-w-7xl" : "max-w-3xl"
         }`}
       >
         <header className="pt-8 md:pt-10">
@@ -293,7 +293,7 @@ export default function NotebookPage() {
         <main className="flex-1 py-10 md:py-12">
           {selected ? (
             <section className="animate-blur-in">
-              <div className="mb-8 flex items-center justify-between">
+              <div className="sticky top-0 md:top-[44px] z-30 -mt-10 md:-mt-12 mb-8 flex items-center justify-between border-b border-border/40 bg-background py-3.5">
                 <button
                   onClick={onBack}
                   className="flex items-center gap-2 text-text-tertiary transition-colors hover:text-foreground"
@@ -549,13 +549,15 @@ export default function NotebookPage() {
           )}
         </main>
 
-        <footer className="pb-8 md:pb-10">
-          <div className="h-px w-full bg-border/30 mb-4" />
-          <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
-            <span>μῆτις · gr. mêtis — cunning intelligence</span>
-            <span>—  fol. {toRomanLower(8)}  —</span>
-          </div>
-        </footer>
+        {!selected && (
+          <footer className="pb-8 md:pb-10">
+            <div className="h-px w-full bg-border/30 mb-4" />
+            <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
+              <span>μῆτις · gr. mêtis — cunning intelligence</span>
+              <span>—  fol. {toRomanLower(8)}  —</span>
+            </div>
+          </footer>
+        )}
       </div>
 
       {/* Drag ghost */}

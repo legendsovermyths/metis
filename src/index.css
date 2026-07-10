@@ -658,15 +658,76 @@
 
 /* ── Structures: the sub-editor chrome ── */
 .structure {
+  position: relative;
   margin: 1em 0;
   border-radius: 0.6rem;
   transition: box-shadow 160ms ease, background-color 160ms ease;
 }
-.structure.is-selected { box-shadow: 0 0 0 1px hsl(var(--border)); }
-.structure.is-focused {
+/* The flow between a source and its successor: a long, clean arrow living in the gap
+   between the two boxes, with an editable label naming the transformation. */
+.structure-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.4rem 0 0.55rem;
+}
+.structure-flow-op {
+  min-width: 3rem;
+  max-width: 24rem;
+  text-align: center;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: 'Newsreader', 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: hsl(var(--amber-rich));
+  padding: 0.05rem 0.3rem;
+  border-bottom: 1px solid transparent;
+  transition: border-color 140ms ease;
+}
+.structure-flow-op:hover { border-bottom-color: hsl(var(--border)); }
+.structure-flow-op:focus { border-bottom-color: hsl(var(--amber) / 0.6); }
+.structure-flow-arrow {
+  position: relative;
+  width: 1.5px;
+  height: 56px;
+  background: hsl(var(--amber));
+  border-radius: 2px;
+}
+.structure-flow-arrow::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 9px solid hsl(var(--amber));
+}
+
+/* The body carries the focus / frozen visuals so the flow arrow stays outside them. */
+.structure-body {
+  border-radius: 0.6rem;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
+}
+.structure.is-focused .structure-body {
   box-shadow: 0 0 0 1px hsl(var(--amber) / 0.6);
   background: hsl(var(--surface) / 0.5);
 }
+/* Frozen: read-only, but visually unchanged — only a quiet lock marks it. */
+.structure.is-source-locked .structure-body { pointer-events: none; }
+.structure-lock {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  z-index: 3;
+  color: hsl(var(--text-tertiary));
+  opacity: 0.4;
+}
+
+.structure.is-selected { box-shadow: 0 0 0 1px hsl(var(--border)); }
 .structure-focus { outline: none; padding: 1.1rem 1rem 0.6rem; }
 .structure-hint,
 .structure-legend {
@@ -728,6 +789,74 @@
 }
 .arr-pointer-arrow { color: hsl(var(--amber)); }
 .arr-pointer-input {
+  width: 2.2rem;
+  border: none;
+  outline: none;
+  background: none;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: hsl(var(--amber-rich));
+}
+
+/* Grid — 2D array / matrix, laid out column-major so each column owns its pointer lane */
+.grid2d-cols { display: flex; align-items: flex-start; }
+.grid2d-col { display: flex; flex-direction: column; align-items: stretch; }
+.grid2d-col:not(:first-child) { margin-left: -1px; }
+.grid-cell {
+  position: relative;
+  min-width: 2.6rem;
+  height: 2.6rem;
+  padding: 0 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border) / 0.7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  cursor: pointer;
+}
+.grid-cell:not(:first-child) { margin-top: -1px; }
+.grid-cell.is-highlighted { background: hsl(var(--amber-soft)); }
+.grid-cell.is-boxed { z-index: 1; border-color: hsl(var(--amber-rich)); box-shadow: inset 0 0 0 2px hsl(var(--amber-rich)); }
+.grid-cell.is-selected { z-index: 2; outline: 2px solid hsl(var(--amber)); outline-offset: -2px; border-color: hsl(var(--amber)); }
+.grid-cell-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: none;
+  text-align: center;
+  font: inherit;
+  color: inherit;
+}
+/* Pointed cell wears a soft inset ring; the selection outline (z-index 2) still wins on top. */
+.grid-cell.is-pointed { z-index: 1; box-shadow: inset 0 0 0 1.5px hsl(var(--amber) / 0.55); }
+/* Pointer lane sits at the foot of each column; labels overflow centered under it. */
+.grid-ptr-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  margin-top: 0.3rem;
+  min-height: 1rem;
+  align-self: center;
+  width: 0;
+  min-width: 0;
+}
+.grid-ptr {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: hsl(var(--amber-rich));
+}
+.grid-ptr-arrow { color: hsl(var(--amber)); }
+.grid-ptr-input {
   width: 2.2rem;
   border: none;
   outline: none;

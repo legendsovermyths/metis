@@ -1,4 +1,4 @@
-export type StructureKind = "array" | "tree" | "graph" | "hash";
+export type StructureKind = "array" | "grid" | "tree" | "graph" | "hash";
 
 export interface ArrayPointer {
   id: string;
@@ -11,6 +11,22 @@ export interface ArrayData {
   pointers: ArrayPointer[];
   boxes: number[];
   highlights: number[];
+}
+
+export interface GridPointer {
+  id: string;
+  label: string;
+  r: number;
+  c: number;
+}
+
+export interface GridData {
+  /** Row-major, rectangular: every row has the same length. */
+  rows: string[][];
+  /** "r,c" coordinates. */
+  boxes: string[];
+  highlights: string[];
+  pointers: GridPointer[];
 }
 
 export interface TreeNode {
@@ -86,7 +102,17 @@ export interface HashData {
 export function defaultData(kind: StructureKind): unknown {
   switch (kind) {
     case "array":
-      return { cells: ["", "", ""], pointers: [], boxes: [], highlights: [] } satisfies ArrayData;
+      return { cells: [""], pointers: [], boxes: [], highlights: [] } satisfies ArrayData;
+    case "grid":
+      return {
+        rows: [
+          ["", ""],
+          ["", ""],
+        ],
+        boxes: [],
+        highlights: [],
+        pointers: [],
+      } satisfies GridData;
     case "tree":
       return {
         nodes: [{ id: "root", label: "", parent: null }],

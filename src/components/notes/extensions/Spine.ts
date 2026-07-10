@@ -78,19 +78,6 @@ export const Spine = Extension.create({
         setSpine(editor, info, cur - 1);
         return true;
       },
-      // Enter on an empty indented line steps back out of the derivation.
-      Enter: ({ editor }) => {
-        if (inMath(editor) || document.querySelector(".math-suggest-popup")) return false;
-        if (!editor.state.selection.empty) return false;
-        const info = paragraphInfo(editor);
-        if (!info) return false;
-        const cur = info.node.attrs.spine || 0;
-        if (cur > 0 && info.node.content.size === 0) {
-          setSpine(editor, info, cur - 1);
-          return true;
-        }
-        return false;
-      },
     };
   },
 });

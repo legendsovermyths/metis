@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -115,7 +116,7 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
           const a = (event.target as HTMLElement).closest("a");
           const href = a?.getAttribute("href");
           if (href) {
-            void openUrl(href);
+            openUrl(href).catch((err) => console.error("[note] failed to open link", href, err));
             return true;
           }
           return false;
@@ -167,7 +168,7 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
   return (
     <>
       <EditorContent editor={editor} />
-      {link && (
+      {link && createPortal(
         <div
           className="link-popover animate-blur-in"
           style={{ left: link.left, top: link.top }}
@@ -196,7 +197,8 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
           <button className="link-popover-apply label-whisper" onMouseDown={(e) => e.preventDefault()} onClick={applyLink}>
             {link.url.trim() ? "Link" : "Remove"}
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

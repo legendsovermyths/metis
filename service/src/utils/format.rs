@@ -87,7 +87,44 @@ pub fn strip_json_block(text: &str) -> &str {
 }
 
 pub fn sanitize_json(raw: &str) -> String {
-    fix_json_escapes(strip_json_block(raw))
+    let stripped = strip_json_block(raw);
+    let object = extract_balanced_json(stripped).unwrap_or(stripped);
+    fix_json_escapes(object)
+}
+
+pub fn extract_balanced_json(text: &str) -> Option<&str> {
+    let bytes = text.as_bytes();
+    let start = bytes.iter().position(|&b| b == b'{' || b == b'[')?;
+
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escaped = false;
+
+    for i in start..bytes.len() {
+        let b = bytes[i];
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if b == b'\\' {
+                escaped = true;
+            } else if b == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match b {
+            b'"' => in_string = true,
+            b'{' | b'[' => depth += 1,
+            b'}' | b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(&text[start..=i]);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 pub fn clean_page_output(text: &str) -> String {

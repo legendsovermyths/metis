@@ -73,11 +73,79 @@ export function ArrayEditor({ node, updateAttributes, editor, getPos, onFocusCha
     focusRef.current?.focus();
   }
 
-  function appendCell() {
-    const next = [...cells, ""];
-    setData({ cells: next });
-    setAnchor(next.length - 1);
-    setHead(next.length - 1);
+  // Commit the current cell and open a fresh one right after it (comma / tab flow).
+  function commitAndContinue() {
+    if (editing == null) return;
+    const at = editing + 1;
+    const withValue = cells.slice();
+    withValue[editing] = editValue;
+    const shift = (i: number) => (i >= at ? i + 1 : i);
+    setData({
+      cells: withValue.slice(0, at).concat([""], withValue.slice(at)),
+      pointers: pointers.map((p) => ({ ...p, index: shift(p.index) })),
+      boxes: boxes.map(shift),
+      highlights: highlights.map(shift),
+    });
+    setAnchor(at);
+    setHead(at);
+    setEditValue("");
+    setEditing(at);
+  }
+
+  // Backspace on an empty cell removes it and steps back — kills trailing empties.
+  function deleteEditingCell() {
+    if (editing == null) return;
+    const idx = editing;
+    const shift = (i: number) => (i > idx ? i - 1 : i);
+    setData({
+      cells: cells.slice(0, idx).concat(cells.slice(idx + 1)),
+      pointers: pointers.filter((p) => p.index !== idx).map((p) => ({ ...p, index: shift(p.index) })),
+      boxes: boxes.filter((i) => i !== idx).map(shift),
+      highlights: highlights.filter((i) => i !== idx).map(shift),
+    });
+    const sel = Math.max(0, idx - 1);
+    setAnchor(sel);
+    setHead(sel);
+    setEditing(null);
+    focusRef.current?.focus();
+  }
+
+  // Insert one empty cell at `index`, shifting decorations, and edit it.
+  function insertAt(index: number) {
+    const at = Math.max(0, Math.min(index, cells.length));
+    const shift = (i: number) => (i >= at ? i + 1 : i);
+    setData({
+      cells: cells.slice(0, at).concat([""], cells.slice(at)),
+      pointers: pointers.map((p) => ({ ...p, index: shift(p.index) })),
+      boxes: boxes.map(shift),
+      highlights: highlights.map(shift),
+    });
+    setAnchor(at);
+    setHead(at);
+    setEditValue("");
+    setEditing(at);
+  }
+
+  // Split pasted "1, 2, 3" into cells at the caret. Returns false if not multi-value.
+  function pasteCells(text: string): boolean {
+    if (editing == null) return false;
+    const parts = text.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 2) return false;
+    const idx = editing;
+    const delta = parts.length - 1;
+    const shift = (i: number) => (i > idx ? i + delta : i);
+    setData({
+      cells: cells.slice(0, idx).concat(parts, cells.slice(idx + 1)),
+      pointers: pointers.map((p) => ({ ...p, index: shift(p.index) })),
+      boxes: boxes.map(shift),
+      highlights: highlights.map(shift),
+    });
+    const last = idx + parts.length - 1;
+    setAnchor(last);
+    setHead(last);
+    setEditing(null);
+    focusRef.current?.focus();
+    return true;
   }
 
   function deleteSelection() {
@@ -138,10 +206,17 @@ export function ArrayEditor({ node, updateAttributes, editor, getPos, onFocusCha
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (cells.length) startEdit(head);
+      else insertAt(0);
     } else if (e.key === "Tab") {
       e.preventDefault();
-      appendCell();
-    } else if (e.key === "Backspace" || e.key === "Delete" || e.key === "d") {
+      insertAt(cells.length ? head + 1 : 0);
+    } else if (e.key === "i") {
+      e.preventDefault();
+      insertAt(head);
+    } else if (e.key === "a") {
+      e.preventDefault();
+      insertAt(cells.length);
+    } else if (e.key === "Backspace" || e.key === "Delete" || e.key === "d" || e.key === "x") {
       e.preventDefault();
       deleteSelection();
     } else if (e.key === "b") {
@@ -153,6 +228,10 @@ export function ArrayEditor({ node, updateAttributes, editor, getPos, onFocusCha
     } else if (e.key === "p") {
       e.preventDefault();
       addPointer();
+    } else if (e.key === "t") {
+      e.preventDefault();
+      const pos = typeof getPos === "function" ? getPos() : null;
+      if (pos != null) editor.commands.transformStructure(pos);
     } else if (e.key === "Escape") {
       e.preventDefault();
       stepOut();
@@ -211,9 +290,21 @@ export function ArrayEditor({ node, updateAttributes, editor, getPos, onFocusCha
                     onChange={(e) => setEditValue(e.target.value)}
                     onKeyDown={(e) => {
                       e.stopPropagation();
-                      if (e.key === "Enter" || e.key === "Escape" || e.key === "Tab") {
+                      if (e.key === "Enter" || e.key === "Escape") {
                         e.preventDefault();
                         commitEdit();
+                      } else if (e.key === "Tab" || e.key === ",") {
+                        e.preventDefault();
+                        commitAndContinue();
+                      } else if (e.key === "Backspace" && editValue === "") {
+                        e.preventDefault();
+                        deleteEditingCell();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      if (pasteCells(e.clipboardData.getData("text"))) {
+                        e.preventDefault();
+                        e.stopPropagation();
                       }
                     }}
                     onBlur={commitEdit}
@@ -259,12 +350,12 @@ export function ArrayEditor({ node, updateAttributes, editor, getPos, onFocusCha
 
       {!focused && (
         <div className="structure-hint label-whisper" contentEditable={false}>
-          Array · ↵ to edit
+          Array · ↵ to edit · type numbers, commas for next
         </div>
       )}
       {focused && (
         <div className="structure-legend label-whisper" contentEditable={false}>
-          move hjkl←→ · ↵ edit · tab add · p point · m mark · b box · d delete · esc
+          move ←→ · ↵ edit · , / tab next · i insert · a push · x delete · p point · m mark · b box · t transform · esc
         </div>
       )}
     </div>

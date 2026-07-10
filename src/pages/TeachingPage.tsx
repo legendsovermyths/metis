@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from "react";
-import { ArrowLeft, Hand, X, SlidersHorizontal, Play, Pause, Repeat, ListVideo, Projector } from "lucide-react";
+import { ArrowLeft, Hand, X, SlidersHorizontal, Play, Pause, ListVideo, Projector } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -83,16 +83,15 @@ function safeTypedSlice(text: string, len: number): string {
   return slice;
 }
 
-type RevealState = {
-  pageIndex: number;
-  elements: ElementDescriptor[];
-  segments: Segment[];
-  segmentIndex: number;
-  typedLen: number;
+// A single reveal cursor. It always describes the passage currently on screen
+// (`pageIndex`): which segment is unfolding and how much of its text has been
+// typed. Fully-revealed (settled) = last segment, full text.
+type Cursor = { segmentIndex: number; typedLen: number };
+const CURSOR_START: Cursor = { segmentIndex: 0, typedLen: 0 };
+const settledCursor = (segments: Segment[]): Cursor => {
+  const last = Math.max(0, segments.length - 1);
+  return { segmentIndex: last, typedLen: segments[last]?.text.length ?? 0 };
 };
-
-type Playback = { active: boolean; continuous: boolean; playing: boolean };
-const PLAYBACK_OFF: Playback = { active: false, continuous: false, playing: false };
 const NARRATION_RATE = 1.3;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -482,10 +481,27 @@ export default function TeachingPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reveal, setReveal] = useState<RevealState | null>(null);
-  const [immersive, setImmersive] = useState(false);
-  const [playback, setPlayback] = useState<Playback>(PLAYBACK_OFF);
+  // The one reveal cursor for the on-screen passage.
+  const [cursor, setCursor] = useState<Cursor>(CURSOR_START);
+  // `surface` decides HOW a passage reveals: immersive auto-plays its segments
+  // one after another (narrated) and stops at the passage end; non-immersive is
+  // always manual — one segment per Continue click. `paused` freezes the
+  // immersive auto-play. `playSession` ("play from here") is a bounded REVISIT
+  // mode: it replays already-revealed passages, cannot reveal new ones, and
+  // stops at the latest revealed passage. Revealing new passages happens only in
+  // normal mode. playSession never changes the surface.
+  const [surface, setSurface] = useState<"reading" | "immersive">("reading");
+  const [paused, setPaused] = useState(false);
+  const [playSession, setPlaySession] = useState(false);
+  const immersive = surface === "immersive";
+  const playing = immersive && !paused; // immersive auto-play is active
+  // The pace narration is read aloud in the hall.
+  const [narrationRate, setNarrationRate] = useState(NARRATION_RATE);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Highwater: passages at or below this index have been reached before, so
+  // navigating to them shows their final board + full text instantly. Only the
+  // frontier passage (a freshly fetched one, or an explicit Replay) builds up.
+  const revealedUpToRef = useRef(0);
 
   type Exchange = { question: string; answer: string };
   const [isAsking, setIsAsking] = useState(false);
@@ -575,6 +591,13 @@ export default function TeachingPage() {
         if (cancelled) return;
         setArtifact(art);
         setDialogues(rows);
+        // Everything already in the DB has been seen before — render it fully,
+        // and resume on the last passage revealed rather than the first.
+        revealedUpToRef.current = Math.max(0, rows.length - 1);
+        const lastIdx = Math.max(0, rows.length - 1);
+        const last = rows[lastIdx];
+        setPageIndex(lastIdx);
+        setCursor(last?.segments ? settledCursor(last.segments) : CURSOR_START);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -586,28 +609,26 @@ export default function TeachingPage() {
 
   const allDialogues = dialogues;
 
-  // Seed (or re-seed) the segment reveal for any page, optionally starting a
-  // hands-free playback session. Used by replay / play-from-here / immersive
-  // and by auto-advance across passages.
-  const beginReveal = useCallback(
-    (idx: number, opts: { active: boolean; continuous: boolean }) => {
-      const d = dialogues[idx];
-      if (!d || !d.segments || d.segments.length === 0) return;
-      setReveal({
-        pageIndex: idx,
-        elements: d.blackboard?.elements ?? [],
-        segments: d.segments,
-        segmentIndex: 0,
-        typedLen: 0,
-      });
-      setPlayback(
-        opts.active
-          ? { active: true, continuous: opts.continuous, playing: true }
-          : PLAYBACK_OFF,
-      );
-    },
-    [dialogues],
-  );
+  // Reader has reached the very end iff the last revealed dialogue completes its
+  // step/topic AND sits at the final step/topic — nothing hidden or still to be
+  // generated remains after it. Derived (not a fetch-set flag) so revisiting a
+  // finished study shows Conclude at once, with no dead "Continue" probe, and
+  // hall playback stops cleanly.
+  const reachedEnd = useMemo(() => {
+    const last = allDialogues[allDialogues.length - 1];
+    if (!last || !last.marked_complete || !artifact) return false;
+    if (artifact.kind === "Journey") {
+      const ref = journeyRef(last.reference);
+      if (!ref) return false;
+      const arcs = artifact.journey.journey.arcs;
+      const lastTopic = (arcs[ref.arc_idx]?.topics.length ?? 0) - 1;
+      return ref.arc_idx >= arcs.length - 1 && ref.topic_idx >= lastTopic;
+    }
+    const ref = explanationRef(last.reference);
+    if (!ref) return false;
+    const steps = artifact.explanation.explanation.steps;
+    return ref.step_idx >= steps.length - 1;
+  }, [allDialogues, artifact]);
 
   // Active generate_dialogues task targeting our artifact, if any.
   const generationTask = useMemo(() => {
@@ -634,7 +655,6 @@ export default function TeachingPage() {
         kind: "Journey" as const,
         backLink: parentId != null ? `/journeys/${parentId}` : "/studies",
         backLabel: "the Course",
-        isComplete: a.progress.is_journey_complete,
         completeTitle: "Journey complete.",
         completeSubtitle: `You've worked through all ${total} topics.`,
         completeThanks: "Thank you for staying the course.",
@@ -664,7 +684,6 @@ export default function TeachingPage() {
       kind: "Explanation" as const,
       backLink: parentId != null ? `/explanations/${parentId}` : "/studies",
       backLabel: "the Route",
-      isComplete: a.progress.is_complete,
       completeTitle: "Explanation complete.",
       completeSubtitle: `You've walked all ${steps.length} steps of the route.`,
       completeThanks: "Thank you for walking it through.",
@@ -679,10 +698,20 @@ export default function TeachingPage() {
     };
   }, [artifact, parentId]);
 
+  // Follow the live edge only when a new passage arrives and the reader was
+  // already on the previous last passage. On initial load (or when reading
+  // back through earlier passages) leave pageIndex alone so the reader is never
+  // yanked forward — and never parked on the conclusion of a course they
+  // haven't walked yet.
+  const prevLenRef = useRef(0);
   useEffect(() => {
-    if (allDialogues.length > 0) {
+    const prevLen = prevLenRef.current;
+    prevLenRef.current = allDialogues.length;
+    if (allDialogues.length === 0) return;
+    if (prevLen > 0 && pageIndex >= prevLen - 1) {
       setPageIndex(allDialogues.length - 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDialogues.length]);
 
   const selectedDialogueId = allDialogues[pageIndex]?.id ?? null;
@@ -691,8 +720,10 @@ export default function TeachingPage() {
     void setDialogue(selectedDialogueId);
   }, [selectedDialogueId]);
 
-  const segIdx = reveal?.segmentIndex ?? -1;
-  const segsRef = reveal?.segments;
+  const currentDialogue = allDialogues[pageIndex];
+  const segments = useMemo(() => currentDialogue?.segments ?? [], [currentDialogue]);
+  const currentImageUrl = currentDialogue?.blackboard?.image_url ?? null;
+  const segIdx = segments.length > 0 ? cursor.segmentIndex : -1;
 
   // Provenance: a note born now attaches to the dialogue+segment on screen.
   const { setAnchor } = useNoteAnchor();
@@ -723,25 +754,27 @@ export default function TeachingPage() {
     [selectedDialogueId, artifactKind, parentId],
   );
 
+  // Typewriter — types the current segment into place in both surfaces (it's
+  // how a segment reveals). Immersive pause freezes it mid-character; a Continue
+  // click can also finish the current segment instantly (see `forward`), so the
+  // reader is never stuck waiting on it. Already-revealed passages land settled
+  // (typedLen full), so revisiting never re-types.
   useEffect(() => {
-    if (segIdx < 0 || !segsRef) return;
-    if (playback.active && !playback.playing) return;
+    if (immersive && paused) return;
+    const seg = segments[cursor.segmentIndex];
+    if (!seg || cursor.typedLen >= seg.text.length) return;
     const id = window.setInterval(() => {
-      setReveal((r) => {
-        if (!r) return r;
-        const cur = r.segments[r.segmentIndex];
-        if (!cur || r.typedLen >= cur.text.length) return r;
-        return { ...r, typedLen: Math.min(cur.text.length, r.typedLen + 2) };
+      setCursor((c) => {
+        const s = segments[c.segmentIndex];
+        if (!s || c.typedLen >= s.text.length) return c;
+        return { ...c, typedLen: Math.min(s.text.length, c.typedLen + 2) };
       });
     }, 14);
     return () => window.clearInterval(id);
-  }, [segIdx, segsRef, playback.active, playback.playing]);
-
-  const currentImageUrl = allDialogues[pageIndex]?.blackboard?.image_url ?? null;
+  }, [immersive, paused, segments, cursor.segmentIndex, cursor.typedLen]);
 
   const dialogueScrollRef = useRef<HTMLDivElement>(null);
-
-  const typedLen = reveal?.typedLen ?? 0;
+  const typedLen = cursor.typedLen;
 
   useEffect(() => {
     const el = dialogueScrollRef.current;
@@ -758,29 +791,27 @@ export default function TeachingPage() {
     const justRevealed = new Set<string>();
     const currentActions: SegmentAction[] = [];
     const pastConnects: Array<{ from: string; to: string; duration_ms: number }> = [];
-    if (reveal) {
-      for (let i = 0; i <= reveal.segmentIndex; i++) {
-        for (const action of reveal.segments[i]?.actions ?? []) {
-          if (action.type === "reveal") {
-            for (const id of action.targets) revealed.add(id);
-          }
-          if (action.type === "connect") {
-            pastConnects.push({ from: action.from, to: action.to, duration_ms: action.duration_ms });
-          }
-        }
-      }
-      for (const action of reveal.segments[reveal.segmentIndex]?.actions ?? []) {
-        currentActions.push(action);
-        if (action.type === "focus") {
-          for (const id of action.targets) focused.add(id);
-        }
+    for (let i = 0; i <= cursor.segmentIndex; i++) {
+      for (const action of segments[i]?.actions ?? []) {
         if (action.type === "reveal") {
-          for (const id of action.targets) justRevealed.add(id);
+          for (const id of action.targets) revealed.add(id);
+        }
+        if (action.type === "connect") {
+          pastConnects.push({ from: action.from, to: action.to, duration_ms: action.duration_ms });
         }
       }
     }
+    for (const action of segments[cursor.segmentIndex]?.actions ?? []) {
+      currentActions.push(action);
+      if (action.type === "focus") {
+        for (const id of action.targets) focused.add(id);
+      }
+      if (action.type === "reveal") {
+        for (const id of action.targets) justRevealed.add(id);
+      }
+    }
     return { revealed, focused, justRevealed, currentActions, pastConnects };
-  }, [reveal?.segmentIndex, reveal?.segments]);
+  }, [cursor.segmentIndex, segments]);
 
   const fetchNextDialogue = useCallback(async (): Promise<boolean> => {
     if (parentId == null || artifactKind == null || artifactKind === "None") return false;
@@ -789,22 +820,20 @@ export default function TeachingPage() {
     try {
       const next = await getNextDialogue(artifactKind, parentId);
       if (next) {
+        const newIdx = allDialogues.length; // index this passage will land at
         setDialogues((prev) => [...prev, next]);
         setWaitingForNext(false);
-        if (next.segments && next.segments.length > 0) {
-          setReveal({
-            pageIndex: allDialogues.length,
-            elements: next.blackboard?.elements ?? [],
-            segments: next.segments,
-            segmentIndex: 0,
-            typedLen: 0,
-          });
-        } else {
-          setReveal(null);
-        }
+        // A fresh passage becomes the frontier and types in from the top: the
+        // immersive surface auto-advances through its segments; non-immersive
+        // types the first segment and waits for the reader to reveal the rest.
+        revealedUpToRef.current = newIdx;
+        setPageIndex(newIdx);
+        setCursor(CURSOR_START);
+        if (immersive) setPaused(false); // auto-play the freshly revealed passage
         return true;
       }
-      // No dialogue returned. Re-check progress to tell "complete" from "still generating".
+      // No dialogue returned. Refresh progress; `reachedEnd` derives from the
+      // last revealed dialogue, so nothing to set here beyond clearing the wait.
       const fresh = await getArtifact(artifactKind, parentId);
       if (fresh) {
         setArtifact(fresh);
@@ -826,7 +855,7 @@ export default function TeachingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [artifactKind, parentId, allDialogues.length]);
+  }, [artifactKind, parentId, allDialogues.length, immersive]);
 
   // While waiting for generation to produce a dialogue, retry whenever the
   // generate_dialogues checkpoint advances (each progress event = one new
@@ -838,38 +867,30 @@ export default function TeachingPage() {
     void fetchNextDialogue();
   }, [waitingForNext, generationCount, parentId, fetchNextDialogue]);
 
-  // Advance the active playback session: next segment, or — at the end of a
-  // passage — into the following one when continuous, else stop.
-  const handleSegmentComplete = useCallback(() => {
-    if (!reveal) return;
-    if (reveal.segmentIndex < reveal.segments.length - 1) {
-      setReveal({ ...reveal, segmentIndex: reveal.segmentIndex + 1, typedLen: 0 });
+  // The one advance owner. While playing, reveal the next segment; at the end of
+  // a passage, STOP. Playback never crosses passages on its own — the reader
+  // clicks "next passage" to roll into (and auto-play) the following one, so
+  // there's always a fixed control at the boundary rather than a moving target.
+  const advance = useCallback(() => {
+    if (cursor.segmentIndex < segments.length - 1) {
+      setCursor({ segmentIndex: cursor.segmentIndex + 1, typedLen: 0 });
       return;
     }
-    if (playback.continuous) {
-      if (pageIndex < allDialogues.length - 1) {
-        const ni = pageIndex + 1;
-        setPageIndex(ni);
-        beginReveal(ni, { active: true, continuous: true });
-        return;
-      }
-      if (!model?.isComplete) {
-        void fetchNextDialogue();
-        return;
-      }
-    }
-    setPlayback(PLAYBACK_OFF);
-  }, [reveal, playback.continuous, pageIndex, allDialogues.length, model?.isComplete, fetchNextDialogue, beginReveal]);
+    revealedUpToRef.current = Math.max(revealedUpToRef.current, pageIndex);
+    setPaused(true);
+  }, [cursor.segmentIndex, segments.length, pageIndex]);
 
-  // Immersive narration: load and play the current segment's audio.
+  // Narration (immersive only): load the current segment's clip and, if running,
+  // play it. Not keyed on the running/paused state, so pause/resume never
+  // reloads or restarts the audio — resume picks up mid-clip (below).
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (!immersive || !playback.active) {
+    if (!immersive) {
       audio.pause();
       return;
     }
-    const seg = reveal?.segments[reveal.segmentIndex];
+    const seg = segments[cursor.segmentIndex];
     if (!seg?.audio_path) {
       audio.pause();
       audio.removeAttribute("src");
@@ -877,176 +898,192 @@ export default function TeachingPage() {
     }
     audio.src = convertFileSrc(seg.audio_path);
     audio.currentTime = 0;
-    audio.playbackRate = NARRATION_RATE;
-    if (playback.playing) audio.play().catch(() => {});
+    audio.playbackRate = narrationRate;
+    if (playing) audio.play().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [immersive, playback.active, reveal?.pageIndex, reveal?.segmentIndex]);
+  }, [immersive, pageIndex, cursor.segmentIndex]);
 
-  // Pause / resume narration without reloading the source.
+  // Apply pace changes to the clip already loaded, live.
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = narrationRate;
+  }, [narrationRate]);
+
+  // Pause / resume the loaded clip in place, without reloading it.
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !immersive || !playback.active) return;
-    const seg = reveal?.segments[reveal.segmentIndex];
+    if (!audio || !immersive) return;
+    const seg = segments[cursor.segmentIndex];
     if (!seg?.audio_path) return;
-    if (playback.playing) audio.play().catch(() => {});
+    if (playing) audio.play().catch(() => {});
     else audio.pause();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playback.playing, immersive, playback.active, reveal?.segmentIndex]);
+  }, [playing, immersive, cursor.segmentIndex]);
 
-  // Silent playback (split view, or immersive passage with no narration):
-  // advance on a dwell timer once the segment has finished typing.
+  // Auto-advance within a passage: once the current segment finishes, advance to
+  // the next. When the segment has narration, the audio's onEnded owns the
+  // advance (so this stands down); the last segment schedules nothing — playback
+  // is passage-gated and stops there.
   useEffect(() => {
-    if (!playback.active || !playback.playing || !reveal) return;
-    if (isLoading || waitingForNext) return;
-    const seg = reveal.segments[reveal.segmentIndex];
+    if (!playing || isLoading || waitingForNext) return;
+    if (cursor.segmentIndex >= segments.length - 1) return;
+    const seg = segments[cursor.segmentIndex];
     if (!seg) return;
-    if (immersive && seg.audio_path) return; // audio onEnded drives advance
-    if (reveal.typedLen < seg.text.length) return;
+    if (seg.audio_path) return;
+    if (cursor.typedLen < seg.text.length) return;
     const dwell = Math.min(4500, 900 + seg.text.length * 16);
-    const id = window.setTimeout(handleSegmentComplete, dwell);
+    const id = window.setTimeout(advance, dwell);
     return () => window.clearTimeout(id);
-  }, [playback.active, playback.playing, immersive, reveal, isLoading, waitingForNext, handleSegmentComplete]);
+  }, [playing, segments, cursor.segmentIndex, cursor.typedLen, isLoading, waitingForNext, advance]);
 
-  const replayPassage = useCallback(
-    () => beginReveal(pageIndex, { active: true, continuous: false }),
-    [beginReveal, pageIndex],
-  );
-  const playFromHere = useCallback(
-    () => beginReveal(pageIndex, { active: true, continuous: true }),
-    [beginReveal, pageIndex],
-  );
-  const togglePlay = useCallback(() => {
-    const goingToPlay = !playback.playing;
-    // Resuming on a passage that has already played out replays it from the
-    // top, so play always does something on the passage you're looking at.
-    if (goingToPlay && reveal) {
-      const last = reveal.segments.length - 1;
-      const settled =
-        reveal.segmentIndex === last &&
-        reveal.typedLen >= (reveal.segments[last]?.text.length ?? 0);
-      if (settled) setReveal({ ...reveal, segmentIndex: 0, typedLen: 0 });
-    }
-    setPlayback((p) => ({ ...p, playing: goingToPlay }));
-  }, [playback.playing, reveal]);
-
-  // Browse passages while immersive: move to the target and show its board in
-  // the fully-revealed, paused state — never auto-play just from navigating.
-  const immersiveGoTo = useCallback(
+  // Navigate to an existing passage and seat the cursor per surface. Immersive
+  // re-plays it from the top; non-immersive shows it fully (it's been revealed
+  // before). New passages arrive via fetchNextDialogue, not here.
+  const goToPassage = useCallback(
     (idx: number) => {
-      setPageIndex(idx);
       const d = dialogues[idx];
-      if (d?.segments?.length) {
-        const lastIdx = d.segments.length - 1;
-        setReveal({
-          pageIndex: idx,
-          elements: d.blackboard?.elements ?? [],
-          segments: d.segments,
-          segmentIndex: lastIdx,
-          typedLen: d.segments[lastIdx]?.text.length ?? 0,
-        });
+      if (!d) return;
+      const segs = d.segments ?? [];
+      setPageIndex(idx);
+      if (immersive) {
+        setCursor(CURSOR_START);
+        setPaused(false);
+      } else if (playSession || idx > revealedUpToRef.current) {
+        // A revisit (play-from-here) or an unseen passage plays from the top —
+        // the passage types back in rather than being dumped fully.
+        setCursor(CURSOR_START);
+      } else {
+        setCursor(settledCursor(segs)); // free browsing — show it fully
       }
-      setPlayback((p) => ({ ...p, playing: false }));
     },
-    [dialogues],
+    [dialogues, immersive, playSession],
   );
-  const immersivePrev = useCallback(() => {
-    if (pageIndex > 0) immersiveGoTo(pageIndex - 1);
-  }, [pageIndex, immersiveGoTo]);
-  const immersiveNext = useCallback(async () => {
-    if (pageIndex < allDialogues.length - 1) {
-      immersiveGoTo(pageIndex + 1);
-      return;
-    }
-    if (!model?.isComplete && !isLoading) await fetchNextDialogue();
-  }, [pageIndex, allDialogues.length, immersiveGoTo, model?.isComplete, isLoading, fetchNextDialogue]);
-  const exitPlayback = useCallback(() => {
-    setPlayback(PLAYBACK_OFF);
-    setImmersive(false);
-    audioRef.current?.pause();
-  }, []);
-  const toggleImmersive = useCallback(() => {
-    if (immersive) {
-      exitPlayback();
-      return;
-    }
-    const d = dialogues[pageIndex];
-    if (!d?.segments?.length) return;
-    setImmersive(true);
-    // Preserve where the reader already is. If a reveal is in progress on this
-    // page, keep its segment/typed position; otherwise the board is showing the
-    // fully-revealed state, so seed at the last segment to match it. Enter
-    // paused so the board expands calmly before any narration begins.
-    const hasActive = reveal && reveal.pageIndex === pageIndex;
-    if (!hasActive) {
-      const lastIdx = d.segments.length - 1;
-      setReveal({
-        pageIndex,
-        elements: d.blackboard?.elements ?? [],
-        segments: d.segments,
-        segmentIndex: lastIdx,
-        typedLen: d.segments[lastIdx]?.text.length ?? 0,
-      });
-    }
-    setPlayback({ active: true, continuous: false, playing: false });
-  }, [immersive, pageIndex, reveal, dialogues, exitPlayback]);
 
-  const handleNext = useCallback(async () => {
+  const goPrev = useCallback(() => {
+    if (pageIndex > 0) goToPassage(pageIndex - 1);
+  }, [pageIndex, goToPassage]);
+
+  // Move the cursor onto the next segment; the typewriter types it in.
+  const revealNextSegment = useCallback(() => {
+    if (cursor.segmentIndex >= segments.length - 1) return;
+    setCursor({ segmentIndex: cursor.segmentIndex + 1, typedLen: 0 });
+  }, [cursor.segmentIndex, segments.length]);
+
+  // The single forward action (bottom button and →). Non-immersive: if the
+  // current segment is still typing, finish it instantly; otherwise reveal the
+  // next segment (which types in). Immersive advances on its own, so this waits
+  // until the passage settles. Once fully revealed it moves on — to a revealed
+  // passage, or (only in normal mode at the frontier) reveals a NEW one.
+  // Play-from-here never reveals new: it stops at the latest revealed passage.
+  const forward = useCallback(() => {
     if (isLoading) return;
-
-    // During playback, Next means the next passage — segments self-advance.
-    if (playback.active) {
-      if (pageIndex < allDialogues.length - 1) {
-        const ni = pageIndex + 1;
-        setPageIndex(ni);
-        beginReveal(ni, { active: true, continuous: playback.continuous });
-        return;
-      }
-      if (!model?.isComplete) await fetchNextDialogue();
+    if (allDialogues.length === 0) {
+      void fetchNextDialogue();
       return;
     }
-
-    const isRevealActive = reveal && reveal.pageIndex === pageIndex;
-
-    if (isRevealActive && reveal) {
-      const currentText = reveal.segments[reveal.segmentIndex]?.text ?? "";
-      if (reveal.typedLen < currentText.length) {
-        setReveal({ ...reveal, typedLen: currentText.length });
+    const seg = segments[cursor.segmentIndex];
+    if (!immersive) {
+      if (seg && cursor.typedLen < seg.text.length) {
+        setCursor((c) => ({ ...c, typedLen: seg.text.length })); // skip typing
         return;
       }
-      if (reveal.segmentIndex < reveal.segments.length - 1) {
-        setReveal({ ...reveal, segmentIndex: reveal.segmentIndex + 1, typedLen: 0 });
+      if (cursor.segmentIndex < segments.length - 1) {
+        revealNextSegment();
         return;
       }
+    } else if (!(cursor.segmentIndex >= segments.length - 1 && cursor.typedLen >= (seg?.text.length ?? 0))) {
+      return; // immersive auto-playing; wait for it to settle
     }
-
     if (pageIndex < allDialogues.length - 1) {
-      setPageIndex((p) => p + 1);
+      goToPassage(pageIndex + 1);
       return;
     }
+    if (!playSession && !reachedEnd) void fetchNextDialogue();
+  }, [
+    isLoading,
+    allDialogues.length,
+    segments,
+    cursor.segmentIndex,
+    cursor.typedLen,
+    immersive,
+    pageIndex,
+    playSession,
+    reachedEnd,
+    revealNextSegment,
+    goToPassage,
+    fetchNextDialogue,
+  ]);
 
-    if (model?.isComplete) return;
-    await fetchNextDialogue();
-  }, [isLoading, pageIndex, allDialogues.length, model?.isComplete, reveal, fetchNextDialogue, playback.active, playback.continuous, beginReveal]);
+  // Immersive is the auto-play surface: entering it re-plays the current passage
+  // from the top, segments advancing on their own with narration. Exiting drops
+  // back to the manual split view at the same passage.
+  const enterImmersive = useCallback(() => {
+    if (!currentImageUrl) return;
+    setSurface("immersive");
+    setCursor(CURSOR_START);
+    setPaused(false);
+  }, [currentImageUrl]);
+  const exitImmersive = useCallback(() => {
+    audioRef.current?.pause();
+    setPaused(false);
+    setSurface("reading");
+    // Finish typing the current segment so the split view shows whole segments.
+    setCursor((c) => ({ ...c, typedLen: segments[c.segmentIndex]?.text.length ?? c.typedLen }));
+  }, [segments]);
+  const toggleImmersive = useCallback(() => {
+    if (immersive) exitImmersive();
+    else enterImmersive();
+  }, [immersive, enterImmersive, exitImmersive]);
 
-  const handlePrev = useCallback(() => {
-    if (pageIndex > 0) setPageIndex((p) => p - 1);
-  }, [pageIndex]);
+  // Pause / resume immersive auto-play. Resuming a finished passage replays it.
+  const togglePause = useCallback(() => {
+    if (!paused) {
+      setPaused(true);
+      audioRef.current?.pause();
+      return;
+    }
+    const last = segments.length - 1;
+    const settled =
+      segments.length > 0 &&
+      cursor.segmentIndex >= last &&
+      cursor.typedLen >= (segments[last]?.text.length ?? 0);
+    if (settled) setCursor(CURSOR_START);
+    setPaused(false);
+  }, [paused, segments, cursor.segmentIndex, cursor.typedLen]);
+
+  // Play from here: a bounded REVISIT from the current passage. Replays it
+  // (immersive: auto; non-immersive: from its first segment) and won't reveal
+  // new passages — it stops at the latest revealed one. Never changes surface.
+  const playFromHere = useCallback(() => {
+    if (segments.length === 0) return;
+    setPlaySession(true);
+    setCursor(CURSOR_START); // replay this passage from the top
+    if (immersive) setPaused(false);
+  }, [segments.length, immersive]);
+  const exitPlaySession = useCallback(() => {
+    setPlaySession(false);
+    // Leaving a revisit mid-passage reveals the whole passage, rather than
+    // stranding it half-shown.
+    setCursor(settledCursor(segments));
+  }, [segments]);
 
   useEffect(() => {
-    if (!immersive && !playback.active) return;
+    if (!immersive && !playSession) return;
     const onKey = (e: KeyboardEvent) => {
       if (isAsking) return;
-      if (e.key === "Escape") exitPlayback();
-      if (e.key === " ") {
-        e.preventDefault();
-        togglePlay();
+      if (e.key === "Escape") {
+        if (immersive) exitImmersive();
+        else exitPlaySession();
       }
-      if (immersive && e.key === "ArrowLeft") immersivePrev();
-      if (immersive && e.key === "ArrowRight") void immersiveNext();
+      if (e.key === " " && immersive) {
+        e.preventDefault();
+        togglePause();
+      }
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") forward();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [immersive, playback.active, isAsking, exitPlayback, togglePlay, immersivePrev, immersiveNext]);
+  }, [immersive, playSession, isAsking, exitImmersive, exitPlaySession, togglePause, goPrev, forward]);
 
   if (!ts || artifactKind == null || artifactKind === "None" || parentId == null || !model) {
     return (
@@ -1066,23 +1103,68 @@ export default function TeachingPage() {
   const isOnLastPage = pageIndex >= totalPages - 1;
   const hasNoPages = totalPages === 0;
   // When complete, a standalone coda page lives one past the last passage.
-  const hasCompletionPage = Boolean(model.isComplete);
+  const hasCompletionPage = reachedEnd;
   const completionPageIndex = allDialogues.length;
   const onCompletionPage = hasCompletionPage && pageIndex >= completionPageIndex;
   const isOnLastContentPage = totalPages > 0 && pageIndex === totalPages - 1;
-  const currentDialogue: Dialogue | undefined = allDialogues[pageIndex];
+  // Current passage fully revealed (last segment, fully typed).
+  const currentSettled =
+    segments.length > 0 &&
+    cursor.segmentIndex >= segments.length - 1 &&
+    cursor.typedLen >= (segments[segments.length - 1]?.text.length ?? 0);
+  const hasRevealedNext = totalPages > 0 && pageIndex < totalPages - 1;
+  const showConclude = isOnLastContentPage && reachedEnd && currentSettled;
+  // The forward CTA: label + whether it's actionable right now. "Continue"
+  // reveals something (a segment, or a new passage at the frontier in normal
+  // mode); "Next passage" jumps to an already-revealed one. It's held while
+  // immersive auto-play is mid-passage, and at the latest revealed passage in a
+  // play-from-here session (which never reveals new).
+  let forwardLabel = "Next passage";
+  let forwardActionable = true;
+  if (hasNoPages) {
+    forwardLabel = "Begin";
+  } else if (immersive && !currentSettled) {
+    forwardActionable = false;
+  } else if (!immersive && !currentSettled) {
+    forwardLabel = "Continue";
+  } else if (hasRevealedNext) {
+    forwardLabel = "Next passage";
+  } else if (!playSession && !reachedEnd) {
+    forwardLabel = "Continue";
+  } else {
+    forwardActionable = false;
+  }
+  const forwardBusy = isLoading || waitingForNext;
   const displayHeading = currentDialogue?.heading || model.headingFallback;
   const displayArc = model.groupLabel(currentDialogue);
+
+  // Progress rail from the reader's position, not the generation frontier:
+  // groups before the current passage's group are full, the current group fills
+  // by how far into it the reader has read, later groups are empty. The coda
+  // fills everything.
+  const groupCount = model.segments.length;
+  const railSegments = ((): number[] => {
+    if (onCompletionPage) return Array(groupCount).fill(1);
+    if (!currentDialogue) return Array(groupCount).fill(0);
+    const readerGroup = model.groupOf(currentDialogue);
+    const groupDialogues = allDialogues.filter((d) => model.groupOf(d) === readerGroup);
+    const idxInGroup = groupDialogues.findIndex((d) => d.id === currentDialogue.id);
+    const withinFill =
+      groupDialogues.length > 0 && idxInGroup >= 0
+        ? (idxInGroup + 1) / groupDialogues.length
+        : 0;
+    return Array.from({ length: groupCount }, (_, idx) =>
+      idx < readerGroup ? 1 : idx === readerGroup ? withinFill : 0,
+    );
+  })();
   // Drop cap on the opening passage of each group (arc / step) — same flourish as the first Metis utterance in chat.
   const isFirstOfArc = currentDialogue
     ? allDialogues.findIndex((d) => model.groupOf(d) === model.groupOf(currentDialogue)) === pageIndex
     : false;
 
-  const currentSegments = currentDialogue?.segments ?? [];
-  const currentHasSegments = currentSegments.length > 0;
-  const currentHasAudio = currentSegments.some((s) => !!s.audio_path);
+  const currentHasSegments = segments.length > 0;
+  const currentHasAudio = segments.some((s) => !!s.audio_path);
   const currentHasBoard = Boolean(currentImageUrl);
-  const atVeryEnd = isOnLastPage && Boolean(model.isComplete);
 
   return (
     <div
@@ -1096,10 +1178,10 @@ export default function TeachingPage() {
         ref={audioRef}
         className="hidden"
         onEnded={() => {
-          if (immersive && playback.active) handleSegmentComplete();
+          if (playing) advance();
         }}
         onError={() => {
-          if (immersive && playback.active && playback.playing) handleSegmentComplete();
+          if (playing) advance();
         }}
       />
       <ContentNotes match={notesMatchHere} />
@@ -1130,7 +1212,7 @@ export default function TeachingPage() {
                 <button
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full text-text-tertiary transition-colors hover:text-foreground",
-                    (immersive || playback.active) && "text-amber hover:text-amber"
+                    (immersive || playSession) && "text-amber hover:text-amber"
                   )}
                   aria-label="The hall — playback and stage controls"
                 >
@@ -1182,27 +1264,10 @@ export default function TeachingPage() {
 
                 <div className="mx-5 h-px bg-border/30" />
 
-                {/* Replay this passage */}
-                <button
-                  onClick={replayPassage}
-                  disabled={!currentHasSegments}
-                  className="group flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <Repeat className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
-                  <span className="flex-1">
-                    <span className="block font-display text-sm italic text-foreground">
-                      Replay this passage
-                    </span>
-                    <span className="mt-0.5 block text-xs leading-snug text-text-tertiary">
-                      Run the reveal and its animation from the top.
-                    </span>
-                  </span>
-                </button>
-
-                {/* Play from here */}
+                {/* Play from here — continuous rewatch from this passage onward */}
                 <button
                   onClick={playFromHere}
-                  disabled={!currentHasSegments || atVeryEnd}
+                  disabled={!currentHasSegments}
                   className="group flex w-full items-start gap-3 px-5 py-3 text-left transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                 >
                   <ListVideo className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" strokeWidth={1.5} />
@@ -1211,10 +1276,37 @@ export default function TeachingPage() {
                       Play from here
                     </span>
                     <span className="mt-0.5 block text-xs leading-snug text-text-tertiary">
-                      Sit back — passages advance on their own.
+                      Watch this passage play out, then step to the next when you're ready.
                     </span>
                   </span>
                 </button>
+
+                <div className="mx-5 h-px bg-border/30" />
+
+                {/* Narration pace — how fast the lecture is read aloud in the hall */}
+                <div className="px-5 py-4">
+                  <div className="mb-2.5 flex items-baseline justify-between">
+                    <span className="font-display text-sm italic text-foreground">Narration pace</span>
+                    <span className="label-whisper text-text-tertiary tabular-nums">
+                      {narrationRate.toFixed(2)}×
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.75}
+                    max={2}
+                    step={0.05}
+                    value={narrationRate}
+                    onChange={(e) => setNarrationRate(parseFloat(e.target.value))}
+                    aria-label="Narration pace"
+                    className="h-1 w-full cursor-pointer appearance-none rounded-full bg-border"
+                    style={{ accentColor: "hsl(var(--amber))" }}
+                  />
+                  <div className="mt-2 flex justify-between">
+                    <span className="label-whisper text-text-tertiary/60">slower</span>
+                    <span className="label-whisper text-text-tertiary/60">faster</span>
+                  </div>
+                </div>
 
                 <div className="h-2" />
               </PopoverContent>
@@ -1224,7 +1316,7 @@ export default function TeachingPage() {
 
         {/* Segmented progress — one cell per arc (journey) or step (explanation) */}
         <div className="flex items-center gap-1 px-4 pb-2.5">
-          {model.segments.map((fill, idx) => (
+          {railSegments.map((fill, idx) => (
             <div key={idx} className="h-[3px] flex-1 overflow-hidden rounded-full bg-surface">
               <div
                 className="h-full rounded-full transition-all duration-700 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
@@ -1248,14 +1340,15 @@ export default function TeachingPage() {
           "[&_.katex]:text-foreground"
         );
 
-        const isRevealing = Boolean(reveal && reveal.pageIndex === pageIndex);
-
-        const isSettled = Boolean(
-          isRevealing &&
-            reveal &&
-            reveal.segmentIndex === reveal.segments.length - 1 &&
-            reveal.typedLen >= (reveal.segments[reveal.segmentIndex]?.text.length ?? 0)
-        );
+        // Every on-screen passage reveals from the single cursor. A passage with
+        // segments is "settled" once its last segment is fully typed.
+        const hasSegments = segments.length > 0;
+        const lastSeg = segments.length - 1;
+        const isSettled =
+          hasSegments &&
+          cursor.segmentIndex >= lastSeg &&
+          cursor.typedLen >= (segments[lastSeg]?.text.length ?? 0);
+        const boardElements = currentDialogue?.blackboard?.elements ?? [];
 
         const { revealed, focused, justRevealed, currentActions, pastConnects } = revealFocusSets;
 
@@ -1297,10 +1390,10 @@ export default function TeachingPage() {
                 )}
               >
                 <div key={currentImageUrl!} className="w-full h-full animate-blur-in">
-                  {isRevealing && reveal ? (
+                  {hasSegments ? (
                     <AnimatedBlackboard
                       svgUrl={currentImageUrl!}
-                      elements={reveal.elements}
+                      elements={boardElements}
                       revealed={revealed}
                       focused={focused}
                       justRevealed={justRevealed}
@@ -1368,11 +1461,11 @@ export default function TeachingPage() {
 
                 {!hasNoPages && (
                   <div key={pageIndex} className="animate-blur-in">
-                    {isRevealing && reveal ? (
+                    {hasSegments ? (
                       <div className="space-y-6">
-                        {reveal.segments.slice(0, reveal.segmentIndex + 1).map((seg, i) => {
-                          const isCurrent = i === reveal.segmentIndex;
-                          const text = isCurrent ? safeTypedSlice(seg.text, reveal.typedLen) : seg.text;
+                        {segments.slice(0, cursor.segmentIndex + 1).map((seg, i) => {
+                          const isCurrent = i === cursor.segmentIndex;
+                          const text = isCurrent ? safeTypedSlice(seg.text, cursor.typedLen) : seg.text;
                           return (
                             <Fragment key={i}>
                               {i > 0 && (
@@ -1409,12 +1502,12 @@ export default function TeachingPage() {
                   </div>
                 )}
 
-                {/* Segment progress dots — visible during active reveal (the lectern rail owns them in playback) */}
-                {isRevealing && !playback.active && reveal && reveal.segments.length > 1 && (
+                {/* Segment progress dots — shown while reading (the hall's rail owns them in immersive) */}
+                {hasSegments && !immersive && segments.length > 1 && (
                   <div className="mt-10 flex items-center justify-center gap-1.5">
-                    {reveal.segments.map((_, i) => {
-                      const isPast = i < reveal.segmentIndex;
-                      const isCurrent = i === reveal.segmentIndex;
+                    {segments.map((_, i) => {
+                      const isPast = i < cursor.segmentIndex;
+                      const isCurrent = i === cursor.segmentIndex;
                       return (
                         <span
                           key={i}
@@ -1475,171 +1568,132 @@ export default function TeachingPage() {
           immersive ? "bg-background/30" : "bg-background/60"
         )}
       >
-        {playback.active ? (
-          /* Lectern rail — hands-free session controls */
-          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-            {/* Leave the hall */}
-            <button
-              onClick={exitPlayback}
-              className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors"
-            >
-              <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-              <span className="ml-1 hidden sm:inline">leave the hall</span>
-            </button>
-
-            {/* Prev · play/pause + dots · next */}
-            <div className="flex items-center gap-5">
+        {/* One bar for every state: leave/exit + prev on the left, immersive
+            transport at the centre, counter + forward action on the right. */}
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+          {/* Left — exit the current mode + previous passage */}
+          <div className="flex items-center gap-4">
+            {immersive ? (
               <button
-                onClick={immersivePrev}
-                disabled={pageIndex <= 0}
-                aria-label="Previous passage"
-                className="group font-display italic text-lg text-text-tertiary transition-colors hover:text-foreground disabled:opacity-25 disabled:hover:text-text-tertiary"
+                onClick={exitImmersive}
+                className="group font-display italic text-sm text-amber/80 transition-colors hover:text-amber"
               >
                 <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+                <span className="ml-1 hidden sm:inline">leave the hall</span>
               </button>
-
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={togglePlay}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-foreground transition-colors hover:border-amber/50 hover:text-amber"
-                  aria-label={playback.playing ? "Pause" : "Resume"}
-                >
-                  {playback.playing ? (
-                    <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  ) : (
-                    <Play className="h-3.5 w-3.5 translate-x-px" strokeWidth={1.5} />
-                  )}
-                </button>
-                {reveal && reveal.segments.length > 1 && (
-                  <div className="hidden items-center gap-1.5 sm:flex">
-                    {reveal.segments.map((_, i) => {
-                      const isPast = i < reveal.segmentIndex;
-                      const isCurrent = i === reveal.segmentIndex;
-                      return (
-                        <span
-                          key={i}
-                          className="rounded-full transition-all duration-300 ease-out"
-                          style={{
-                            height: "0.3rem",
-                            width: isCurrent ? "1.25rem" : "0.3rem",
-                            backgroundColor: isPast || isCurrent ? "hsl(var(--amber))" : "hsl(var(--border))",
-                            opacity: isPast ? 0.5 : 1,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
+            ) : playSession ? (
               <button
-                onClick={() => void immersiveNext()}
-                disabled={isLoading || waitingForNext || atVeryEnd}
-                aria-label="Next passage"
-                className="group font-display italic text-lg text-text-tertiary transition-colors hover:text-foreground disabled:opacity-25 disabled:hover:text-text-tertiary"
+                onClick={exitPlaySession}
+                className="group font-display italic text-sm text-amber/80 transition-colors hover:text-amber"
               >
-                {isLoading || waitingForNext ? (
-                  <span className="flex items-center gap-0.5">
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                  </span>
-                ) : (
-                  <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-                )}
+                <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+                <span className="ml-1 hidden sm:inline">exit review</span>
               </button>
-            </div>
-
-            {/* Passage counter */}
-            {totalPages > 0 && (
-              <span className="font-display italic text-xs text-text-tertiary tabular-nums">
-                passage {pageIndex + 1} of {totalPages}
-              </span>
-            )}
-          </div>
-        ) : (
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
-          {/* Previous — italic text-link */}
-          <button
-            onClick={handlePrev}
-            disabled={pageIndex <= 0}
-            className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
-          >
-            <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
-            <span className="ml-1 hidden sm:inline">previous passage</span>
-          </button>
-
-          {/* Counter — italic Lora */}
-          {totalPages > 0 && (
-            <span className="font-display italic text-xs text-text-tertiary tabular-nums">
-              {onCompletionPage ? "fin" : `passage ${pageIndex + 1} of ${totalPages}`}
-            </span>
-          )}
-
-          {/* Right side — Finish, Conclude, primary CTA, or Next text-link */}
-          {onCompletionPage ? (
-            <Button
-              onClick={() => navigate(model.backLink)}
-              variant="outline"
-              className="rounded-xl px-6 text-sm font-medium"
-              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
-            >
-              Finish
-            </Button>
-          ) : isOnLastContentPage && model.isComplete ? (
-            <Button
-              onClick={() => setPageIndex(completionPageIndex)}
-              variant="outline"
-              className="group rounded-xl px-6 text-sm font-medium"
-              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
-            >
-              Conclude
-              <span className="ml-2 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-            </Button>
-          ) : isOnLastPage || hasNoPages ? (
-            <Button
-              onClick={handleNext}
-              disabled={isLoading || waitingForNext}
-              variant="outline"
-              className="rounded-xl px-6 text-sm font-medium"
-              style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
-            >
-              {isLoading ? (
-                <>
-                  <span className="mr-2 flex items-center gap-0.5">
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                  </span>
-                  Loading…
-                </>
-              ) : waitingForNext ? (
-                <>
-                  <span className="mr-2 flex items-center gap-0.5">
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                  </span>
-                  Preparing…
-                </>
-              ) : hasNoPages ? (
-                "Begin"
-              ) : (
-                "Continue"
-              )}
-            </Button>
-          ) : (
+            ) : null}
             <button
-              onClick={() => setPageIndex((p) => Math.min(p + 1, totalPages - 1))}
-              disabled={pageIndex >= totalPages - 1}
+              onClick={goPrev}
+              disabled={pageIndex <= 0}
               className="group font-display italic text-sm text-text-tertiary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:text-text-tertiary"
             >
-              <span className="mr-1 hidden sm:inline">next passage</span>
-              <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+              <span className="inline-block transition-transform duration-200 group-hover:-translate-x-0.5">←</span>
+              <span className="ml-1 hidden sm:inline">{immersive || playSession ? "prev" : "previous passage"}</span>
             </button>
+          </div>
+
+          {/* Centre — immersive auto-play transport + segment dots */}
+          {immersive && currentHasSegments && !onCompletionPage && (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={togglePause}
+                aria-label={playing ? "Pause" : "Play"}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-border/40 text-foreground transition-colors hover:border-amber/50 hover:text-amber"
+              >
+                {playing ? (
+                  <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />
+                ) : (
+                  <Play className="h-3.5 w-3.5 translate-x-px" strokeWidth={1.5} />
+                )}
+              </button>
+              {segments.length > 1 && (
+                <div className="hidden items-center gap-1.5 sm:flex">
+                  {segments.map((_, i) => {
+                    const isPast = i < cursor.segmentIndex;
+                    const isCurrent = i === cursor.segmentIndex;
+                    return (
+                      <span
+                        key={i}
+                        className="rounded-full transition-all duration-300 ease-out"
+                        style={{
+                          height: "0.3rem",
+                          width: isCurrent ? "1.25rem" : "0.3rem",
+                          backgroundColor: isPast || isCurrent ? "hsl(var(--amber))" : "hsl(var(--border))",
+                          opacity: isPast ? 0.5 : 1,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
+
+          {/* Right — counter + the forward action */}
+          <div className="flex items-center gap-4">
+            {totalPages > 0 && (
+              <span className="hidden font-display italic text-xs text-text-tertiary tabular-nums sm:inline">
+                {onCompletionPage ? "fin" : `passage ${pageIndex + 1} of ${totalPages}`}
+              </span>
+            )}
+            {onCompletionPage ? (
+              <Button
+                onClick={() => navigate(model.backLink)}
+                variant="outline"
+                className="rounded-xl px-6 text-sm font-medium"
+                style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
+              >
+                Finish
+              </Button>
+            ) : showConclude ? (
+              <Button
+                onClick={() => {
+                  exitImmersive();
+                  setPlaySession(false);
+                  setPageIndex(completionPageIndex);
+                }}
+                variant="outline"
+                className="group rounded-xl px-6 text-sm font-medium"
+                style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
+              >
+                Conclude
+                <span className="ml-2 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={forward}
+                disabled={!forwardActionable || forwardBusy}
+                variant="outline"
+                className="group rounded-xl px-6 text-sm font-medium"
+                style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
+              >
+                {forwardBusy ? (
+                  <>
+                    <span className="mr-2 flex items-center gap-0.5">
+                      <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                      <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                      <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+                    </span>
+                    {isLoading ? "Loading…" : "Preparing…"}
+                  </>
+                ) : (
+                  <>
+                    {forwardLabel}
+                    <span className="ml-2 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
-        )}
       </div>
 
       {isAsking && (
