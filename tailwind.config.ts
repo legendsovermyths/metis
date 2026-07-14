@@ -13,6 +13,11 @@ export default {
       },
     },
     extend: {
+      screens: {
+        // The codex "spread" breakpoint: above a 16" MBP (~1728px), below a 27" monitor.
+        // Tune this one value to move where pages unfold into a two-page spread.
+        spread: "1800px",
+      },
       fontFamily: {
         sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         display: ['Lora', 'Georgia', 'Times New Roman', 'serif'],

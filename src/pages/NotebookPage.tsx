@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Watermark } from "@/components/Watermark";
 import { ArrowLeft, CornerDownRight, Folder as FolderIcon, FolderPlus, Plus, Trash2 } from "lucide-react";
 import { useNotebook } from "@/context/NotebookContext";
 import { NoteEditor } from "@/components/notes/NoteEditor";
@@ -275,9 +276,10 @@ export default function NotebookPage() {
 
   return (
     <div className="paper-texture relative min-h-[calc(100vh-57px)] flex flex-col pb-20 md:pb-0">
+      {!selected && <Watermark />}
       <div
         className={`relative mx-auto w-full flex-1 flex flex-col px-6 md:px-8 ${
-          selected ? "max-w-7xl" : "max-w-3xl"
+          selected ? "max-w-7xl" : "max-w-3xl spread:max-w-[84rem] spread:px-0"
         }`}
       >
         <header className="pt-8 md:pt-10">
@@ -363,7 +365,10 @@ export default function NotebookPage() {
               <Backlinks noteId={selected.id!} />
             </section>
           ) : (
-            <>
+            <div className="spread:grid spread:grid-cols-[minmax(0,28rem)_minmax(0,48rem)] spread:gap-x-32 spread:items-start">
+
+              {/* ── Verso: notebook identity + view tabs (sticky on a spread) ── */}
+              <div className="spread:sticky spread:top-[4.5rem] spread:self-start">
               <section className="mb-12 animate-blur-in">
                 <p className="label-whisper text-text-tertiary mb-3">Marginalia</p>
                 <h1 className="display-hero text-5xl text-foreground">Notebook</h1>
@@ -393,6 +398,10 @@ export default function NotebookPage() {
                   );
                 })}
               </div>
+              </div>
+
+              {/* ── Recto: the current view's pages ── */}
+              <div className="min-w-0">
 
               {view === "notes" && (
                 <>
@@ -545,7 +554,8 @@ export default function NotebookPage() {
                   onOpen={showSlip}
                 />
               )}
-            </>
+              </div>
+            </div>
           )}
         </main>
 

@@ -4,6 +4,7 @@ import { useTasks } from "@/context/TasksContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BackgroundTask } from "@/lib/service";
+import { Watermark } from "@/components/Watermark";
 
 const TASK_LABELS: Record<string, string> = {
   analyse_book: "Analysing book",
@@ -121,7 +122,8 @@ export default function TasksPage() {
   }, [active]);
 
   return (
-    <div className="paper-texture min-h-[calc(100vh-57px)] px-6 py-8 pb-24 md:pb-8">
+    <div className="paper-texture relative min-h-[calc(100vh-57px)] px-6 py-8 pb-24 md:pb-8">
+      <Watermark />
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-end justify-between gap-4 animate-fade-in">
           <div>

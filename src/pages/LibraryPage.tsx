@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Watermark } from "@/components/Watermark";
 import type { Book } from "@/data/mockData";
 import { useBookUploads } from "@/context/UploadContext";
 import { useAppContext } from "@/context/AppContext";
@@ -89,6 +90,7 @@ export default function LibraryPage() {
 
   return (
     <div className="paper-texture relative min-h-[calc(100vh-57px)] flex flex-col pb-20 md:pb-0">
+      <Watermark />
       <div className="relative mx-auto w-full max-w-5xl flex-1 flex flex-col px-6 md:px-8">
 
         {/* Masthead */}

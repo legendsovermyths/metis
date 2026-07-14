@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { liftTarget } from "@tiptap/pm/transform";
+import { canSplit, liftTarget } from "@tiptap/pm/transform";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { ReasoningBlockView } from "../ReasoningBlockView";
 import { genId } from "../genId";
@@ -79,6 +79,27 @@ export const ReasoningBlock = Node.create({
 
   addKeyboardShortcuts() {
     return {
+      // Enter is a plain single-level split — a new line, nothing else. The default
+      // Enter chain (liftEmptyBlock / createParagraphNear / defining boundary-split)
+      // misbehaves around this defining block: it lifts empty lines out, or recreates
+      // the wrapper with a duplicated blockId. We only take over inside a reasoning
+      // block or a top-level paragraph; lists, code, and quotes keep their defaults.
+      Enter: ({ editor }) => {
+        const { state } = editor;
+        const { $from, empty } = state.selection;
+        if (!empty) return false;
+        if ($from.parent.type.name !== "paragraph") return false;
+        const parentName = $from.node($from.depth - 1)?.type.name;
+        if (parentName !== this.name && parentName !== "doc") return false;
+        if (!canSplit(state.doc, $from.pos)) return false;
+        return editor.commands.command(({ tr, dispatch }) => {
+          if (dispatch) {
+            tr.split($from.pos);
+            tr.scrollIntoView();
+          }
+          return true;
+        });
+      },
       // Backspace at the very start of a block's first line unwraps it to plain
       // paragraphs. Anywhere else inside the block, fall through to the default.
       Backspace: ({ editor }) => {

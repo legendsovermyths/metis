@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { Watermark } from "@/components/Watermark";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -104,9 +105,47 @@ export default function JourneyDetailPage() {
     }
   };
 
+  const continueButton = (
+    <Button
+      onClick={() => void handleContinue()}
+      disabled={starting}
+      className="rounded-xl px-6 shadow-soft"
+    >
+      {starting ? (
+        <>
+          <span className="mr-2 flex items-center gap-0.5">
+            <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+            <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+            <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
+          </span>
+          Starting…
+        </>
+      ) : allDone ? (
+        <>
+          <Check className="mr-2 h-4 w-4" />
+          Revisit
+        </>
+      ) : completedTopics > 0 ? (
+        <>
+          Continue
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </>
+      ) : (
+        <>
+          Start
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </>
+      )}
+    </Button>
+  );
+
   return (
-    <div className="paper-texture relative min-h-[calc(100vh-57px)] overflow-hidden px-6 py-8 pb-32">
-      <div className="mx-auto max-w-2xl">
+    <div className="paper-texture relative min-h-[calc(100vh-57px)] overflow-hidden spread:overflow-visible px-6 py-8 pb-32 spread:pb-8">
+      <Watermark />
+      <div className="mx-auto max-w-2xl spread:grid spread:max-w-[84rem] spread:grid-cols-[minmax(0,28rem)_minmax(0,48rem)] spread:gap-x-32 spread:items-start">
+
+        {/* ── Verso: the title page (sticky on a spread) ── */}
+        <div className="spread:sticky spread:top-[4.5rem] spread:self-start">
 
         {/* Back nav */}
         <Link
@@ -147,6 +186,31 @@ export default function JourneyDetailPage() {
             ].filter(Boolean).join(" · ")}
           </p>
         </header>
+
+        {/* Verso action — the spread's title page carries progress + CTA;
+            below the breakpoint this is hidden and the fixed bar does the job. */}
+        {row.journey.arcs.length > 0 && (
+          <div className="mt-2 hidden animate-blur-in spread:block">
+            <div className="mb-4 flex items-baseline gap-3">
+              <span className="font-display italic text-xs text-text-tertiary tabular-nums">
+                step {completedTopics} of {totalTopics}
+              </span>
+              <div className="relative h-px flex-1 overflow-hidden bg-border/30">
+                {totalTopics > 0 && (
+                  <div
+                    className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
+                    style={{ width: `${progressRatio * 100}%`, backgroundColor: "hsl(var(--amber))", opacity: 0.7 }}
+                  />
+                )}
+              </div>
+            </div>
+            {continueButton}
+          </div>
+        )}
+        </div>
+
+        {/* ── Recto: the course ── */}
+        <div>
 
         {row.journey.arcs.length === 0 ? (
           <p className="mt-4 font-display italic text-sm text-text-secondary animate-blur-in">
@@ -247,11 +311,12 @@ export default function JourneyDetailPage() {
         {totalTopics === 0 && row.journey.arcs.length > 0 && (
           <p className="mt-4 text-center font-display italic text-xs text-text-tertiary">No topics listed in arcs yet.</p>
         )}
+        </div>
       </div>
 
-      {/* Fixed action bar — top edge gilds with amber as progress advances */}
+      {/* Fixed action bar — narrow only; the spread lifts this into the verso */}
       {row.journey.arcs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur-xl spread:hidden">
           <div className="h-px w-full bg-border/30 relative overflow-hidden">
             {totalTopics > 0 && (
               <div
@@ -268,37 +333,7 @@ export default function JourneyDetailPage() {
             <span className="font-display italic text-xs text-text-tertiary tabular-nums">
               step {completedTopics} of {totalTopics}
             </span>
-            <Button
-              onClick={() => void handleContinue()}
-              disabled={starting}
-              className="rounded-xl px-6 shadow-soft"
-            >
-              {starting ? (
-                <>
-                  <span className="mr-2 flex items-center gap-0.5">
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                    <span className="thinking-dot h-1 w-1 rounded-full bg-current" />
-                  </span>
-                  Starting…
-                </>
-              ) : allDone ? (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  Revisit
-                </>
-              ) : completedTopics > 0 ? (
-                <>
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Start
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {continueButton}
           </div>
         </div>
       )}

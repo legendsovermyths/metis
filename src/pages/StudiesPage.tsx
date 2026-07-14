@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Watermark } from "@/components/Watermark";
 import { Folder as FolderIcon, FolderPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { journeyGlyph, useMasthead, mastheadStyle } from "@/lib/editorial";
@@ -182,8 +183,9 @@ export default function StudiesPage() {
       : "The Study";
 
   return (
-    <div className="paper-texture relative min-h-[calc(100vh-57px)] overflow-hidden flex flex-col pb-20 md:pb-0">
-      <div className="relative mx-auto w-full max-w-3xl flex-1 flex flex-col px-6 md:px-8">
+    <div className="paper-texture relative min-h-[calc(100vh-57px)] overflow-hidden spread:overflow-visible flex flex-col pb-20 md:pb-0">
+      <Watermark />
+      <div className="relative mx-auto w-full max-w-3xl spread:max-w-[84rem] flex-1 flex flex-col px-6 md:px-8 spread:px-0">
         {/* Masthead */}
         <header className="pt-8 md:pt-10">
           <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
@@ -195,7 +197,10 @@ export default function StudiesPage() {
           <div className="mt-3 h-px w-full bg-border/40" />
         </header>
 
-        <main className="flex-1 py-10 md:py-12">
+        <main className="flex-1 py-10 md:py-12 spread:grid spread:grid-cols-[minmax(0,28rem)_minmax(0,48rem)] spread:gap-x-32 spread:items-start">
+
+          {/* ── Verso: shelf identity + controls (sticky on a spread) ── */}
+          <div className="spread:sticky spread:top-[4.5rem] spread:self-start">
           {/* Hero */}
           <section className="mb-10 animate-blur-in">
             <p className="label-whisper text-text-tertiary mb-3">Paths &amp; problems</p>
@@ -250,6 +255,10 @@ export default function StudiesPage() {
               shelf.setNewFolderName("");
             }}
           />
+          </div>
+
+          {/* ── Recto: the shelf contents ── */}
+          <div className="min-w-0">
 
           {/* Loading */}
           {initialLoading && (
@@ -495,6 +504,7 @@ export default function StudiesPage() {
               })}
             </div>
           )}
+          </div>
         </main>
 
         {/* Delete study confirmation */}
