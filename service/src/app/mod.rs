@@ -16,12 +16,12 @@ use crate::task::manager::TaskMangager;
 use crate::task::TaskRequest;
 use crate::utils::python::ensure_venv;
 pub mod book;
-pub mod journey;
-pub mod state;
-pub mod explanation;
-pub mod user_input;
 pub mod dialogue;
+pub mod explanation;
+pub mod journey;
 pub mod notes;
+pub mod state;
+pub mod user_input;
 
 static APP_CONTEXT: OnceLock<AppContext> = OnceLock::new();
 
@@ -35,7 +35,7 @@ pub fn init_context() -> Result<&'static AppContext> {
 pub struct App<'a> {
     request_handler: ServiceHandler<'a>,
     agent_handler: AgentHandler<'a>,
-    task_manager: TaskMangager,
+    task_manager: Arc<TaskMangager>,
     pub context: &'a AppContext,
 }
 
@@ -43,7 +43,6 @@ impl App<'_> {
     pub fn new(context: &'static AppContext, app_handle: AppHandle) -> Result<Self> {
         ensure_venv()?;
         let task_manager = TaskMangager::new(app_handle);
-        task_manager.resume();
         Ok(Self {
             request_handler: ServiceHandler::with(context),
             agent_handler: AgentHandler::with(context),
@@ -54,7 +53,10 @@ impl App<'_> {
 
     pub async fn handle_request(&self, request: Request) -> Result<Value> {
         match request {
-            Request::Service { request_type, params } => {
+            Request::Service {
+                request_type,
+                params,
+            } => {
                 let service_response = self.request_handler.handle(request_type, params).await?;
                 let _ = self.dispatch_tasks(service_response.task_request).await;
                 Ok(service_response.response)
@@ -76,6 +78,10 @@ impl App<'_> {
             }
         }
         Ok(())
+    }
+
+    pub async fn resume_tasks(&self) {
+        self.task_manager.resume().await;
     }
 }
 

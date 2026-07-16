@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde_json::json;
 use tauri::Manager;
 
 use crate::{
@@ -62,4 +63,10 @@ async fn handle_request(
     let context = app.context.value().await.unwrap();
     response.context = Some(context);
     Ok(response)
+}
+
+#[tauri::command]
+async fn resume_pending_task(app: tauri::State<'_, Arc<App<'_>>>)->Result<Response, String>{
+    app.resume_tasks().await;
+    Ok(Response::ok(json!({"status": "success"})))
 }
