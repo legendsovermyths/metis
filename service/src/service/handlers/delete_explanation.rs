@@ -4,7 +4,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::AppContext, db::repo::explanations::ExplanationsRepo, service::handler::BoxFuture,
+    app::{explanation::ExplanationArtifacts, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
@@ -14,10 +16,10 @@ pub struct DeleteExplanationParams {
 
 pub fn delete_explanation(params: DeleteExplanationParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        if let Some(row) = ExplanationsRepo::get(params.id)? {
-            let _ = fs::remove_dir_all(&row.explanation_dir);
+        if let Some(explanation) = Repository::<ExplanationArtifacts>::try_find_by_id(&params.id)? {
+            let _ = fs::remove_dir_all(&explanation.read().explanation_directory);
         }
-        ExplanationsRepo::delete_single(params.id)?;
+        Repository::<ExplanationArtifacts>::delete(&params.id)?;
         Ok(json!({ "success": true }).into())
     })
 }

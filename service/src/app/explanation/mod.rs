@@ -8,8 +8,10 @@ pub struct ExplanationArtifacts {
     pub title: String,
     pub explanation_directory: String,
     pub explanation: Explanation,
+    pub folder_id: Option<i64>,
+    pub created_at: i64,
     pub progress: ExplanationProgress,
-    pub tutor_notes: String
+    pub tutor_notes: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

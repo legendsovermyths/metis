@@ -3,8 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
-import { createExplanation, sendMessage, setChat } from "@/lib/service";
-import { useJourneyCreation } from "@/context/JourneyCreationContext";
+import { createExplanation, createJourney, sendMessage, setChat } from "@/lib/service";
+import { useTasks } from "@/context/TasksContext";
 import { toast } from "sonner";
 import { useMasthead, mastheadStyle, toRomanLower } from "@/lib/editorial";
 import "katex/dist/katex.min.css";
@@ -65,11 +65,11 @@ const modeGreeting: Record<Mode, {
     glyph: "∑",
   },
   advising: {
-    label: "Advising",
-    heading: "What shall we explore?",
-    verse: "Many paths, and you to choose.",
-    whisper: "Tell me where your curiosity sits.",
-    glyph: "◈",
+    label: "The Crossroads",
+    heading: "What do you want to make sense of?",
+    verse: "Bring the knot; we'll find the thread.",
+    whisper: "A problem, a paper, a page. Set it down here.",
+    glyph: "∴",
   },
   idle: {
     label: "A Conversation",
@@ -137,11 +137,11 @@ export default function ChatPage() {
   const mode = phaseToMode(phase);
   const greeting = modeGreeting[mode];
   const chatDone = context?.chat.is_done ?? false;
+  const tasks = useTasks();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const { startJourneyCreation } = useJourneyCreation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -225,61 +225,60 @@ export default function ChatPage() {
   };
 
   // ── End-of-chat action button ─────────────────────────────────────────────
+  const pending = context?.chat.pending_action ?? null;
+  const clearDone = async () => {
+    if (context) await setChat({ ...context.chat, is_done: false, pending_action: null });
+  };
   const endAction = (() => {
     if (!chatDone || messages.length === 0 || isBusy) return null;
-    if (phase === "Advising") {
-      const chapter = context?.session.chapter_title?.trim() ?? "";
-      const bookId = context?.session.book_id ?? null;
-      const notes = context?.chat.notes ?? "";
-      const canCreate = chapter.length > 0 && bookId != null;
+    if (pending?.kind === "journey") {
       return {
-        label: "Create a journey",
-        disabled: !canCreate,
-        onClick: () => {
-          if (!canCreate || bookId == null) return;
-          startJourneyCreation(
-            { chapter_title: chapter, advisor_notes: notes, book_id: bookId },
-            (errMsg) => {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: (Date.now() + 1).toString(),
-                  role: "assistant",
-                  content: `Could not create journey: ${errMsg}`,
-                },
-              ]);
-            },
-          );
-          navigate("/studies");
+        label: "Weave the journey",
+        disabled: false,
+        onClick: async () => {
+          try {
+            await createJourney({
+              resource_id: pending.resource_id,
+              response_instruction: pending.instruction,
+              advisor_notes: pending.notes,
+            });
+            await clearDone();
+            await tasks.refresh();
+            toast.success("Weaving your journey", {
+              description: "Metis is charting the course. It will appear in your study.",
+            });
+            navigate("/studies");
+          } catch {
+            // Error already surfaced via toast by callBackend.
+          }
         },
       };
     }
-    if (phase === "Exploring") {
-      const pending = context?.chat.pending_action ?? null;
-      if (pending?.kind === "explainer") {
-        return {
-          label: "Compose the explanation",
-          disabled: false,
-          onClick: async () => {
-            try {
-              await createExplanation(pending.problem_resource_id, pending.solution_resource_id);
-              if (context) {
-                await setChat({ ...context.chat, is_done: false, pending_action: null });
-              }
-              toast.success("Composing your explanation", {
-                description: "Metis is charting the route. It will appear in your study.",
-              });
-              navigate("/studies");
-            } catch {
-              // Error already surfaced via toast by callBackend.
-            }
-          },
-        };
-      }
-      return null;
+    if (pending?.kind === "explainer") {
+      return {
+        label: "Compose the explanation",
+        disabled: false,
+        onClick: async () => {
+          try {
+            await createExplanation(
+              pending.problem_resource_id,
+              pending.solution_resource_id,
+              pending.notes,
+            );
+            await clearDone();
+            await tasks.refresh();
+            toast.success("Composing your explanation", {
+              description: "Metis is charting the route. It will appear in your study.",
+            });
+            navigate("/studies");
+          } catch {
+            // Error already surfaced via toast by callBackend.
+          }
+        },
+      };
     }
     return {
-      label: "Get started",
+      label: "Return home",
       disabled: false,
       onClick: () => navigate("/"),
     };
@@ -461,9 +460,9 @@ export default function ChatPage() {
           </div>
           <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4 md:px-10">
             <span className="label-whisper text-text-tertiary">
-              {phase === "Advising"
+              {pending?.kind === "journey"
                 ? "the path is clear"
-                : phase === "Exploring"
+                : pending?.kind === "explainer"
                   ? "the thread is found"
                   : "the conversation is at rest"}
             </span>

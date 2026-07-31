@@ -1,27 +1,33 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    app::dialogue::DialogueReference,
-    db::repo::{explanations::ExplanationsRepo, journeys::JourneysRepo},
-    error::Result,
+    app::{
+        dialogue::DialogueReference, explanation::ExplanationArtifacts,
+        journey::artifact::JourneyArtifacts,
+    },
+    db::repo::Repository,
+    error::Result, task::{context::TaskContext, manager::TaskFuture},
 };
 
 #[derive(Deserialize, Serialize)]
-pub struct GenerationParams {
+pub struct DraftParams {
     parent_id: i64,
     dialogue_reference: DialogueReference,
     num_dialogues: usize,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct GenerationCheckpoint {
+pub struct DraftCheckpoint {
     count: usize,
 }
 
 fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueReference>> {
     match reference {
         DialogueReference::Explanation { explanation_id, .. } => {
-            let progress = ExplanationsRepo::get_artifacts(*explanation_id)?.progress;
+            let progress = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?
+                .read()
+                .progress
+                .clone();
             if progress.is_complete {
                 Ok(None)
             } else {
@@ -32,7 +38,10 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
             }
         }
         DialogueReference::Journey { journey_id, .. } => {
-            let progress = JourneysRepo::get_artifacts(*journey_id)?.progress;
+            let progress = Repository::<JourneyArtifacts>::find_by_id(journey_id)?
+                .read()
+                .progress
+                .clone();
             if progress.is_journey_complete {
                 Ok(None)
             } else {
@@ -46,3 +55,6 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
         DialogueReference::None => Ok(None),
     }
 }
+
+
+

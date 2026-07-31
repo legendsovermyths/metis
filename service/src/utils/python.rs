@@ -1,22 +1,25 @@
 use std::{
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
 
 use crate::error::{MetisError, Result};
-const VENV_DIR: &str = "../data/python_venv";
+use crate::utils::paths;
 const REQUIRED_PACKAGES: &[&str] = &["matplotlib", "numpy", "seaborn"];
 fn venv_python() -> PathBuf {
-    Path::new(VENV_DIR).join("bin/python3")
+    paths::venv_dir().join("bin/python3")
 }
 
 pub fn ensure_venv() -> Result<()> {
     let python = venv_python();
+    let venv_dir = paths::venv_dir();
 
     if !python.exists() {
-        log::info!("[venv] creating python venv at {VENV_DIR}");
+        crate::info!("[venv] creating python venv at {}", venv_dir.display());
         let create = Command::new("python3")
-            .args(["-m", "venv", VENV_DIR])
+            .arg("-m")
+            .arg("venv")
+            .arg(&venv_dir)
             .output();
 
         match create {
@@ -48,8 +51,8 @@ pub fn ensure_venv() -> Result<()> {
     }
 
     if !missing.is_empty() {
-        log::info!("[venv] installing missing packages: {}", missing.join(", "));
-        let pip = Path::new(VENV_DIR).join("bin/pip");
+        crate::info!("[venv] installing missing packages: {}", missing.join(", "));
+        let pip = venv_dir.join("bin/pip");
         let install = Command::new(pip).arg("install").args(&missing).output();
 
         match install {
@@ -61,7 +64,7 @@ pub fn ensure_venv() -> Result<()> {
                 )));
             }
             Err(e) => return Err(MetisError::UtilsError(e.to_string())),
-            Ok(_) => log::info!("[venv] packages installed successfully"),
+            Ok(_) => crate::info!("[venv] packages installed successfully"),
         }
     }
 

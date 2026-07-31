@@ -5,9 +5,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     app::{
         dialogue::{blackboard::Blackboard, segment::Segment},
+        explanation::ExplanationArtifacts,
         journey::artifact,
     },
-    db::repo::{explanations::ExplanationsRepo, journeys::JourneysRepo},
+    db::repo::Repository,
     error::{MetisError, Result},
 };
 
@@ -89,12 +90,12 @@ impl DialogueReference {
     pub fn get_directory(&self) -> Result<String> {
         match self {
             DialogueReference::Journey { journey_id, .. } => {
-                let artifact = JourneysRepo::get_artifacts(*journey_id)?;
-                Ok(artifact.chapter_dir)
+                let journey = Repository::<artifact::JourneyArtifacts>::find_by_id(journey_id)?;
+                Ok(journey.read().chapter_dir.clone())
             }
             DialogueReference::Explanation { explanation_id, .. } => {
-                let artifact = ExplanationsRepo::get_artifacts(*explanation_id)?;
-                Ok(artifact.explanation_directory)
+                let explanation = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?;
+                Ok(explanation.read().explanation_directory.clone())
             },
             DialogueReference::None => {
                 Err(MetisError::InternalDataError("Directory being requested from the reference that is not associated with any resource".to_string()))

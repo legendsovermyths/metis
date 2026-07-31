@@ -1,16 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    app::{
-        dialogue::{blackboard::Blackboard, ReferenceKind},
-        journey::{progress::JourneyProgress, ArcTopic, Journey, JourneyArc},
-    },
-    db::{
-        persistence::DbObject,
-        repo::{dialogue::DialoguesRepo, journeys::JourneysRepo},
-    },
-    error::{MetisError, Result},
-};
+use crate::app::journey::{progress::JourneyProgress, ArcTopic, Journey, JourneyArc};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct JourneyArtifacts {
@@ -20,6 +10,8 @@ pub struct JourneyArtifacts {
     pub journey: Journey,
     pub advisor_notes: String,
     pub tutor_notes: String,
+    pub folder_id: Option<i64>,
+    pub created_at: i64,
     pub progress: JourneyProgress,
 }
 
@@ -40,8 +32,3 @@ impl JourneyArtifacts {
     }
 }
 
-impl DbObject for JourneyArtifacts {
-    fn save(&mut self) -> Result<()> {
-        Ok(JourneysRepo::update(self)?)
-    }
-}

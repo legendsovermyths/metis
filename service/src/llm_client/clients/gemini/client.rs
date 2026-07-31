@@ -3,7 +3,7 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use crate::{
     error::{MetisError, Result},
     llm_client::{clients::gemini::auth::{ServiceAccount, get_access_token, load_service_account}, llm_client::{LLMClient, LLMResponse}},
-    logs::Event,
+    app::events::Event,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -124,7 +124,11 @@ impl GeminiClient {
     }
 
     pub async fn generate_with_file(&self, prompt: String, file_path: &str) -> Result<LLMResponse> {
-        Event::new("user", crate::logs::EventType::UserMessage, &prompt);
+        crate::logs::record(&Event::new(
+            "user",
+            crate::app::events::EventType::UserMessage,
+            &prompt,
+        ));
         let bytes = tokio::fs::read(file_path)
             .await
             .map_err(|e| MetisError::FileReadError(e.to_string()))?;
@@ -150,7 +154,11 @@ impl GeminiClient {
         }
         let response: serde_json::Value = response.json().await?;
         let result = Self::parse_response(response)?;
-        Event::new("model", crate::logs::EventType::LlmMessage, &result);
+        crate::logs::record(&Event::new(
+            "model",
+            crate::app::events::EventType::LlmMessage,
+            &result,
+        ));
         Ok(LLMResponse::from(result))
     }
 }
@@ -158,7 +166,11 @@ impl GeminiClient {
 #[async_trait]
 impl LLMClient for GeminiClient {
     async fn generate(&self, prompt: String) -> Result<LLMResponse> {
-        Event::new("user", crate::logs::EventType::UserMessage, &prompt);
+        crate::logs::record(&Event::new(
+            "user",
+            crate::app::events::EventType::UserMessage,
+            &prompt,
+        ));
         let request = self.build_request(&prompt, None);
         let token = get_access_token(&self.sa).await?;
         let response = self
@@ -176,7 +188,11 @@ impl LLMClient for GeminiClient {
         }
         let response: serde_json::Value = response.json().await?;
         let result = Self::parse_response(response)?;
-        Event::new("model", crate::logs::EventType::LlmMessage, &result);
+        crate::logs::record(&Event::new(
+            "model",
+            crate::app::events::EventType::LlmMessage,
+            &result,
+        ));
         Ok(LLMResponse::from(result))
     }
 

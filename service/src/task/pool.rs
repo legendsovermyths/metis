@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use serde_json::json;
-use tokio::{
-    sync::{mpsc, Mutex},
-    task::JoinHandle,
-};
+use tauri::{async_runtime::JoinHandle, AppHandle, Emitter};
+use tokio::sync::{mpsc, Mutex};
 
 use crate::{
     db::repo::task::TasksRepo,
@@ -21,12 +19,17 @@ pub struct TaskPool {
 }
 
 impl TaskPool {
-    pub fn new(size: usize, task_request_tx: mpsc::Sender<TaskRequest>) -> Self {
+    pub fn new(
+        size: usize,
+        task_request_tx: mpsc::Sender<TaskRequest>,
+        app_handle: AppHandle,
+    ) -> Self {
         let (tx, rx) = mpsc::channel(2048);
         let rx = Arc::new(Mutex::new(rx));
         let mut handles = Vec::new();
         for _ in 0..size {
-            let handle = TaskWorker::new(Arc::clone(&rx), task_request_tx.clone());
+            let handle =
+                TaskWorker::new(Arc::clone(&rx), task_request_tx.clone(), app_handle.clone());
             handles.push(handle);
         }
         Self {
@@ -43,8 +46,12 @@ impl TaskPool {
 struct TaskWorker;
 
 impl TaskWorker {
-    fn new(rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Task>>>, task_request_tx: mpsc::Sender<TaskRequest>) -> JoinHandle<()> {
-        let handle = tokio::spawn(async move {
+    fn new(
+        rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Task>>>,
+        task_request_tx: mpsc::Sender<TaskRequest>,
+        app_handle: AppHandle,
+    ) -> JoinHandle<()> {
+        let handle = tauri::async_runtime::spawn(async move {
             loop {
                 let task = { rx.lock().await.recv().await };
                 if let Some(task) = task {
@@ -52,12 +59,11 @@ impl TaskWorker {
                     match runner {
                         Ok(runner) => {
                             let (tx, mut rx) = mpsc::channel::<TaskProgress>(100);
+                            let progress_app = app_handle.clone();
                             tokio::spawn(async move {
                                 while let Some(progress) = rx.recv().await {
-                                    //We can do other things also here, like in some cases stream
-                                    //the progress to frontend, so although this might now look that
-                                    //important, it might just be, we should leave it as is
                                     let _ = TasksRepo::update(&progress);
+                                    let _ = progress_app.emit("task:progress", &progress);
                                 }
                             });
                             let context = TaskContext {
@@ -68,8 +74,12 @@ impl TaskWorker {
                                 task_request_tx: task_request_tx.clone()
                             };
                             match runner(context).await {
-                                Ok(_val) => {
+                                Ok(val) => {
                                     let _ = TasksRepo::mark_complete(&task.id);
+                                    let _ = app_handle.emit(
+                                        "task:done",
+                                        json!({ "task_id": task.id, "result": val }),
+                                    );
                                 }
                                 Err(err) => {
                                     let progress = TaskProgress {
@@ -79,6 +89,7 @@ impl TaskWorker {
                                         status: TaskStatus::Failed,
                                     };
                                     let _ = TasksRepo::update(&progress);
+                                    let _ = app_handle.emit("task:error", &task.id);
                                 }
                             }
                         }

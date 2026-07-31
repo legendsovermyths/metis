@@ -121,9 +121,8 @@ impl DialgoueGenerator {
         reference: DialogueReference,
     ) -> Result<Dialogue> {
         let dialogues = DialoguesRepo::get_for_parent(reference.kind(), reference.parent_id())?;
-        let last_dialogue = dialogues.last();
-        let idx = match last_dialogue {
-            Some(d) => d.idx + 1,
+        let idx = match dialogues.last() {
+            Some(p) => p.read().idx + 1,
             _ => 0,
         };
 

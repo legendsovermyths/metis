@@ -66,7 +66,7 @@ impl<'a> Enhancer {
         };
 
         if parsed.annotations.is_empty() {
-            log::info!("[enhancer] no annotations proposed; keeping un-enhanced figure");
+            crate::info!("[enhancer] no annotations proposed; keeping un-enhanced figure");
             return Ok(Self::keep_unenhanced(request));
         }
 
@@ -89,14 +89,14 @@ impl<'a> Enhancer {
         });
 
         if layout_out.snippets.is_empty() {
-            log::info!("[enhancer] layout produced no snippets; keeping un-enhanced figure");
+            crate::info!("[enhancer] layout produced no snippets; keeping un-enhanced figure");
             return Ok(Self::keep_unenhanced(request));
         }
 
         let spliced = match Self::splice(&source_code, &layout_out.snippets) {
             Some(s) => s,
             None => {
-                log::error!("[enhancer] could not find `{TIKZPICTURE_END}` in illustrator source");
+                crate::error!("[enhancer] could not find `{TIKZPICTURE_END}` in illustrator source");
                 return Ok(Self::keep_unenhanced(request));
             }
         };
@@ -104,7 +104,7 @@ impl<'a> Enhancer {
         let output_path = self.get_output_path(request.chapter_dir)?;
         match execute_latex(&spliced, &output_path) {
             Ok(()) if Path::new(&output_path).exists() => {
-                log::info!("[enhancer] enhanced figure saved to {output_path}");
+                crate::info!("[enhancer] enhanced figure saved to {output_path}");
                 let EnhancerRequest {
                     fallback_blackboard,
                     parts,
@@ -120,11 +120,11 @@ impl<'a> Enhancer {
                 ))
             }
             Ok(()) => {
-                log::error!("[enhancer] latex succeeded but no file at {output_path}");
+                crate::error!("[enhancer] latex succeeded but no file at {output_path}");
                 Ok(Self::keep_unenhanced(request))
             }
             Err(e) => {
-                log::error!("[enhancer] latex compile failed: {e}");
+                crate::error!("[enhancer] latex compile failed: {e}");
                 Ok(Self::keep_unenhanced(request))
             }
         }
@@ -138,13 +138,13 @@ impl<'a> Enhancer {
                 return Ok(Some(parsed));
             }
             if attempt < PARSE_RETRIES {
-                log::warn!("[enhancer] parse failed; retrying with stricter instruction");
+                crate::warn!("[enhancer] parse failed; retrying with stricter instruction");
                 user_message = "Your previous response was not valid JSON matching the schema. \
                                 Respond again with only the JSON object — no markdown, no commentary."
                     .to_string();
             }
         }
-        log::error!("[enhancer] giving up after {PARSE_RETRIES} parse retries");
+        crate::error!("[enhancer] giving up after {PARSE_RETRIES} parse retries");
         Ok(None)
     }
 
@@ -160,7 +160,7 @@ impl<'a> Enhancer {
         match serde_json::from_str::<EnhancerOutput>(&fixed) {
             Ok(v) => Some(v),
             Err(e) => {
-                log::error!("[enhancer] failed to parse LLM response: {e}\nRaw: {raw}");
+                crate::error!("[enhancer] failed to parse LLM response: {e}\nRaw: {raw}");
                 None
             }
         }
@@ -182,7 +182,7 @@ impl<'a> Enhancer {
         match fs::read_to_string(path) {
             Ok(s) => Some(s),
             Err(e) => {
-                log::warn!("[enhancer] could not read illustrator SVG at {path}: {e}");
+                crate::warn!("[enhancer] could not read illustrator SVG at {path}: {e}");
                 None
             }
         }

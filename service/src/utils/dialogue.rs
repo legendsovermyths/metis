@@ -1,6 +1,10 @@
 use serde_json::{json, Value};
 
-use crate::{app::dialogue::Dialogue, db::repo::dialogue::DialoguesRepo, error::Result};
+use crate::{
+    app::dialogue::Dialogue,
+    db::{persistence::Persistent, repo::dialogue::DialoguesRepo, repo::Repository},
+    error::Result,
+};
 
 
 pub fn format_dialogues(dialogues: &[Dialogue]) -> String {
@@ -41,23 +45,35 @@ pub fn format_reference(d: &Dialogue)->String{
 }
 
 pub fn get_before_dialogue(dialogue_id: i64, n: usize, inclusive: bool) -> Result<Vec<Dialogue>> {
-    let anchor = DialoguesRepo::get_by_id(dialogue_id)?;
+    let anchor = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+    let anchor = anchor.read();
     let all = DialoguesRepo::get_for_parent(anchor.reference.kind(), anchor.reference.parent_id())?;
-    let Some(pos) = all.iter().position(|d| d.id == anchor.id) else {
+    let Some(pos) = all.iter().position(|p| p.read().id == anchor.id) else {
         return Ok(Vec::new());
     };
     let end = if inclusive { pos + 1 } else { pos };
     let start = end.saturating_sub(n);
-    Ok(all[start..end].to_vec())
+    Ok(all
+        .into_iter()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .map(Persistent::escape)
+        .collect())
 }
 
 pub fn get_after_dialogue(dialogue_id: i64, n: usize) -> Result<Vec<Dialogue>> {
-    let anchor = DialoguesRepo::get_by_id(dialogue_id)?;
+    let anchor = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+    let anchor = anchor.read();
     let all = DialoguesRepo::get_for_parent(anchor.reference.kind(), anchor.reference.parent_id())?;
-    let Some(pos) = all.iter().position(|d| d.id == anchor.id) else {
+    let Some(pos) = all.iter().position(|p| p.read().id == anchor.id) else {
         return Ok(Vec::new());
     };
     let start = pos + 1;
     let end = (start + n).min(all.len());
-    Ok(all[start..end].to_vec())
+    Ok(all
+        .into_iter()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .map(Persistent::escape)
+        .collect())
 }

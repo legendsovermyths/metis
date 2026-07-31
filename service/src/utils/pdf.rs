@@ -22,10 +22,10 @@ pub fn copy_pdf(src: &str) -> Result<String> {
             "File name not supported".to_string(),
         ))?;
 
-    fs::create_dir_all("../books").map_err(|e| MetisError::UtilsError(e.to_string()))?;
-    let dest = format!("../books/{}", file_name);
+    let books_dir = crate::utils::paths::books_dir();
+    let dest = books_dir.join(file_name);
     fs::copy(src, &dest).map_err(|e| MetisError::UtilsError(e.to_string()))?;
-    Ok(dest)
+    Ok(dest.to_string_lossy().into_owned())
 }
 
 pub fn convert_url_to_pdf(url: &str) -> Result<String> {
@@ -97,9 +97,16 @@ fn find_qpdf() -> Result<PathBuf> {
             }
         }
     }
-    which::which("qpdf").map_err(|_| {
-        MetisError::UtilsError("qpdf not found. Install it: brew install qpdf".to_string())
-    })
+    if let Ok(found) = which::which("qpdf") {
+        return Ok(found);
+    }
+    let homebrew = PathBuf::from("/opt/homebrew/bin/qpdf");
+    if homebrew.exists() {
+        return Ok(homebrew);
+    }
+    Err(MetisError::UtilsError(
+        "qpdf not found. Install it: brew install qpdf".to_string(),
+    ))
 }
 
 pub fn get_page_count(src: &str) -> Result<u32> {
@@ -132,5 +139,34 @@ fn run_qpdf(qpdf: &Path, args: &[&str]) -> Result<()> {
         let stderr = String::from_utf8_lossy(&out.stderr);
         return Err(MetisError::UtilsError(format!("qpdf error: {}", stderr)));
     }
+    Ok(())
+}
+
+pub fn merge_pdfs<P: AsRef<Path>>(input_paths: &[P], output_path: &str) -> Result<()> {
+    let qpdf = find_qpdf()?;
+    if input_paths.is_empty() {
+        return Err(MetisError::ParamsError(
+            "No pdf paths were provided".to_string(),
+        ));
+    }
+
+    let mut cmd = Command::new(qpdf);
+    cmd.arg("--empty").arg("--pages");
+
+    for path in input_paths {
+        cmd.arg(path.as_ref());
+    }
+
+    cmd.arg("--").arg(output_path);
+
+    let output = cmd
+        .output()
+        .map_err(|e| MetisError::UtilsError(format!("Failed to execute qpdf: {}", e)))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(MetisError::UtilsError(format!("qpdf failed: {}", stderr)));
+    }
+
     Ok(())
 }

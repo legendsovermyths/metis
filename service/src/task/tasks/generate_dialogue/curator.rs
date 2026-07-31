@@ -59,7 +59,7 @@ impl<'a> Curator {
         let parsed: CuratorOutput = match serde_json::from_str(&fixed) {
             Ok(v) => v,
             Err(e) => {
-                log::error!("[curator] failed to parse LLM response: {e}\nRaw: {raw}");
+                crate::error!("[curator] failed to parse LLM response: {e}\nRaw: {raw}");
                 return Ok(CuratedResult {
                     dialogue: request.dialogue_content.to_string(),
                     parts: Vec::new(),
@@ -118,7 +118,7 @@ fn ensure_all_parts_revealed(segments: &mut Vec<Segment>, parts: &[ElementDescri
     if missing.is_empty() {
         return;
     }
-    log::warn!(
+    crate::warn!(
         "[curator] {} part(s) left un-addressed, appending to final segment: {:?}",
         missing.len(),
         missing

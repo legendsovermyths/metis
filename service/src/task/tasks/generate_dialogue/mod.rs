@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    app::dialogue::{Dialogue, DialogueReference, ReferenceKind},
-    db::repo::{
-        dialogue::DialoguesRepo, explanations::ExplanationsRepo, journeys::JourneysRepo,
-        task::TasksRepo,
+    app::{
+        dialogue::{Dialogue, DialogueReference, ReferenceKind},
+        explanation::ExplanationArtifacts,
+        journey::artifact::JourneyArtifacts,
     },
+    db::repo::{dialogue::DialoguesRepo, task::TasksRepo, Repository},
     error::Result,
     task::{
         context::TaskContext,
@@ -42,7 +43,10 @@ pub struct GenerationCheckpoint {
 fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueReference>> {
     match reference {
         DialogueReference::Explanation { explanation_id, .. } => {
-            let progress = ExplanationsRepo::get_artifacts(*explanation_id)?.progress;
+            let progress = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?
+                .read()
+                .progress
+                .clone();
             if progress.is_complete {
                 Ok(None)
             } else {
@@ -53,7 +57,10 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
             }
         }
         DialogueReference::Journey { journey_id, .. } => {
-            let progress = JourneysRepo::get_artifacts(*journey_id)?.progress;
+            let progress = Repository::<JourneyArtifacts>::find_by_id(journey_id)?
+                .read()
+                .progress
+                .clone();
             if progress.is_journey_complete {
                 Ok(None)
             } else {
@@ -83,7 +90,7 @@ pub fn generate_dialogues(context: TaskContext) -> TaskFuture {
             };
             let dialogue: Dialogue = generator.generate(&iteration_params).await?;
             checkpoint.count += 1;
-            DialoguesRepo::insert(&dialogue)?;
+            Repository::<Dialogue>::create(dialogue)?;
             let _ = context
                 .progress_tx
                 .send(TaskProgress {

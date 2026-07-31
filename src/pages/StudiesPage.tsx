@@ -100,11 +100,11 @@ export default function StudiesPage() {
   });
 
   useEffect(() => {
-    void refreshLocal();
-  }, [refreshLocal]);
+    void reloadLeaves();
+  }, [reloadLeaves]);
 
   // A finished create task drops a fresh study onto the shelf.
-  useEffect(() => onTaskDone(() => void refreshLocal()), [onTaskDone, refreshLocal]);
+  useEffect(() => onTaskDone(() => void reloadLeaves()), [onTaskDone, reloadLeaves]);
 
   // A freshly created journey opens straight into its detail.
   useEffect(() => {

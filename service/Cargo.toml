@@ -28,13 +28,15 @@ tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-log = "0.4"
-tauri = { version = "2.10.3", features = ["protocol-asset"] }
+tauri = { version = "2.11.1", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
-tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 which = "7"
 tempfile = "3"
 uuid = { version = "1.20.0", features = ["v4"] }
 base64 = "0.22"
+dirs = "6"
 jsonwebtoken = "9"
+dborm = { path = "./dborm" }
+printpdf = { version = "0.11.1", features = ["png", "jpeg", "webp", "gif", "bmp", "tiff"] }
+image = "0.25.6"

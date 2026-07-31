@@ -15,7 +15,7 @@ use crate::{
         llm_client::{LLMChatClient, LLMResponse},
         tool::Tool,
     },
-    logs::{Event, EventHistory, EventType},
+    app::events::{Event, EventHistory, EventType},
 };
 
 pub struct GeminiChat<'a> {
@@ -168,6 +168,7 @@ impl<'a> GeminiChat<'a> {
 
         for (name, args) in function_calls {
             let fn_event = Event::new(name, EventType::FunctionCall, &args.to_string());
+            crate::logs::record(&fn_event);
             self.event_history.events.push(fn_event);
 
             let tool = self
@@ -178,6 +179,7 @@ impl<'a> GeminiChat<'a> {
 
             let result_event =
                 Event::new(name, EventType::FunctionResponse, &result.to_string());
+            crate::logs::record(&result_event);
             self.event_history.events.push(result_event);
 
             response_parts
@@ -188,6 +190,7 @@ impl<'a> GeminiChat<'a> {
     }
 
     async fn run(&mut self, event: Event) -> Result<LLMResponse> {
+        crate::logs::record(&event);
         self.event_history.events.push(event.clone());
         self.contents
             .push(json!({"role": "user", "parts": [{"text": event.content}]}));
@@ -211,16 +214,18 @@ impl<'a> GeminiChat<'a> {
             if let Some(text) = Self::extract_text(parts) {
                 self.contents.push(model_content);
                 let event = Event::new("model", EventType::LlmMessage, &text);
+                crate::logs::record(&event);
                 self.event_history.events.push(event);
                 return Ok(LLMResponse::from(text));
             }
 
-            log::warn!(
+            crate::warn!(
                 "[gemini_chat] No usable text in model response. Raw parts: {}",
                 parts
             );
             self.contents.push(model_content);
             let event = Event::new("model", EventType::LlmMessage, "");
+            crate::logs::record(&event);
             self.event_history.events.push(event);
             return Ok(LLMResponse::from(""));
         }

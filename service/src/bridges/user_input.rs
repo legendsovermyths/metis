@@ -2,12 +2,11 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use log::warn;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
 
-use crate::{app::user_input::resource::Resource, db::repo::resources::ResourcesRepo, error::{MetisError, Result}};
+use crate::{app::user_input::resource::Resource, db::repo::Repository, error::{MetisError, Result}};
 
 const REQUEST_EVENT: &str = "agent:request_input";
 
@@ -53,8 +52,7 @@ impl UserInputBridge {
         let id = rx.await
             .map_err(|_| MetisError::AgentError("user input request was cancelled".into()))?;
         
-        ResourcesRepo::get(id)
-        
+        Repository::<Resource>::find_by_id(&id).map(|p| p.read().clone())
     }
 
     pub async fn resolve(request_id: &str, id: i64) {

@@ -4,8 +4,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::AppContext,
-    db::repo::{dialogue::DialoguesRepo, journeys::JourneysRepo},
+    app::{journey::artifact::JourneyArtifacts, AppContext},
+    db::repo::Repository,
     service::handler::BoxFuture,
 };
 
@@ -17,13 +17,12 @@ pub struct DeleteJourneyParams {
 pub fn delete_journey(params: DeleteJourneyParams, _context: &AppContext) -> BoxFuture {
     Box::pin(async move {
         let journey_id = params.id;
-        DialoguesRepo::delete_for_parent(crate::app::dialogue::ReferenceKind::Journey, journey_id)?;
 
-        let journey_artifacts = JourneysRepo::get_artifacts(journey_id)?;
-
-        let chapter_dir = journey_artifacts.chapter_dir;
+        let journey_artifacts = Repository::<JourneyArtifacts>::find_by_id(&journey_id)?;
+        let chapter_dir = journey_artifacts.read().chapter_dir.clone();
         fs::remove_dir_all(chapter_dir)?;
-        JourneysRepo::delete_single(journey_id)?;
+
+        Repository::<JourneyArtifacts>::delete(&journey_id)?;
 
         Ok(json!({"success": true}).into())
     })

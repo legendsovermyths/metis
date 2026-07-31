@@ -1,0 +1,117 @@
+[
+  {
+    "topic": "Average and instantaneous speed",
+    "start_page": 1,
+    "end_page": 3
+  },
+  {
+    "topic": "Average rates of change and secant lines",
+    "start_page": 3,
+    "end_page": 3
+  },
+  {
+    "topic": "Defining the slope of a curve",
+    "start_page": 3,
+    "end_page": 5
+  },
+  {
+    "topic": "Instantaneous rates of change and tangent lines",
+    "start_page": 5,
+    "end_page": 6
+  },
+  {
+    "topic": "Limits of function values",
+    "start_page": 8,
+    "end_page": 10
+  },
+  {
+    "topic": "The Limit Laws",
+    "start_page": 11,
+    "end_page": 12
+  },
+  {
+    "topic": "Eliminating common factors from zero denominators",
+    "start_page": 12,
+    "end_page": 14
+  },
+  {
+    "topic": "The precise definition of a limit",
+    "start_page": 19,
+    "end_page": 22
+  },
+  {
+    "topic": "Finding deltas algebraically",
+    "start_page": 22,
+    "end_page": 24
+  },
+  {
+    "topic": "One-sided limits",
+    "start_page": 28,
+    "end_page": 31
+  },
+  {
+    "topic": "The Sandwich Theorem",
+    "start_page": 14,
+    "end_page": 15
+  },
+  {
+    "topic": "Limits involving (sin θ)/θ",
+    "start_page": 31,
+    "end_page": 33
+  },
+  {
+    "topic": "Infinite limits",
+    "start_page": 51,
+    "end_page": 54
+  },
+  {
+    "topic": "Vertical asymptotes",
+    "start_page": 54,
+    "end_page": 56
+  },
+  {
+    "topic": "Continuity at a point",
+    "start_page": 35,
+    "end_page": 38
+  },
+  {
+    "topic": "Continuous extension to a point",
+    "start_page": 43,
+    "end_page": 44
+  },
+  {
+    "topic": "Properties of continuous functions",
+    "start_page": 38,
+    "end_page": 41
+  },
+  {
+    "topic": "The Intermediate Value Theorem",
+    "start_page": 41,
+    "end_page": 42
+  },
+  {
+    "topic": "Finite limits at infinity",
+    "start_page": 46,
+    "end_page": 48
+  },
+  {
+    "topic": "Horizontal asymptotes",
+    "start_page": 48,
+    "end_page": 51
+  },
+  {
+    "topic": "Limits at infinity of rational functions",
+    "start_page": 48,
+    "end_page": 48
+  },
+  {
+    "topic": "Dominant terms",
+    "start_page": 55,
+    "end_page": 56
+  },
+  {
+    "topic": "Oblique asymptotes",
+    "start_page": 51,
+    "end_page": 51
+  }
+]

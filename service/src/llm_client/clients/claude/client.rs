@@ -4,7 +4,7 @@ use crate::{
     constants::{BEDROCK_ANTHROPIC_VERSION, BEDROCK_BASE_URL},
     error::{MetisError, Result},
     llm_client::llm_client::{LLMClient, LLMResponse},
-    logs::Event,
+    app::events::Event,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -86,7 +86,11 @@ impl ClaudeClient {
 #[async_trait]
 impl LLMClient for ClaudeClient {
     async fn generate(&self, prompt: String) -> Result<LLMResponse> {
-        Event::new("user", crate::logs::EventType::UserMessage, &prompt);
+        crate::logs::record(&Event::new(
+            "user",
+            crate::app::events::EventType::UserMessage,
+            &prompt,
+        ));
         let api_key = env::var("BEDROCK_API_KEY")?;
         let url = format!("{}/model/{}/invoke", self.base_url, self.model_name);
         let request = self.build_request(&prompt);
@@ -105,7 +109,11 @@ impl LLMClient for ClaudeClient {
         }
         let response: Value = response.json().await?;
         let result = Self::parse_response(response)?;
-        Event::new("model", crate::logs::EventType::LlmMessage, &result);
+        crate::logs::record(&Event::new(
+            "model",
+            crate::app::events::EventType::LlmMessage,
+            &result,
+        ));
         Ok(LLMResponse::from(result))
     }
     fn set_system_prompt(&mut self, prompt: String) {

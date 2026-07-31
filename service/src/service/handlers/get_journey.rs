@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
 use crate::{
-    app::AppContext,
-    db::repo::journeys::JourneysRepo,
-    error::{MetisError, Result}, service::handler::BoxFuture,
+    app::{journey::artifact::JourneyArtifacts, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
@@ -13,8 +13,7 @@ pub struct GetJourneyParams {
 
 pub fn get_journey(params: GetJourneyParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        let row = JourneysRepo::get(params.id)?
-            .ok_or_else(|| MetisError::NotFound(format!("journey {}", params.id)))?;
-        Ok(serde_json::to_value(row)?.into())
+        let journey = Repository::<JourneyArtifacts>::find_by_id(&params.id)?;
+        Ok(serde_json::to_value(journey.read())?.into())
     })
 }

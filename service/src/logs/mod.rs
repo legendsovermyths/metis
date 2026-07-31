@@ -1,73 +1,80 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 
 use chrono::Local;
-use serde::{Deserialize, Serialize};
 
-const LOG_DIR: &str = "../metis_logs";
+const PREVIEW_LIMIT: usize = 200;
 
 static LOGGER: LazyLock<Mutex<Logger>> = LazyLock::new(|| Mutex::new(Logger::new()));
 
-pub type Events = Vec<Event>;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum EventType {
-    UserMessage,
-    LlmMessage,
-    FunctionCall,
-    FunctionResponse,
-    UserRequest,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Level {
+    Debug,
+    Info,
+    Warn,
+    Error,
 }
 
-impl std::fmt::Display for EventType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let label = match self {
-            EventType::UserMessage => "user_message",
-            EventType::LlmMessage => "llm_message",
-            EventType::FunctionCall => "function_call",
-            EventType::FunctionResponse => "function_response",
-            EventType::UserRequest => "user_request",
-        };
-        write!(f, "{}", label)
+impl Level {
+    fn label(self) -> &'static str {
+        match self {
+            Level::Debug => "DEBUG",
+            Level::Info => "INFO ",
+            Level::Warn => "WARN ",
+            Level::Error => "ERROR",
+        }
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
-pub struct Event {
-    pub name: String,
-    pub event_type: EventType,
-    pub content: String,
-    pub timestamp: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct EventHistory {
-    pub events: Events,
-}
-
-impl EventHistory {
-    pub fn new() -> Self {
-        Self { events: vec![] }
-    }
-
-    pub fn add_event(&mut self, event: Event) {
-        self.events.push(event);
+fn min_level() -> Level {
+    if cfg!(debug_assertions) {
+        Level::Debug
+    } else {
+        Level::Info
     }
 }
 
-impl Event {
-    pub fn new(name: impl Into<String>, event_type: EventType, content: impl Into<String>) -> Self {
-        let event = Self {
-            name: name.into(),
-            event_type,
-            content: content.into(),
-            timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        };
-        LOGGER.lock().expect("logger lock poisoned").log(&event);
-        event
+pub fn init() {
+    LazyLock::force(&LOGGER);
+}
+
+pub fn log(level: Level, target: &str, message: String) {
+    if level < min_level() {
+        return;
     }
+    LOGGER
+        .lock()
+        .expect("logger lock poisoned")
+        .write(level, target, &message);
+}
+
+pub trait Loggable {
+    fn log_target(&self) -> &'static str;
+    fn log_summary(&self) -> String;
+    fn log_level(&self) -> Level {
+        Level::Info
+    }
+}
+
+pub fn record(item: &impl Loggable) {
+    log(item.log_level(), item.log_target(), item.log_summary());
+}
+
+pub fn preview(content: &str) -> String {
+    let flat = flatten(content);
+    let count = flat.chars().count();
+    if count > PREVIEW_LIMIT {
+        let head: String = flat.chars().take(PREVIEW_LIMIT).collect();
+        format!("{head}… ({count} chars)")
+    } else {
+        flat
+    }
+}
+
+fn flatten(s: &str) -> String {
+    s.replace(['\n', '\r'], " ")
 }
 
 struct Logger {
@@ -76,14 +83,12 @@ struct Logger {
 
 impl Logger {
     fn new() -> Self {
-        let log_dir = Path::new(LOG_DIR);
-        fs::create_dir_all(log_dir).expect("Failed to create metis_logs directory");
+        let log_dir = crate::utils::paths::logs_dir();
 
         let session_ts = Local::now().format("%Y-%m-%d_%H-%M-%S");
         let log_file = log_dir.join(format!("session_{session_ts}.log"));
 
         let header = format!("METIS V2 - Session Log\nStarted at {session_ts}\n\n");
-
         let mut file = fs::File::create(&log_file).expect("Failed to create log file");
         file.write_all(header.as_bytes())
             .expect("Failed to write log header");
@@ -91,22 +96,51 @@ impl Logger {
         Self { log_file }
     }
 
-    fn log(&self, event: &Event) {
+    fn write(&self, level: Level, target: &str, message: &str) {
+        let ts = Local::now().format("%H:%M:%S");
+        let line = format!(
+            "[{ts}] {level} {target} — {message}\n",
+            level = level.label(),
+            message = flatten(message),
+        );
+
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.log_file)
             .expect("Failed to open log file");
+        file.write_all(line.as_bytes())
+            .expect("Failed to write log line");
 
-        let entry = format!(
-            "[{timestamp}] {event_type} ({name})\n{content}\n\n",
-            timestamp = event.timestamp,
-            event_type = event.event_type,
-            name = event.name,
-            content = event.content,
-        );
-
-        file.write_all(entry.as_bytes())
-            .expect("Failed to write event to log");
+        print!("{line}");
+        let _ = std::io::stdout().flush();
     }
+}
+
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        $crate::logs::log($crate::logs::Level::Debug, module_path!(), format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => {
+        $crate::logs::log($crate::logs::Level::Info, module_path!(), format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => {
+        $crate::logs::log($crate::logs::Level::Warn, module_path!(), format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => {
+        $crate::logs::log($crate::logs::Level::Error, module_path!(), format!($($arg)*))
+    };
 }

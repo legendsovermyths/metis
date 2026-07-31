@@ -112,8 +112,11 @@ export function JourneyCreationProvider({ children }: { children: React.ReactNod
 
   const pendingJourneys = useMemo<PendingJourney[]>(() => {
     return byType("create_journey").map((task) => {
+      const ri = task.params.response_instruction;
       const chapter =
-        typeof task.params.chapter_title === "string" ? task.params.chapter_title : "";
+        ri && typeof ri === "object" && "ChapterTitle" in ri
+          ? String((ri as { ChapterTitle: string }).ChapterTitle)
+          : "";
       return { tempId: task.id, chapterTitle: chapter };
     });
   }, [byType]);

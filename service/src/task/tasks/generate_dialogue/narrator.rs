@@ -5,12 +5,10 @@ use crate::{
         dialogue::{
             blackboard::BlackboardInstructions, Dialogue, DialogueReference, ReferenceKind,
         },
+        explanation::ExplanationArtifacts,
         journey::artifact,
     },
-    db::repo::{
-        appdata::AppDataRepo, dialogue::DialoguesRepo, explanations::ExplanationsRepo,
-        journeys::JourneysRepo,
-    },
+    db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, Repository},
     error::{MetisError, Result},
     llm_client::{
         factory::{ClientType, LLMClientFactory},
@@ -54,15 +52,13 @@ impl Narrator {
         let recent_dialogues = &dialogues[dialogues.len().saturating_sub(10)..];
         let recent_dialogue_content = recent_dialogues
             .iter()
-            .map(|dialogue| dialogue.content.clone())
+            .map(|p| p.read().content.clone())
             .collect::<Vec<String>>()
             .join("\n\n---\n\n");
         let blackboard_state = dialogues
             .last()
-            .unwrap_or(&Dialogue::default())
-            .blackboard
-            .description
-            .clone();
+            .map(|p| p.read().blackboard.description.clone())
+            .unwrap_or_default();
 
         let prompt = match request.dialogue_reference {
             DialogueReference::Journey {
@@ -70,7 +66,8 @@ impl Narrator {
                 arc_idx,
                 topic_idx,
             } => {
-                let artifact = JourneysRepo::get_artifacts(journey_id)?;
+                let artifact = Repository::<artifact::JourneyArtifacts>::find_by_id(&journey_id)?;
+                let artifact = artifact.read();
                 let arc = artifact.get_arc(arc_idx);
                 let arc_json = serde_json::to_string_pretty(&arc)
                     .map_err(|e| MetisError::JsonError(e.to_string()))?;
@@ -94,7 +91,8 @@ impl Narrator {
                 )
             }
             DialogueReference::Explanation { step_idx, .. } => {
-                let artifact = ExplanationsRepo::get_artifacts(request.parent_id)?;
+                let artifact = Repository::<ExplanationArtifacts>::find_by_id(&request.parent_id)?;
+                let artifact = artifact.read();
                 let plan = serde_json::to_string_pretty(&artifact.explanation)
                     .map_err(|e| MetisError::JsonError(e.to_string()))?;
 

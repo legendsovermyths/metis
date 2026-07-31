@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getExplanation, teachingInit, type ExplanationRow } from "@/lib/service";
+import { explanationCounts, getExplanation, teachingInit, type ExplanationRow } from "@/lib/service";
 import { journeyGlyph } from "@/lib/editorial";
 
 export default function ExplanationDetailPage() {
@@ -31,8 +31,9 @@ export default function ExplanationDetailPage() {
   }, [numericId]);
 
   const steps = row?.explanation.steps ?? [];
-  const completedSteps = row?.completed_steps ?? 0;
-  const totalSteps = row?.total_steps ?? 0;
+  const { completed: completedSteps, total: totalSteps } = row
+    ? explanationCounts(row)
+    : { completed: 0, total: 0 };
   const allDone = totalSteps > 0 && completedSteps >= totalSteps;
   const progressRatio = totalSteps > 0 ? completedSteps / totalSteps : 0;
 

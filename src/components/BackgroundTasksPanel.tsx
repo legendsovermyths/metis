@@ -7,22 +7,24 @@ import { cn } from "@/lib/utils";
 import type { BackgroundTask } from "@/lib/service";
 
 const TASK_LABELS: Record<string, string> = {
-  analyse_book: "Analysing book",
   create_journey: "Creating journey",
+  create_explanation: "Composing explanation",
   generate_dialogues: "Preparing dialogues",
 };
+
+function chapterTitleOf(params: Record<string, unknown>): string {
+  const ri = params.response_instruction;
+  return ri && typeof ri === "object" && "ChapterTitle" in ri
+    ? String((ri as { ChapterTitle: string }).ChapterTitle)
+    : "";
+}
 
 function describeTask(task: BackgroundTask): string {
   const label = TASK_LABELS[task.name] ?? task.name;
   const params = task.params ?? {};
   switch (task.name) {
-    case "analyse_book": {
-      const path = typeof params.path === "string" ? params.path : "";
-      const file = path.split(/[\\/]/).pop() || path;
-      return file ? `${label}: ${file}` : label;
-    }
     case "create_journey": {
-      const chapter = typeof params.chapter_title === "string" ? params.chapter_title : "";
+      const chapter = chapterTitleOf(params);
       return chapter ? `${label}: ${chapter}` : label;
     }
     case "generate_dialogues": {

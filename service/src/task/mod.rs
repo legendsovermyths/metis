@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::{
@@ -8,8 +9,8 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
-            analyse_book::analyse_book, create_explainer::create_explanation,
-            create_journey::create_journey, generate_dialogue::generate_dialogues,
+            create_explainer::create_explanation, create_journey::create_journey,
+            generate_dialogue::generate_dialogues,
         },
     },
 };
@@ -22,6 +23,7 @@ pub mod progress;
 pub mod task_type;
 pub mod tasks;
 
+#[derive(Serialize, Clone)]
 pub struct Task {
     pub id: String,
     pub name: String,
@@ -39,7 +41,6 @@ impl Task {
             MetisError::InternalDataError("the task name does not match any task type".to_string())
         })? {
             TaskType::CreateJourney => Ok(create_journey),
-            TaskType::AnalyseBook => Ok(analyse_book),
             TaskType::GenerateDialogues => Ok(generate_dialogues),
             TaskType::CreateExplanation => Ok(create_explanation),
         }

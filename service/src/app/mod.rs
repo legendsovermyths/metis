@@ -6,17 +6,19 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use crate::agent::handler::AgentHandler;
+use crate::agent::AgentResponseInstruction;
 use crate::api::request::Request;
 use crate::app::state::{MetisPhase, TeachingContext};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
-use crate::logs::EventHistory;
+use crate::app::events::EventHistory;
 use crate::service::handler::ServiceHandler;
 use crate::task::manager::TaskMangager;
 use crate::task::TaskRequest;
 use crate::utils::python::ensure_venv;
 pub mod book;
 pub mod dialogue;
+pub mod events;
 pub mod explanation;
 pub mod journey;
 pub mod notes;
@@ -86,31 +88,14 @@ impl App<'_> {
 }
 
 pub struct AppContext {
-    pub session: Arc<Mutex<SessionContext>>,
     pub chat: Arc<Mutex<ChatContext>>,
     pub teaching: Arc<Mutex<TeachingContext>>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct AppContextValue {
-    pub session: SessionContext,
     pub chat: ChatContext,
     pub teaching: TeachingContext,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct SessionContext {
-    pub chapter_title: String,
-    pub book_id: Option<i64>,
-}
-
-impl SessionContext {
-    fn new() -> Self {
-        Self {
-            chapter_title: String::new(),
-            book_id: None,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -119,9 +104,12 @@ pub enum PendingAction {
     Explainer {
         problem_resource_id: i64,
         solution_resource_id: i64,
+        notes: String,
     },
     Journey {
         resource_id: i64,
+        instruction: AgentResponseInstruction,
+        notes: String,
     },
 }
 
@@ -158,25 +146,23 @@ impl AppContext {
         } else {
             false
         };
+        let teaching = match AppDataRepo::get("last_study")? {
+            Some(raw) => serde_json::from_str(&raw).unwrap_or_default(),
+            None => TeachingContext::default(),
+        };
         Ok(Self {
             chat: Arc::new(Mutex::new(ChatContext::with(if onboarded {
                 MetisPhase::Advising
             } else {
                 MetisPhase::Onboarding
             }))),
-            session: Arc::new(Mutex::new(SessionContext::new())),
-            teaching: Arc::new(Mutex::new(TeachingContext::default())),
+            teaching: Arc::new(Mutex::new(teaching)),
         })
     }
 
     pub async fn value(&self) -> Result<AppContextValue> {
         let chat = self.chat.lock().await.clone();
-        let session = self.session.lock().await.clone();
         let teaching = self.teaching.lock().await.clone();
-        Ok(AppContextValue {
-            session,
-            chat,
-            teaching,
-        })
+        Ok(AppContextValue { chat, teaching })
     }
 }

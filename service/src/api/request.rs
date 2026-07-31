@@ -1,7 +1,10 @@
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::task::task_type::TaskType;
+use crate::{
+    logs::{self, Loggable},
+    task::task_type::TaskType,
+};
 
 #[derive(Deserialize)]
 #[serde(tag = "api_type")]
@@ -19,9 +22,30 @@ pub enum Request {
     },
 }
 
-#[derive(PartialEq, Eq, Hash, Deserialize)]
+impl Loggable for Request {
+    fn log_target(&self) -> &'static str {
+        "request"
+    }
+
+    fn log_summary(&self) -> String {
+        match self {
+            Request::Service {
+                request_type,
+                params,
+            } => format!("service {request_type:?} {}", logs::preview(&params.to_string())),
+            Request::Task { task_type, params } => {
+                format!("task {task_type:?} {}", logs::preview(&params.to_string()))
+            }
+            Request::UserMessage { params } => {
+                format!("user_message {}", logs::preview(&params.to_string()))
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Deserialize)]
 pub enum ServiceRequestType {
-    GetAllBooks,
+    GetAllResources,
     GetAllDialogues,
     GetAllJourneys,
     GetContext,
@@ -30,7 +54,6 @@ pub enum ServiceRequestType {
     ListTasks,
     TeachingInit,
     SetTeaching,
-    SetSession,
     SetChat,
     SetDialogue,
     SubmitUserInput,

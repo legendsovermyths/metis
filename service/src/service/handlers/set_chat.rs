@@ -1,7 +1,7 @@
 use serde_json::json;
 
 use crate::{
-    app::{state::MetisPhase, AppContext, ChatContext}, logs::EventHistory, service::handler::BoxFuture,
+    app::{state::MetisPhase, AppContext, ChatContext}, app::events::EventHistory, service::handler::BoxFuture,
 };
 
 pub fn set_chat(mut chat: ChatContext, context: &AppContext) -> BoxFuture {

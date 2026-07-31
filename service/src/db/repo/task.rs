@@ -1,17 +1,16 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use dborm::DbRow;
 use serde_json::Value;
 
 use crate::{
-    db::get_database,
-    error::{MetisError, Result},
+    db::{persistence::Persistent, object::FromDbRow, repo::Repository},
+    error::Result,
     task::{
         progress::{TaskProgress, TaskStatus},
         Task,
     },
 };
-
-pub struct TasksRepo;
 
 fn now_secs() -> i64 {
     SystemTime::now()
@@ -20,177 +19,92 @@ fn now_secs() -> i64 {
         .as_secs() as i64
 }
 
-fn value_from_json_col(raw: Option<String>) -> Result<Value> {
-    match raw {
-        None => Ok(Value::Null),
-        Some(s) if s.is_empty() => Ok(Value::Null),
-        Some(s) => Ok(serde_json::from_str(&s)?),
+#[derive(Debug, Clone, DbRow)]
+#[db(table = "background_tasks")]
+pub struct TaskRecord {
+    #[db(id, assigned)]
+    pub id: String,
+    pub name: String,
+    pub status: TaskStatus,
+    #[db(json)]
+    pub params: Value,
+    #[db(json)]
+    pub checkpoint: Value,
+    pub error: Option<String>,
+    pub identity: Option<String>,
+    #[db(insert_only)]
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl FromDbRow for Task {
+    type DbRow = TaskRecord;
+
+    fn from_row_type(record: TaskRecord) -> Result<Self> {
+        Ok(Task {
+            id: record.id,
+            name: record.name,
+            params: record.params,
+            checkpoint: record.checkpoint,
+            status: record.status,
+            error: record.error.unwrap_or_default(),
+            identity: record.identity,
+        })
+    }
+
+    fn into_row_type(&self) -> TaskRecord {
+        let ts = now_secs();
+        TaskRecord {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            status: self.status,
+            params: self.params.clone(),
+            checkpoint: self.checkpoint.clone(),
+            error: Some(self.error.clone()),
+            identity: self.identity.clone(),
+            created_at: ts,
+            updated_at: ts,
+        }
     }
 }
 
-impl TasksRepo {
+pub struct TasksRepo;
 
+impl TasksRepo {
     pub fn dedup(identity: &str) -> Result<bool> {
         if identity.is_empty() {
             return Ok(true);
         }
-        let conn = get_database().conn.lock().unwrap();
-        let count: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM background_tasks
-             WHERE identity = ?1 AND status IN ('pending', 'running')",
+        Ok(!Repository::<Task>::exists(
+            "identity = ?1 AND status IN ('pending', 'running')",
             rusqlite::params![identity],
-            |row| row.get(0),
-        )?;
-        Ok(count == 0)
-    }
-
-    pub fn insert(task: &Task) -> Result<()> {
-        let params_json = serde_json::to_string(&task.params)?;
-        let checkpoint_json = serde_json::to_string(&task.checkpoint)?;
-        let status_str = match task.status {
-            TaskStatus::Pending => "pending",
-            TaskStatus::Running => "running",
-            TaskStatus::Completed => "completed",
-            TaskStatus::Failed => "failed",
-        };
-        let ts = now_secs();
-        let conn = get_database().conn.lock().unwrap();
-        conn.execute(
-            "INSERT INTO background_tasks (id, name, status, params, checkpoint, error, identity, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            rusqlite::params![
-                task.id,
-                task.name,
-                status_str,
-                params_json,
-                checkpoint_json,
-                task.error,
-                task.identity,
-                ts,
-                ts,
-            ],
-        )?;
-        Ok(())
+        )?)
     }
 
     pub fn list_active() -> Result<Vec<Task>> {
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT id, name, status, params, checkpoint, error, identity
-             FROM background_tasks
+        Ok(Repository::<Task>::query(
+            "SELECT * FROM background_tasks
              WHERE status IN ('pending', 'running')
              ORDER BY created_at ASC",
-        )?;
-        let mut rows = stmt.query([])?;
-        let mut out = Vec::new();
-        while let Some(row) = rows.next()? {
-            let status_str: String = row.get(2)?;
-            let status = match status_str.as_str() {
-                "pending" => TaskStatus::Pending,
-                "running" => TaskStatus::Running,
-                "completed" => TaskStatus::Completed,
-                "failed" => TaskStatus::Failed,
-                other => {
-                    return Err(MetisError::ValueParseError(format!(
-                        "unknown background_tasks.status: {other}"
-                    )));
-                }
-            };
-            out.push(Task {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                status,
-                params: value_from_json_col(row.get(3)?)?,
-                checkpoint: value_from_json_col(row.get(4)?)?,
-                error: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
-                identity: row.get(6)?,
-            });
-        }
-        Ok(out)
-    }
-
-    pub fn get(id: &str) -> Result<Option<Task>> {
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT id, name, status, params, checkpoint, error, identity
-             FROM background_tasks WHERE id = ?1",
-        )?;
-        let mut rows = stmt.query(rusqlite::params![id])?;
-        if let Some(row) = rows.next()? {
-            let status_str: String = row.get(2)?;
-            let status = match status_str.as_str() {
-                "pending" => TaskStatus::Pending,
-                "running" => TaskStatus::Running,
-                "completed" => TaskStatus::Completed,
-                "failed" => TaskStatus::Failed,
-                other => {
-                    return Err(MetisError::ValueParseError(format!(
-                        "unknown background_tasks.status: {other}"
-                    )));
-                }
-            };
-            Ok(Some(Task {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                status,
-                params: value_from_json_col(row.get(3)?)?,
-                checkpoint: value_from_json_col(row.get(4)?)?,
-                error: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
-                identity: row.get(6)?,
-            }))
-        } else {
-            Ok(None)
-        }
+            &[],
+        )?
+        .into_iter()
+        .map(Persistent::escape)
+        .collect())
     }
 
     pub fn update(progress: &TaskProgress) -> Result<()> {
-        let checkpoint_json = serde_json::to_string(&progress.checkpoint)?;
-        let updated_at = now_secs();
-        let conn = get_database().conn.lock().unwrap();
-        let rows_affected = conn.execute(
-            "UPDATE background_tasks
-             SET checkpoint = ?2,
-                 status = ?3,
-                 error = ?4,
-                 updated_at = ?5
-             WHERE id = ?1",
-            rusqlite::params![
-                progress.task_id,
-                checkpoint_json,
-                match progress.status {
-                    TaskStatus::Pending => "pending",
-                    TaskStatus::Running => "running",
-                    TaskStatus::Completed => "completed",
-                    TaskStatus::Failed => "failed",
-                },
-                progress.message,
-                updated_at,
-            ],
-        )?;
-        if rows_affected == 0 {
-            return Err(MetisError::NotFound(format!(
-                "background task {} — update affected zero rows",
-                progress.task_id
-            )));
-        }
+        let mut task = Repository::<Task>::find_by_id(&progress.task_id)?;
+        let mut writer = task.write();
+        writer.checkpoint = progress.checkpoint.clone();
+        writer.status = progress.status;
+        writer.error = progress.message.clone();
         Ok(())
     }
 
     pub fn mark_complete(id: &str) -> Result<()> {
-        let updated_at = now_secs();
-        let conn = get_database().conn.lock().unwrap();
-        let rows_affected = conn.execute(
-            "UPDATE background_tasks
-             SET status = ?2,
-                 updated_at = ?3
-             WHERE id = ?1",
-            rusqlite::params![id, "completed", updated_at],
-        )?;
-        if rows_affected == 0 {
-            return Err(MetisError::NotFound(format!(
-                "background task {id} — mark_complete affected zero rows"
-            )));
-        }
+        let mut task = Repository::<Task>::find_by_id(&id.to_string())?;
+        task.write().status = TaskStatus::Completed;
         Ok(())
     }
 }

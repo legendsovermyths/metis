@@ -75,7 +75,7 @@ pub fn layout(input: LayoutInput) -> LayoutOutput {
                 let Some(target) = ann.target_gid() else { continue };
                 match bboxes.get(target) {
                     Some(bb) => anchored.push((ann, *bb)),
-                    None => log::warn!(
+                    None => crate::warn!(
                         "[layout] dropping annotation; unknown target_gid '{}'",
                         target
                     ),

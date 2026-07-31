@@ -2,8 +2,11 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{notes::Anchor, AppContext},
-    db::repo::notes::NotesRepo,
+    app::{
+        notes::{Anchor, Note},
+        AppContext,
+    },
+    db::repo::Repository,
     service::handler::BoxFuture,
 };
 
@@ -17,12 +20,19 @@ pub struct CreateNoteParams {
 
 pub fn create_note(params: CreateNoteParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        let id = NotesRepo::insert(
-            &params.title,
-            &params.content,
-            params.anchor.as_ref(),
-            params.folder_id,
-        )?;
-        Ok(json!({ "id": id }).into())
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        let note = Repository::<Note>::create(Note {
+            id: None,
+            title: params.title,
+            content: params.content,
+            anchor: params.anchor,
+            folder_id: params.folder_id,
+            created_at: now,
+            updated_at: now,
+        })?;
+        Ok(json!({ "id": note.read().id }).into())
     })
 }

@@ -1,6 +1,10 @@
 use serde::Deserialize;
 
-use crate::{app::AppContext, db::repo::folders::FoldersRepo, service::handler::BoxFuture};
+use crate::{
+    app::{explanation::folder::Folder, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
+};
 
 #[derive(Deserialize)]
 pub struct GetFoldersParams {
@@ -14,7 +18,13 @@ fn default_scope() -> String {
 
 pub fn get_folders(params: GetFoldersParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        let folders = FoldersRepo::get_all(&params.scope)?;
+        let mut folders = Repository::<Folder>::find_all_by("scope", params.scope)?;
+        folders.sort_by(|a, b| {
+            a.read()
+                .name
+                .to_lowercase()
+                .cmp(&b.read().name.to_lowercase())
+        });
         Ok(serde_json::to_value(folders)?.into())
     })
 }

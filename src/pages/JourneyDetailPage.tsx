@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { getJourney, teachingInit, type JourneyRow } from "@/lib/service";
+import { getJourney, journeyCounts, teachingInit, type JourneyRow } from "@/lib/service";
 import { journeyGlyph, toRoman } from "@/lib/editorial";
 
 export default function JourneyDetailPage() {
@@ -41,8 +41,9 @@ export default function JourneyDetailPage() {
       .finally(() => setLoading(false));
   }, [numericId]);
 
-  const completedTopics = row?.completed_topics ?? 0;
-  const totalTopics = row?.total_topics ?? 0;
+  const { completed: completedTopics, total: totalTopics } = row
+    ? journeyCounts(row)
+    : { completed: 0, total: 0 };
 
   const completedSet = useMemo(() => {
     const set = new Set<string>();

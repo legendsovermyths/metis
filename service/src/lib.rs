@@ -30,20 +30,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|tauri_app| {
-            let log_level = if cfg!(debug_assertions) {
-                log::LevelFilter::Debug
-            } else {
-                log::LevelFilter::Info
-            };
+            logs::init();
             crate::bridges::user_input::init(tauri_app.app_handle().clone());
             let app = App::new(context, tauri_app.app_handle().clone())
                 .expect("failed to initialize App");
             tauri_app.manage(Arc::new(app));
-            tauri_app.handle().plugin(
-                tauri_plugin_log::Builder::default()
-                    .level(log_level)
-                    .build(),
-            )?;
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -55,11 +46,13 @@ async fn handle_request(
     app: tauri::State<'_, Arc<App<'_>>>,
     request: Request,
 ) -> Result<Response, String> {
+    logs::record(&request);
     let response = app.handle_request(request).await;
     let mut response = match response {
         Ok(val) => Response::ok(val),
         Err(err) => Response::err(err.to_string()),
     };
+    logs::record(&response);
     let context = app.context.value().await.unwrap();
     response.context = Some(context);
     Ok(response)

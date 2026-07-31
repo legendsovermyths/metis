@@ -1,17 +1,14 @@
-use std::io::Write;
+use std::fs;
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::Deserialize;
 
 use crate::{
-    app::user_input::resource::Resource,
     error::{MetisError, Result},
     utils::{
-        image::convert_image_to_markdown,
-        journey::convert_to_markdown,
-        page::is_usable_page,
-        pdf::{convert_url_to_pdf, get_page_count},
-        text::convert_text_to_markdown,
+        image::image_bytes_to_pdf,
+        pdf::convert_url_to_pdf,
+        text::text_to_pdf,
     },
 };
 pub mod resource;
@@ -25,40 +22,39 @@ pub enum UserInput {
 }
 
 impl UserInput {
-    pub async fn to_markdown(&self) -> Result<String> {
+    pub fn to_pdf(&self) -> Result<String> {
+        let temp_dir = crate::utils::paths::tmp_dir();
+        let destination = temp_dir.join(format!("{}.pdf", uuid::Uuid::new_v4().to_string()));
         match self {
             Self::Url(url) => {
                 let pdf_url = convert_url_to_pdf(&url)?;
-                let num_pages = get_page_count(&pdf_url)?;
-                let markdown = convert_to_markdown(&pdf_url, num_pages as usize).await?;
-                if !is_usable_page(&markdown).await? {
-                    return Err(MetisError::UtilsError(
-                        "Couldn't read that page — it's behind a bot check or returned no content. Paste the text or upload the PDF instead.".into(),
-                    ));
-                }
-                Ok(markdown)
+                fs::copy(pdf_url, &destination)?;
+                Ok(destination.to_string_lossy().to_string())
             }
             Self::File(path) => {
-                let num_pages = get_page_count(path)?;
-                Ok(convert_to_markdown(path, num_pages as usize).await?)
+                fs::copy(path, &destination)?;
+                Ok(destination.to_string_lossy().to_string())
             }
-            Self::Image { src, mime } => match src.strip_prefix("data:") {
-                Some(rest) => {
-                    let data = rest
-                        .split_once(',')
-                        .map(|(_, d)| d)
-                        .ok_or_else(|| MetisError::ValueParseError("malformed image data URL".into()))?;
-                    let bytes = STANDARD
+            Self::Image { src, mime: _ } => {
+                let bytes = if let Some(rest) = src.strip_prefix("data:") {
+                    let data = rest.split_once(',').map(|(_, d)| d).ok_or_else(|| {
+                        MetisError::ValueParseError("malformed image data URL".into())
+                    })?;
+                    STANDARD
                         .decode(data)
-                        .map_err(|e| MetisError::ValueParseError(e.to_string()))?;
-                    let mut file = tempfile::Builder::new().suffix(".img").tempfile()?;
-                    file.write_all(&bytes)?;
-                    let path = file.path().to_string_lossy().into_owned();
-                    Ok(convert_image_to_markdown(&path, mime).await?)
-                }
-                None => Ok(convert_image_to_markdown(src, mime).await?),
-            },
-            Self::Text(content) => Ok(convert_text_to_markdown(content).await?),
+                        .map_err(|e| MetisError::ValueParseError(e.to_string()))?
+                } else {
+                    fs::read(src).map_err(|e| MetisError::FileReadError(e.to_string()))?
+                };
+                let pdf_bytes = image_bytes_to_pdf(&bytes)?;
+                fs::write(&destination, pdf_bytes)?;
+                Ok(destination.to_string_lossy().to_string())
+            }
+            Self::Text(content) => {
+                let pdf_path = text_to_pdf(&content)?;
+                fs::copy(pdf_path, &destination)?;
+                Ok(destination.to_string_lossy().to_string())
+            }
         }
     }
 }

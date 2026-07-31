@@ -2,8 +2,11 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{dialogue::ReferenceKind, AppContext},
-    db::repo::{explanations::ExplanationsRepo, journeys::JourneysRepo},
+    app::{
+        dialogue::ReferenceKind, explanation::ExplanationArtifacts,
+        journey::artifact::JourneyArtifacts, AppContext,
+    },
+    db::repo::Repository,
     error::MetisError,
     service::handler::BoxFuture,
 };
@@ -18,12 +21,12 @@ pub fn get_artifact(params: GetArtifactParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
         let value = match params.kind {
             ReferenceKind::Journey => {
-                let artifact = JourneysRepo::get_artifacts(params.parent_id)?;
-                json!({ "kind": "Journey", "journey": artifact })
+                let artifact = Repository::<JourneyArtifacts>::find_by_id(&params.parent_id)?;
+                json!({ "kind": "Journey", "journey": artifact.read() })
             }
             ReferenceKind::Explanation => {
-                let artifact = ExplanationsRepo::get_artifacts(params.parent_id)?;
-                json!({ "kind": "Explanation", "explanation": artifact })
+                let artifact = Repository::<ExplanationArtifacts>::find_by_id(&params.parent_id)?;
+                json!({ "kind": "Explanation", "explanation": artifact.read() })
             }
             ReferenceKind::None => {
                 return Err(MetisError::ParamsError(

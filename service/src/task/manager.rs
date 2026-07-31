@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::mpsc;
 
 use crate::{
-    db::repo::task::TasksRepo,
+    db::{repo::task::TasksRepo, repo::Repository},
     error::Result,
     task::{
         gaurd::TaskGaurd,
@@ -14,7 +14,6 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
-            analyse_book::{AnalyseBookCheckpoint, AnalyseBookParams},
             create_explainer::{CreateExplanationCheckpoint, CreateExplanationParams},
             create_journey::{CreateJourneyCheckpoint, CreateJourneyParams},
             generate_dialogue::{GenerationCheckpoint, GenerationParams},
@@ -35,13 +34,13 @@ pub type TaskFuture = Pin<Box<dyn Future<Output = Result<Value>> + Send>>;
 impl TaskMangager {
     pub fn new(app_handle: AppHandle) -> Arc<Self> {
         let (tx, mut rx) = mpsc::channel(2048);
-        let pool = TaskPool::new(POOL_SIZE, tx);
+        let pool = TaskPool::new(POOL_SIZE, tx, app_handle.clone());
         let manager = Arc::new(TaskMangager { app_handle, pool });
 
         let listener = Arc::clone(&manager);
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             while let Some(request) = rx.recv().await {
-                listener.dispatch(request.task_type, request.params);
+                let _ = listener.dispatch(request.task_type, request.params).await;
             }
         });
         manager
@@ -71,7 +70,7 @@ impl TaskMangager {
             error: String::new(),
             identity,
         };
-        TasksRepo::insert(&task)?;
+        Repository::<Task>::insert(&task)?;
 
         self.pool.execute(task).await;
         Ok(task_id.to_string())
@@ -82,13 +81,6 @@ impl TaskMangager {
             TaskType::CreateJourney => {
                 self.queue::<CreateJourneyCheckpoint, CreateJourneyParams>(
                     TaskType::CreateJourney,
-                    params,
-                )
-                .await
-            }
-            TaskType::AnalyseBook => {
-                self.queue::<AnalyseBookCheckpoint, AnalyseBookParams>(
-                    TaskType::AnalyseBook,
                     params,
                 )
                 .await

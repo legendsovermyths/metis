@@ -1,7 +1,11 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{app::AppContext, db::repo::notes::NotesRepo, service::handler::BoxFuture};
+use crate::{
+    app::{notes::Note, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
+};
 
 #[derive(Deserialize)]
 pub struct MoveNoteParams {
@@ -11,7 +15,8 @@ pub struct MoveNoteParams {
 
 pub fn move_note(params: MoveNoteParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        NotesRepo::set_folder(params.id, params.folder_id)?;
+        let mut note = Repository::<Note>::find_by_id(&params.id)?;
+        note.write().folder_id = params.folder_id;
         Ok(json!({ "success": true }).into())
     })
 }

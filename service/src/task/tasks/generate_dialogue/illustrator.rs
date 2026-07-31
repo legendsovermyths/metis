@@ -109,7 +109,7 @@ impl<'a> Illustrator {
         let executed_code: String;
         let exec_result = match output.library.as_str() {
             "tikz" => {
-                log::info!("[illustrator] rendering TikZ figure");
+                crate::info!("[illustrator] rendering TikZ figure");
                 executed_code = output.code.clone();
                 execute_latex(&output.code, &output_path)
             }
@@ -123,7 +123,7 @@ impl<'a> Illustrator {
 
         match exec_result {
             Ok(()) if Path::new(&output_path).exists() => {
-                log::info!("[illustrator] figure saved to {output_path}");
+                crate::info!("[illustrator] figure saved to {output_path}");
                 Ok(IllustrationResult {
                     blackboard: Blackboard::new(request.instruction.into(), Some(output_path)),
                     source_code: Some(executed_code),
@@ -131,7 +131,7 @@ impl<'a> Illustrator {
                 })
             }
             Ok(()) => {
-                log::error!("[illustrator] ran but no file at {output_path}");
+                crate::error!("[illustrator] ran but no file at {output_path}");
                 Err(RenderFailure {
                     library,
                     code: executed_code,
@@ -139,7 +139,7 @@ impl<'a> Illustrator {
                 })
             }
             Err(e) => {
-                log::error!("[illustrator] execution failed: {e}");
+                crate::error!("[illustrator] execution failed: {e}");
                 Err(RenderFailure {
                     library,
                     code: executed_code,
@@ -160,7 +160,7 @@ impl<'a> Illustrator {
 
         for attempt in 0..=MAX_RETRIES {
             if attempt > 0 {
-                log::info!(
+                crate::info!(
                     "[illustrator] retry {attempt}/{MAX_RETRIES} after previous render failure"
                 );
             }
@@ -171,7 +171,7 @@ impl<'a> Illustrator {
             let parsed: IllustratorOutput = match serde_json::from_str(&fixed) {
                 Ok(v) => v,
                 Err(e) => {
-                    log::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
+                    crate::error!("[illustrator] failed to parse LLM response: {e}\nRaw: {raw}");
                     user_message = format!(
                         "Your previous response failed to parse as JSON with error: {e}\n\n\
                          Respond with ONLY the JSON object {{\"library\": \"...\", \"code\": \"...\"}} \
@@ -192,7 +192,7 @@ impl<'a> Illustrator {
         }
 
         if let Some(failure) = last_failure {
-            log::error!(
+            crate::error!(
                 "[illustrator] giving up after {MAX_RETRIES} retries; last error: {}",
                 failure.error
             );

@@ -1,12 +1,13 @@
 use async_trait::async_trait;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    app::dialogue::{segment::Segment, Dialogue}, error::Result, logs::EventHistory
+    app::dialogue::{segment::Segment, Dialogue},
+    app::events::EventHistory,
+    error::Result,
 };
 
-pub mod advisor;
 pub mod director;
 pub mod handler;
 pub mod onboarder;
@@ -49,4 +50,11 @@ impl AgentResponse {
             message_type: MessageType::Chat,
         })
     }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub enum AgentResponseInstruction {
+    ChapterTitle(String),
+    ArtifactGenerationInstructions(String),
+    None,
 }

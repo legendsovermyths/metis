@@ -1,7 +1,11 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{app::AppContext, db::repo::folders::FoldersRepo, service::handler::BoxFuture};
+use crate::{
+    app::{explanation::folder::Folder, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
+};
 
 #[derive(Deserialize)]
 pub struct MoveFolderParams {
@@ -11,7 +15,8 @@ pub struct MoveFolderParams {
 
 pub fn move_folder(params: MoveFolderParams, _: &AppContext) -> BoxFuture {
     Box::pin(async move {
-        FoldersRepo::set_parent(params.id, params.parent_id)?;
+        let mut folder = Repository::<Folder>::find_by_id(&params.id)?;
+        folder.write().parent_id = params.parent_id;
         Ok(json!({ "success": true }).into())
     })
 }
