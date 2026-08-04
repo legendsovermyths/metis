@@ -1,9 +1,9 @@
-use std::{env::VarError, fs};
+use std::env::VarError;
 
 use thiserror::Error;
 use tokio::task::JoinError;
 
-pub type Result<T: Send + Sync> = std::result::Result<T, MetisError>;
+pub type Result<T> = std::result::Result<T, MetisError>;
 
 #[derive(Error, Debug)]
 pub enum MetisError {

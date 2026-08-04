@@ -12,7 +12,7 @@ use crate::{
         llm_client::{LLMChatClient, LLMResponse},
         tool::Tool,
     },
-    logs::{Event, EventHistory, EventType},
+    app::events::{Event, EventHistory, EventType},
 };
 
 pub struct ClaudeChat<'a> {
@@ -156,6 +156,7 @@ impl<'a> ClaudeChat<'a> {
 
         for (id, name, input) in tool_uses {
             let fn_event = Event::new(name, EventType::FunctionCall, &input.to_string());
+            crate::logs::record(&fn_event);
             self.event_history.events.push(fn_event);
 
             let tool = self
@@ -166,6 +167,7 @@ impl<'a> ClaudeChat<'a> {
 
             let result_event =
                 Event::new(name, EventType::FunctionResponse, &result.to_string());
+            crate::logs::record(&result_event);
             self.event_history.events.push(result_event);
 
             result_blocks.push(json!({
@@ -179,6 +181,7 @@ impl<'a> ClaudeChat<'a> {
     }
 
     async fn run(&mut self, event: Event) -> Result<LLMResponse> {
+        crate::logs::record(&event);
         self.event_history.events.push(event.clone());
         self.messages
             .push(json!({"role": "user", "content": event.content}));
@@ -200,6 +203,7 @@ impl<'a> ClaudeChat<'a> {
                 let tool_uses = Self::collect_tool_uses(&content);
                 if let Some(text) = Self::extract_text(&content) {
                     let event = Event::new("model", EventType::LlmMessage, &text);
+                    crate::logs::record(&event);
                     self.event_history.events.push(event);
                     last_text = Some(text);
                 }
@@ -215,6 +219,7 @@ impl<'a> ClaudeChat<'a> {
                 self.messages
                     .push(json!({"role": "assistant", "content": content}));
                 let event = Event::new("model", EventType::LlmMessage, &text);
+                crate::logs::record(&event);
                 self.event_history.events.push(event);
                 return Ok(LLMResponse::from(text));
             }
@@ -223,7 +228,7 @@ impl<'a> ClaudeChat<'a> {
                 return Ok(LLMResponse::from(text));
             }
 
-            log::warn!(
+            crate::warn!(
                 "[claude_chat] No usable text in model response. stop_reason={:?} usage={} content={} full_response={}",
                 stop_reason,
                 response.get("usage").cloned().unwrap_or(json!(null)),

@@ -51,10 +51,10 @@ impl<'a> Agent for Onboarder<'a> {
             "Message is required for onboarding agent".to_string(),
         ));
     }
-    async fn get_event_history(&mut self) -> crate::logs::EventHistory {
+    async fn get_event_history(&mut self) -> crate::app::events::EventHistory {
         self.client.get_event_history()
     }
-    async fn set_event_history(&mut self, history: crate::logs::EventHistory) {
+    async fn set_event_history(&mut self, history: crate::app::events::EventHistory) {
         self.client.set_event_history(history);
     }
 }

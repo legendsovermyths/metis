@@ -9,9 +9,10 @@ pub fn get_prompt_provider() -> &'static PromptProvider {
 }
 
 pub struct PromptProvider {
+    probe_resource_prompt: String,
+    document_sections_prompt: String,
     analyse_book_prompt: String,
     onboarder_system_prompt: String,
-    advisor_system_prompt: String,
     director_system_prompt: String,
     architect_course_prompt: String,
     page_range_prompt: String,
@@ -34,9 +35,10 @@ pub struct PromptProvider {
 impl PromptProvider {
     fn configure() -> Result<Self> {
         Ok(PromptProvider {
+            probe_resource_prompt: include_str!("markdowns/probe_resource.md").to_string(),
+            document_sections_prompt: include_str!("markdowns/document_sections.md").to_string(),
             analyse_book_prompt: include_str!("markdowns/analyse_book.md").to_string(),
             onboarder_system_prompt: include_str!("markdowns/onboarder.md").to_string(),
-            advisor_system_prompt: include_str!("markdowns/advisor.md").to_string(),
             director_system_prompt: include_str!("markdowns/director.md").to_string(),
             architect_course_prompt: include_str!("markdowns/architect.md").to_string(),
             page_range_prompt: include_str!("markdowns/page_range.md").to_string(),
@@ -64,11 +66,14 @@ impl PromptProvider {
     pub fn get_analyse_book_prompt(&self) -> String {
         self.analyse_book_prompt.clone()
     }
+    pub fn get_probe_resource_prompt(&self) -> String {
+        self.probe_resource_prompt.clone()
+    }
+    pub fn get_document_sections_prompt(&self) -> String {
+        self.document_sections_prompt.clone()
+    }
     pub fn get_onboarder_system_prompt(&self) -> String {
         self.onboarder_system_prompt.clone()
-    }
-    pub fn get_advisor_system_prompt(&self) -> String {
-        self.advisor_system_prompt.clone()
     }
     pub fn get_director_system_prompt(&self) -> String {
         self.director_system_prompt.clone()

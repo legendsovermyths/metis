@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppContextProvider } from "@/context/AppContext";
 import { useAppContext } from "@/context/AppContext";
-import { BookUploadProvider } from "@/context/UploadContext";
+import { ResourceProvider } from "@/context/ResourceContext";
 import { JourneyCreationProvider } from "@/context/JourneyCreationContext";
 import { NotebookProvider, useNotebook } from "@/context/NotebookContext";
 import { NoteAnchorProvider, useNoteAnchor } from "@/context/NoteAnchorContext";
@@ -19,6 +19,7 @@ import { FloatingNote } from "@/components/notes/FloatingNote";
 import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import LibraryPage from "./pages/LibraryPage";
+import ResourceDetailPage from "./pages/ResourceDetailPage";
 import StudiesPage from "./pages/StudiesPage";
 import JourneyDetailPage from "./pages/JourneyDetailPage";
 import ExplanationDetailPage from "./pages/ExplanationDetailPage";
@@ -95,6 +96,7 @@ function AppLayout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/library" element={<LibraryPage />} />
+          <Route path="/library/:id" element={<ResourceDetailPage />} />
           <Route path="/studies" element={<StudiesPage />} />
           <Route path="/journeys/:id" element={<JourneyDetailPage />} />
           <Route path="/explanations/:id" element={<ExplanationDetailPage />} />
@@ -113,7 +115,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AppContextProvider>
         <TasksProvider>
-        <BookUploadProvider>
+        <ResourceProvider>
         <JourneyCreationProvider>
         <NotebookProvider>
         <NoteAnchorProvider>
@@ -127,7 +129,7 @@ const App = () => {
         </NoteAnchorProvider>
         </NotebookProvider>
         </JourneyCreationProvider>
-        </BookUploadProvider>
+        </ResourceProvider>
         </TasksProvider>
       </AppContextProvider>
     </QueryClientProvider>

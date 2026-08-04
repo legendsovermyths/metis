@@ -7,26 +7,29 @@ import type { BackgroundTask } from "@/lib/service";
 import { Watermark } from "@/components/Watermark";
 
 const TASK_LABELS: Record<string, string> = {
-  analyse_book: "Analysing book",
   create_journey: "Creating journey",
-  generate_dialogues: "Preparing dialogues",
+  create_explanation: "Composing explanation",
+  draft_dialogue: "Drafting dialogues",
+  compose_dialogue: "Composing dialogue",
 };
+
+function chapterTitleOf(params: Record<string, unknown>): string {
+  const ri = params.response_instruction;
+  return ri && typeof ri === "object" && "ChapterTitle" in ri
+    ? String((ri as { ChapterTitle: string }).ChapterTitle)
+    : "";
+}
 
 function describeTask(task: BackgroundTask): string {
   const label = TASK_LABELS[task.name] ?? task.name;
   const params = task.params ?? {};
   switch (task.name) {
-    case "analyse_book": {
-      const path = typeof params.path === "string" ? params.path : "";
-      const file = path.split(/[\\/]/).pop() || path;
-      return file ? `${label} · ${file}` : label;
-    }
     case "create_journey": {
-      const chapter = typeof params.chapter_title === "string" ? params.chapter_title : "";
+      const chapter = chapterTitleOf(params);
       return chapter ? `${label} · ${chapter}` : label;
     }
-    case "generate_dialogues": {
-      const id = params.id;
+    case "draft_dialogue": {
+      const id = params.parent_id;
       return id != null ? `${label} · journey ${id}` : label;
     }
     default:

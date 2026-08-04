@@ -1,4 +1,9 @@
-import type { ExplanationRow, JourneyRow } from "@/lib/service";
+import {
+  explanationCounts,
+  journeyCounts,
+  type ExplanationRow,
+  type JourneyRow,
+} from "@/lib/service";
 
 export type StudyKind = "Journey" | "Explanation";
 
@@ -24,7 +29,7 @@ export interface StudyItem {
 
 /** Arc-by-arc fill of a journey's topic progress. */
 function arcFillRatios(row: JourneyRow): number[] {
-  let remaining = row.completed_topics;
+  let remaining = journeyCounts(row).completed;
   return row.journey.arcs.map((arc) => {
     const size = arc.topics.length;
     if (size === 0) return 0;
@@ -39,6 +44,7 @@ function arcFillRatios(row: JourneyRow): number[] {
 }
 
 export function journeyToStudy(row: JourneyRow): StudyItem {
+  const { completed, total } = journeyCounts(row);
   return {
     key: `journey-${row.id}`,
     kind: "Journey",
@@ -48,14 +54,14 @@ export function journeyToStudy(row: JourneyRow): StudyItem {
     subtitle: row.chapter_title ? `from ${row.chapter_title}` : null,
     folderId: row.folder_id ?? null,
     createdAt: row.created_at,
-    completed: row.completed_topics,
-    total: row.total_topics,
+    completed,
+    total,
     segments: arcFillRatios(row),
   };
 }
 
 export function explanationToStudy(row: ExplanationRow): StudyItem {
-  const total = row.total_steps;
+  const { completed, total } = explanationCounts(row);
   return {
     key: `explanation-${row.id}`,
     kind: "Explanation",
@@ -65,10 +71,10 @@ export function explanationToStudy(row: ExplanationRow): StudyItem {
     subtitle: `a route of ${total} ${total === 1 ? "step" : "steps"}`,
     folderId: row.folder_id ?? null,
     createdAt: row.created_at,
-    completed: row.completed_steps,
+    completed,
     total,
     segments: Array.from({ length: Math.max(total, 0) }, (_, idx) =>
-      idx < row.completed_steps ? 1 : 0,
+      idx < completed ? 1 : 0,
     ),
   };
 }

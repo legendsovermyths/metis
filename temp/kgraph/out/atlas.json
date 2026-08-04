@@ -1,0 +1,242 @@
+{
+  "objective": "Become capable of building a small language model from scratch in Rust \u2014 no ML frameworks, implemented myself all the way down to the tensor math. The target is a compact transformer-based next-token language model, trained on a small text corpus on a single machine, capable enough to form basic grammatical sentences: greet people, complete simple sentences, and do light grammar correction. I want to understand every layer well enough to implement it in Rust myself: text tokenization (a simple byte-pair-encoding or character/word vocabulary), token and positional embeddings, the transformer decoder block (self-attention, multi-head attention, feed-forward layers, layer normalization, residual connections), the language-modeling head with cross-entropy loss, reverse-mode automatic differentiation / backpropagation and the gradients of these operations, a training loop with an optimizer (SGD / Adam), and autoregressive text generation with sampling (greedy, temperature, top-k). Small / educational scale only on modest data \u2014 explicitly NOT large-scale or distributed training, GPU kernel programming, pretraining at scale, or RLHF / fine-tuning.",
+  "profile": "Working software engineer, fluent in Rust and systems programming, comfortable with data structures and algorithms at the level of a solid CS degree. Remembers early-university linear algebra (vectors, matrices, matrix multiplication) and single-variable calculus (derivatives, the chain rule) but is rusty, and has never worked with matrix / multivariable calculus. No background in machine learning, deep learning, neural networks, or probability beyond the basics.",
+  "summit": "n0",
+  "nodes": [
+    {
+      "id": "n0",
+      "work": "Build a small language model in Rust",
+      "locator": "the goal",
+      "kind": "goal",
+      "competency": "",
+      "concepts": [],
+      "why": "Become capable of building a small language model from scratch in Rust \u2014 no ML frameworks, implemented myself all the way down to the tensor math. The target is a compact transformer-based next-token language model, trained on a small text corpus on a single machine, capable enough to form basic grammatical sentences: greet people, complete simple sentences, and do light grammar correction. I want to understand every layer well enough to implement it in Rust myself: text tokenization (a simple byte-pair-encoding or character/word vocabulary), token and positional embeddings, the transformer decoder block (self-attention, multi-head attention, feed-forward layers, layer normalization, residual connections), the language-modeling head with cross-entropy loss, reverse-mode automatic differentiation / backpropagation and the gradients of these operations, a training loop with an optimizer (SGD / Adam), and autoregressive text generation with sampling (greedy, temperature, top-k). Small / educational scale only on modest data \u2014 explicitly NOT large-scale or distributed training, GPU kernel programming, pretraining at scale, or RLHF / fine-tuning.",
+      "depth": 0,
+      "is_start": false,
+      "node_kind": "summit",
+      "prereqs": [
+        "n1",
+        "n2",
+        "n3",
+        "n4",
+        "n5"
+      ]
+    },
+    {
+      "id": "n1",
+      "work": "The Matrix Calculus You Need For Deep Learning (Parr & Howard)",
+      "locator": "Sections 1-6",
+      "kind": "paper",
+      "competency": "Autodiff & Tensor Foundations",
+      "concepts": [
+        "Jacobian matrices",
+        "Matrix and vector derivatives",
+        "Chain rule for vectors",
+        "Gradient shape conventions"
+      ],
+      "why": "Bridges basic calculus to the multivariable matrix math required to manually derive gradients for your tensor operations.",
+      "depth": 1,
+      "is_start": true,
+      "node_kind": "target",
+      "prereqs": []
+    },
+    {
+      "id": "n2",
+      "work": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "locator": "Chapter 6: Deep Feedforward Networks",
+      "kind": "chapter",
+      "competency": "Autodiff & Tensor Foundations",
+      "concepts": [
+        "Computational graphs",
+        "Reverse-mode automatic differentiation",
+        "Cross-entropy loss",
+        "Feed-forward transformations",
+        "Feedforward architectures",
+        "Cost functions (Cross-entropy)",
+        "Backpropagation algorithm"
+      ],
+      "why": "Teaches how to map tensor math into a computational graph to implement your reverse-mode autodiff engine and core neural network layers.",
+      "depth": 2,
+      "is_start": false,
+      "node_kind": "target",
+      "prereqs": [
+        "n6",
+        "n7"
+      ]
+    },
+    {
+      "id": "n3",
+      "work": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "locator": "Chapter 8: Optimization for Training Deep Models",
+      "kind": "chapter",
+      "competency": "Optimization",
+      "concepts": [
+        "Stochastic Gradient Descent (SGD)",
+        "Momentum",
+        "Adam optimizer"
+      ],
+      "why": "Provides the mathematical formulations for optimization algorithms so you can write the training loop that updates your model's parameters.",
+      "depth": 1,
+      "is_start": false,
+      "node_kind": "target",
+      "prereqs": [
+        "n2"
+      ]
+    },
+    {
+      "id": "n4",
+      "work": "Speech and Language Processing (Jurafsky & Martin)",
+      "locator": "Chapter 2: Regular Expressions, Text Normalization, Edit Distance",
+      "kind": "chapter",
+      "competency": "Tokenization",
+      "concepts": [
+        "Subword tokenization",
+        "Byte-Pair Encoding (BPE)",
+        "Vocabulary merging",
+        "Text corpora",
+        "Tokenization",
+        "Vocabularies"
+      ],
+      "why": "Explains the algorithmic details of Byte-Pair Encoding so you can implement the tokenizer that converts raw text into integer sequences.",
+      "depth": 4,
+      "is_start": true,
+      "node_kind": "target",
+      "prereqs": []
+    },
+    {
+      "id": "n5",
+      "work": "Speech and Language Processing (Jurafsky & Martin)",
+      "locator": "Chapter 10: Transformers and Large Language Models",
+      "kind": "chapter",
+      "competency": "Transformer Architecture & Language Modeling",
+      "concepts": [
+        "Self-attention mechanism",
+        "Multi-head attention",
+        "Positional embeddings",
+        "Layer normalization and residual connections",
+        "Autoregressive generation",
+        "Temperature and top-k sampling"
+      ],
+      "why": "Provides the complete architectural blueprint of a decoder-only transformer and the sampling logic needed to generate text.",
+      "depth": 1,
+      "is_start": false,
+      "node_kind": "target",
+      "prereqs": [
+        "n8"
+      ]
+    },
+    {
+      "id": "n6",
+      "work": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "locator": "Chapter 4: Numerical Computation",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Gradients",
+        "Jacobian matrices",
+        "Gradient-based optimization",
+        "Partial derivatives and gradients"
+      ],
+      "why": "Chapter 6 heavily uses Jacobians and the multivariable chain rule to explain backpropagation, bridging the gap from the learner's single-variable calculus baseline.",
+      "depth": 3,
+      "is_start": true,
+      "node_kind": "prereq",
+      "prereqs": []
+    },
+    {
+      "id": "n7",
+      "work": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "locator": "Chapter 5: Machine Learning Basics",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Supervised learning algorithms",
+        "Cost functions",
+        "Stochastic Gradient Descent (SGD)"
+      ],
+      "why": "Since the learner has no ML background, they must understand the basic training loop, loss concepts, and SGD before Chapter 6 applies them to neural networks.",
+      "depth": 2,
+      "is_start": false,
+      "node_kind": "prereq",
+      "prereqs": [
+        "n9",
+        "n6"
+      ]
+    },
+    {
+      "id": "n8",
+      "work": "Speech and Language Processing (Jurafsky & Martin)",
+      "locator": "Chapter 7: Neural Networks and Neural Language Models",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Feed-forward neural networks",
+        "Word embeddings",
+        "Softmax output layer",
+        "Cross-entropy loss",
+        "Neural language modeling paradigm"
+      ],
+      "why": "Introduces the foundational neural network components (dense layers, embeddings, softmax) and the next-word prediction framework that the Transformer architecture builds upon.",
+      "depth": 2,
+      "is_start": false,
+      "node_kind": "prereq",
+      "prereqs": [
+        "n10",
+        "n11"
+      ]
+    },
+    {
+      "id": "n9",
+      "work": "Deep Learning (Goodfellow, Bengio, Courville)",
+      "locator": "Chapter 3: Probability and Information Theory",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Probability distributions",
+        "Expectation, variance, and covariance",
+        "Information theory (entropy, cross-entropy, KL divergence)"
+      ],
+      "why": "Chapter 5 formulates machine learning in terms of Maximum Likelihood Estimation and cross-entropy, requiring a foundation in probability and information theory that the baseline lacks.",
+      "depth": 3,
+      "is_start": true,
+      "node_kind": "prereq",
+      "prereqs": []
+    },
+    {
+      "id": "n10",
+      "work": "Speech and Language Processing (Jurafsky & Martin)",
+      "locator": "Chapter 5: Logistic Regression",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Gradient descent",
+        "Cross-entropy loss",
+        "Softmax function"
+      ],
+      "why": "Introduces the foundational machine learning optimization loop, cross-entropy loss, and softmax classification that neural networks compose and build upon.",
+      "depth": 3,
+      "is_start": true,
+      "node_kind": "prereq",
+      "prereqs": []
+    },
+    {
+      "id": "n11",
+      "work": "Speech and Language Processing (Jurafsky & Martin)",
+      "locator": "Chapter 3: N-gram Language Models",
+      "kind": "chapter",
+      "competency": "",
+      "concepts": [
+        "Language modeling task",
+        "Next-word prediction",
+        "Perplexity"
+      ],
+      "why": "Defines the core problem of language modeling, next-token probability, and model evaluation, which is the exact problem Chapter 7 applies neural networks to solve.",
+      "depth": 3,
+      "is_start": false,
+      "node_kind": "prereq",
+      "prereqs": [
+        "n4"
+      ]
+    }
+  ]
+}

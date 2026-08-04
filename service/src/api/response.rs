@@ -1,7 +1,10 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::app::AppContextValue;
+use crate::{
+    app::AppContextValue,
+    logs::{self, Level, Loggable},
+};
 
 #[derive(Serialize)]
 pub struct Response {
@@ -29,6 +32,33 @@ impl Response {
             response: None,
             status: Status::Error(value),
             context: None,
+        }
+    }
+}
+
+impl Loggable for Response {
+    fn log_target(&self) -> &'static str {
+        "response"
+    }
+
+    fn log_level(&self) -> Level {
+        match self.status {
+            Status::Error(_) => Level::Error,
+            Status::Success => Level::Info,
+        }
+    }
+
+    fn log_summary(&self) -> String {
+        match &self.status {
+            Status::Success => {
+                let body = self
+                    .response
+                    .as_ref()
+                    .map(|v| v.to_string())
+                    .unwrap_or_default();
+                format!("ok {}", logs::preview(&body))
+            }
+            Status::Error(e) => format!("error {e}"),
         }
     }
 }

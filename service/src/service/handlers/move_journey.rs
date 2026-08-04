@@ -1,7 +1,11 @@
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{app::AppContext, db::repo::journeys::JourneysRepo, service::handler::BoxFuture};
+use crate::{
+    app::{journey::artifact::JourneyArtifacts, AppContext},
+    db::repo::Repository,
+    service::handler::BoxFuture,
+};
 
 #[derive(Deserialize)]
 pub struct MoveJourneyParams {
@@ -9,9 +13,10 @@ pub struct MoveJourneyParams {
     folder_id: Option<i64>,
 }
 
-pub fn move_journey(params: MoveJourneyParams, _: &AppContext) -> BoxFuture {
+pub fn move_journey(params: MoveJourneyParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
-        JourneysRepo::set_folder(params.id, params.folder_id)?;
+        let mut journey = Repository::<JourneyArtifacts>::find_by_id(&params.id)?;
+        journey.write().folder_id = params.folder_id;
         Ok(json!({ "success": true }).into())
     })
 }

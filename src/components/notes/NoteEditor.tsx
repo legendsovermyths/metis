@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -48,10 +48,49 @@ interface NoteEditorProps {
   onChange: (content: string) => void;
 }
 
+// Reader-controlled text zoom for the note body (Cmd +/-/0), remembered across
+// notes and sessions. Scoped to `.note-prose`, so it never touches the UI chrome.
+const SCALE_KEY = "metis:note-scale";
+const SCALE_MIN = 0.8;
+const SCALE_MAX = 2.2;
+const SCALE_STEP = 0.1;
+
+function loadScale(): number {
+  const raw = Number(localStorage.getItem(SCALE_KEY));
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  return Math.min(SCALE_MAX, Math.max(SCALE_MIN, raw));
+}
+
 export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps) {
   const { notes } = useNotebook();
   const [link, setLink] = useState<LinkEditorState | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const [scale, setScale] = useState<number>(loadScale);
+
+  // Cmd/Ctrl +/-/0 zooms the note text (not the app). Intercepted so it
+  // overrides the webview's own page zoom.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const k = e.key;
+      if (k === "=" || k === "+") {
+        e.preventDefault();
+        setScale((s) => Math.min(SCALE_MAX, Math.round((s + SCALE_STEP) * 100) / 100));
+      } else if (k === "-" || k === "_") {
+        e.preventDefault();
+        setScale((s) => Math.max(SCALE_MIN, Math.round((s - SCALE_STEP) * 100) / 100));
+      } else if (k === "0") {
+        e.preventDefault();
+        setScale(1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SCALE_KEY, String(scale));
+  }, [scale]);
 
   useEffect(() => {
     registerMentionTargets((query) => {
@@ -166,7 +205,7 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
   }
 
   return (
-    <>
+    <div style={{ "--note-scale": String(scale) } as CSSProperties}>
       <EditorContent editor={editor} />
       {link && createPortal(
         <div
@@ -200,6 +239,6 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
         </div>,
         document.body,
       )}
-    </>
+    </div>
   );
 }

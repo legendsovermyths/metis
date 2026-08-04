@@ -10,7 +10,7 @@ pub struct CancelUserInputParams {
     pub request_id: String,
 }
 
-pub fn cancel_user_input(params: CancelUserInputParams, _context: &AppContext) -> BoxFuture {
+pub fn cancel_user_input(params: CancelUserInputParams, _context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         UserInputBridge::cancel(&params.request_id).await;
         Ok(json!({ "success": true }).into())

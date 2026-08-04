@@ -1,0 +1,36 @@
+ATLAS — climb from the base up to the summit
+
+SUMMIT: Become capable of building a small language model from scratch in Rust — no ML frameworks, implemented myself all the way down to the tensor math. The target is a compact transformer-based next-token language model, trained on a small text corpus on a single machine, capable enough to form basic grammatical sentences: greet people, complete simple sentences, and do light grammar correction. I want to understand every layer well enough to implement it in Rust myself: text tokenization (a simple byte-pair-encoding or character/word vocabulary), token and positional embeddings, the transformer decoder block (self-attention, multi-head attention, feed-forward layers, layer normalization, residual connections), the language-modeling head with cross-entropy loss, reverse-mode automatic differentiation / backpropagation and the gradients of these operations, a training loop with an optimizer (SGD / Adam), and autoregressive text generation with sampling (greedy, temperature, top-k). Small / educational scale only on modest data — explicitly NOT large-scale or distributed training, GPU kernel programming, pretraining at scale, or RLHF / fine-tuning.
+
+▲ Build a small language model in Rust
+    ⌂ [Autodiff & Tensor Foundations] The Matrix Calculus You Need For Deep Learning (Parr & Howard) — Sections 1-6
+         ⤷ Jacobian matrices, Matrix and vector derivatives, Chain rule for vectors, Gradient shape conventions
+    ◎ [Autodiff & Tensor Foundations] Deep Learning (Goodfellow, Bengio, Courville) — Chapter 6: Deep Feedforward Networks
+         ⤷ Computational graphs, Reverse-mode automatic differentiation, Cross-entropy loss, Feed-forward transformations, Feedforward architectures, Cost functions (Cross-entropy), Backpropagation algorithm
+        ⌂ Deep Learning (Goodfellow, Bengio, Courville) — Chapter 4: Numerical Computation
+             ⤷ Gradients, Jacobian matrices, Gradient-based optimization, Partial derivatives and gradients
+        · Deep Learning (Goodfellow, Bengio, Courville) — Chapter 5: Machine Learning Basics
+             ⤷ Supervised learning algorithms, Cost functions, Stochastic Gradient Descent (SGD)
+            ⌂ Deep Learning (Goodfellow, Bengio, Courville) — Chapter 3: Probability and Information Theory
+                 ⤷ Probability distributions, Expectation, variance, and covariance, Information theory (entropy, cross-entropy, KL divergence)
+            ⌂ Deep Learning (Goodfellow, Bengio, Courville) — Chapter 4: Numerical Computation  (shared)
+                 ⤷ Gradients, Jacobian matrices, Gradient-based optimization, Partial derivatives and gradients
+    ◎ [Optimization] Deep Learning (Goodfellow, Bengio, Courville) — Chapter 8: Optimization for Training Deep Models
+         ⤷ Stochastic Gradient Descent (SGD), Momentum, Adam optimizer
+        ◎ [Autodiff & Tensor Foundations] Deep Learning (Goodfellow, Bengio, Courville) — Chapter 6: Deep Feedforward Networks  (shared)
+             ⤷ Computational graphs, Reverse-mode automatic differentiation, Cross-entropy loss, Feed-forward transformations, Feedforward architectures, Cost functions (Cross-entropy), Backpropagation algorithm
+    ⌂ [Tokenization] Speech and Language Processing (Jurafsky & Martin) — Chapter 2: Regular Expressions, Text Normalization, Edit Distance
+         ⤷ Subword tokenization, Byte-Pair Encoding (BPE), Vocabulary merging, Text corpora, Tokenization, Vocabularies
+    ◎ [Transformer Architecture & Language Modeling] Speech and Language Processing (Jurafsky & Martin) — Chapter 10: Transformers and Large Language Models
+         ⤷ Self-attention mechanism, Multi-head attention, Positional embeddings, Layer normalization and residual connections, Autoregressive generation, Temperature and top-k sampling
+        · Speech and Language Processing (Jurafsky & Martin) — Chapter 7: Neural Networks and Neural Language Models
+             ⤷ Feed-forward neural networks, Word embeddings, Softmax output layer, Cross-entropy loss, Neural language modeling paradigm
+            ⌂ Speech and Language Processing (Jurafsky & Martin) — Chapter 5: Logistic Regression
+                 ⤷ Gradient descent, Cross-entropy loss, Softmax function
+            · Speech and Language Processing (Jurafsky & Martin) — Chapter 3: N-gram Language Models
+                 ⤷ Language modeling task, Next-word prediction, Perplexity
+                ⌂ [Tokenization] Speech and Language Processing (Jurafsky & Martin) — Chapter 2: Regular Expressions, Text Normalization, Edit Distance  (shared)
+                     ⤷ Subword tokenization, Byte-Pair Encoding (BPE), Vocabulary merging, Text corpora, Tokenization, Vocabularies
+
+START HERE (frontier at build time): The Matrix Calculus You Need For Deep Learning (Parr & Howard) — Sections 1-6, Speech and Language Processing (Jurafsky & Martin) — Chapter 2: Regular Expressions, Text Normalization, Edit Distance, Deep Learning (Goodfellow, Bengio, Courville) — Chapter 4: Numerical Computation, Deep Learning (Goodfellow, Bengio, Courville) — Chapter 3: Probability and Information Theory, Speech and Language Processing (Jurafsky & Martin) — Chapter 5: Logistic Regression
+TOTAL NODES: 12  (readings, incl. summit)

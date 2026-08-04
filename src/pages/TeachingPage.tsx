@@ -473,6 +473,99 @@ function AnimatedBlackboard({
   );
 }
 
+/// The opening coda — the curtain-raiser that bookends the completion "Fin"
+/// page. Same centered, atmospheric treatment: a faded glyph, the manuscript
+/// opener "Incipit", the study's title, a quiet line of context, and an
+/// invocation. The one Begin action opens (drafts) the first passage.
+function Frontispiece({
+  artifact,
+  glyphSeed,
+  onBegin,
+  busy,
+  waiting,
+  error,
+}: {
+  artifact: TeachingArtifact;
+  glyphSeed: number;
+  onBegin: () => void;
+  busy: boolean;
+  waiting: boolean;
+  error: string | null;
+}) {
+  const isJourney = artifact.kind === "Journey";
+
+  const title = isJourney
+    ? artifact.journey.journey.journey_title || artifact.journey.chapter_title || "A journey"
+    : artifact.explanation.title || "An explanation";
+
+  const arcs = isJourney ? artifact.journey.journey.arcs : [];
+  const steps = isJourney ? [] : artifact.explanation.explanation.steps;
+  const topicCount = arcs.reduce((n, a) => n + a.topics.length, 0);
+  const source = isJourney && artifact.journey.chapter_title ? artifact.journey.chapter_title : null;
+
+  const meta = isJourney
+    ? `${arcs.length} ${arcs.length === 1 ? "arc" : "arcs"}, ${topicCount} ${topicCount === 1 ? "topic" : "topics"}${source ? ` · from ${source}` : ""}`
+    : `${steps.length} ${steps.length === 1 ? "step" : "steps"} along the route`;
+
+  const invocation = isJourney
+    ? "Find your seat. When you're ready, we'll set out on the first step together."
+    : "Find your seat. When you're ready, we'll walk the first step together.";
+
+  const ctaLabel = isJourney ? "Begin the journey" : "Begin the route";
+
+  return (
+    <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in">
+      <span
+        className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display italic leading-none text-foreground/[0.03]"
+        style={{ fontSize: "min(60vh, 60vw)" }}
+        aria-hidden
+      >
+        {GLYPHS[Math.abs(glyphSeed) % GLYPHS.length]}
+      </span>
+
+      <p className="label-whisper text-text-tertiary/70 mb-5 relative">Incipit</p>
+      <h1 className="relative font-display text-4xl italic text-foreground text-balance max-w-2xl mb-5">
+        {title}
+      </h1>
+      <div
+        className="h-px w-12 mb-6 relative animate-reveal-line"
+        style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "center" }}
+      />
+      <p className="relative text-sm text-text-tertiary/60 mb-3 max-w-md leading-relaxed">{meta}</p>
+      <p className="relative font-display italic text-sm text-text-tertiary/80 max-w-md leading-relaxed mb-10">
+        {invocation}
+      </p>
+
+      {busy ? (
+        <div className="relative flex items-center gap-3 text-text-tertiary">
+          <span className="flex items-center gap-1">
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
+            <span className="thinking-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "hsl(var(--amber))" }} />
+          </span>
+          <span className="font-display text-sm italic">
+            {waiting ? "Professor Metis is composing the first passage…" : "Opening the first passage…"}
+          </span>
+        </div>
+      ) : (
+        <button
+          onClick={onBegin}
+          className="group relative inline-flex items-center gap-2.5 rounded-full bg-foreground px-7 py-3 text-background shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-medium"
+        >
+          <span className="font-display text-base italic">{ctaLabel}</span>
+          <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+        </button>
+      )}
+
+      {error && (
+        <div className="relative mt-6 max-w-md rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TeachingPage() {
   const { context } = useAppContext();
   const navigate = useNavigate();
@@ -576,7 +669,7 @@ export default function TeachingPage() {
   const [artifact, setArtifact] = useState<TeachingArtifact | null>(null);
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
   const [waitingForNext, setWaitingForNext] = useState(false);
-  const { byType } = useTasks();
+  const { onTaskDone } = useTasks();
   const seedKeyRef = useRef<string | null>(null);
 
   // Seed the artifact + dialogue history on mount / artifact change.
@@ -629,17 +722,6 @@ export default function TeachingPage() {
     const steps = artifact.explanation.explanation.steps;
     return ref.step_idx >= steps.length - 1;
   }, [allDialogues, artifact]);
-
-  // Active generate_dialogues task targeting our artifact, if any.
-  const generationTask = useMemo(() => {
-    if (parentId == null) return null;
-    return (
-      byType("generate_dialogues").find((t) => {
-        const pid = t.params?.parent_id;
-        return typeof pid === "number" && pid === parentId;
-      }) ?? null
-    );
-  }, [byType, parentId]);
 
   // Normalize journey/explanation into one shape the rendering reads from:
   // a segmented progress rail, group labels for the masthead, and completion copy.
@@ -857,15 +939,16 @@ export default function TeachingPage() {
     }
   }, [artifactKind, parentId, allDialogues.length, immersive]);
 
-  // While waiting for generation to produce a dialogue, retry whenever the
-  // generate_dialogues checkpoint advances (each progress event = one new
-  // dialogue inserted into the DB).
-  const generationCount = (generationTask?.checkpoint as { count?: number } | null)?.count ?? null;
+  // While waiting for a ready dialogue, retry whenever any background task
+  // completes — readiness is produced by a compose_dialogue task finishing, and
+  // getNextDialogue is idempotent, so an unrelated completion just re-probes and
+  // returns null. The listener is torn down once a fetch succeeds (waiting clears).
   useEffect(() => {
-    if (!waitingForNext || parentId == null) return;
-    if (generationCount == null) return;
-    void fetchNextDialogue();
-  }, [waitingForNext, generationCount, parentId, fetchNextDialogue]);
+    if (!waitingForNext) return;
+    return onTaskDone(() => {
+      void fetchNextDialogue();
+    });
+  }, [waitingForNext, onTaskDone, fetchNextDialogue]);
 
   // The one advance owner. While playing, reveal the next segment; at the end of
   // a passage, STOP. Playback never crosses passages on its own — the reader
@@ -1355,6 +1438,19 @@ export default function TeachingPage() {
         const hasBoard = Boolean(currentImageUrl);
         const boardOnly = immersive && hasBoard;
 
+        if (hasNoPages && artifact) {
+          return (
+            <Frontispiece
+              artifact={artifact}
+              glyphSeed={model.glyphSeed}
+              onBegin={forward}
+              busy={forwardBusy}
+              waiting={waitingForNext}
+              error={error}
+            />
+          );
+        }
+
         if (onCompletionPage) {
           return (
             <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in">
@@ -1451,14 +1547,6 @@ export default function TeachingPage() {
                   )}
                 </header>
 
-                {hasNoPages && !isLoading && (
-                  <div className="py-20 animate-blur-in">
-                    <p className="font-display italic text-base text-foreground/70 leading-relaxed max-w-md">
-                      Ready when you are. The first passage waits to be opened.
-                    </p>
-                  </div>
-                )}
-
                 {!hasNoPages && (
                   <div key={pageIndex} className="animate-blur-in">
                     {hasSegments ? (
@@ -1552,16 +1640,20 @@ export default function TeachingPage() {
         );
       })()}
 
-      {/* Floating raise hand button */}
-      <button
-        onClick={openAside}
-        className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 backdrop-blur-sm text-text-tertiary transition-colors hover:text-amber hover:border-amber/40"
-        aria-label="Raise hand to ask a question"
-      >
-        <Hand className="h-4 w-4" strokeWidth={1.5} />
-      </button>
+      {/* Floating raise hand button — no lecture to ask about until we've begun */}
+      {!hasNoPages && (
+        <button
+          onClick={openAside}
+          className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 backdrop-blur-sm text-text-tertiary transition-colors hover:text-amber hover:border-amber/40"
+          aria-label="Raise hand to ask a question"
+        >
+          <Hand className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      )}
 
-      {/* Bottom bar */}
+      {/* Bottom bar — the frontispiece carries its own Begin, so the transport
+          bar only appears once there's a passage to move through. */}
+      {!hasNoPages && (
       <div
         className={cn(
           "sticky bottom-0 border-t border-border/20 backdrop-blur-xl px-4 py-3.5 transition-colors duration-500",
@@ -1695,6 +1787,7 @@ export default function TeachingPage() {
           </div>
         </div>
       </div>
+      )}
 
       {isAsking && (
         <aside className="fixed right-0 top-0 bottom-0 z-[60] flex w-full max-w-[400px] flex-col border-l border-border/40 bg-background animate-in slide-in-from-right duration-300 [animation-timing-function:cubic-bezier(0.22,1,0.36,1)]">

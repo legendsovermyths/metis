@@ -1,10 +1,11 @@
 use crate::{
     app::{
         dialogue::{DialogueReference, ReferenceKind},
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
     },
-    db::repo::{dialogue::DialoguesRepo, explanations::ExplanationsRepo, journeys::JourneysRepo},
+    db::repo::Repository,
     utils::dialogue::{dialogue_to_summary, get_after_dialogue, get_before_dialogue},
 };
 use async_trait::async_trait;
@@ -87,7 +88,8 @@ impl Tool for FetchReferenceMaterialTool {
             .and_then(|v| v.as_i64())
             .ok_or_else(|| MetisError::ToolError("missing required parameter: dialogue_id".into()))?;
 
-        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+        let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+        let dialogue = dialogue.read();
 
         let content = match &dialogue.reference {
             DialogueReference::Journey {
@@ -95,15 +97,16 @@ impl Tool for FetchReferenceMaterialTool {
                 arc_idx,
                 topic_idx,
             } => {
-                let artifacts = JourneysRepo::get_artifacts(*journey_id)?;
+                let artifacts = Repository::<artifact::JourneyArtifacts>::find_by_id(journey_id)?;
+                let artifacts = artifacts.read();
                 let topic = artifacts.get_topic(*arc_idx, *topic_idx).ok_or(
                     MetisError::ToolError("Referenced topic does not exist.".to_string()),
                 )?;
                 load_topic_content(&artifacts.chapter_dir, &topic.name)
             }
             DialogueReference::Explanation { explanation_id, .. } => {
-                let artifacts = ExplanationsRepo::get_artifacts(*explanation_id)?;
-                load_explanation_material(&artifacts.explanation_directory)
+                let artifacts = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?;
+                load_explanation_material(&artifacts.read().explanation_directory)
             }
             DialogueReference::None => {
                 return Ok(json!({
@@ -169,18 +172,21 @@ impl Tool for ReadTutorNotesTool {
             "chat context doesn't contain dialogue id".to_string(),
         ))?;
 
-        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+        let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+        let dialogue = dialogue.read();
 
         match dialogue.reference.kind() {
             ReferenceKind::Journey => {
-                let journey_artifacts =
-                    JourneysRepo::get_artifacts(dialogue.reference.parent_id())?;
-                Ok(json!({"notes": journey_artifacts.tutor_notes}))
+                let journey_artifacts = Repository::<artifact::JourneyArtifacts>::find_by_id(
+                    &dialogue.reference.parent_id(),
+                )?;
+                Ok(json!({"notes": journey_artifacts.read().tutor_notes}))
             }
             ReferenceKind::Explanation => {
-                let explanation_artifacts =
-                    ExplanationsRepo::get_artifacts(dialogue.reference.parent_id())?;
-                Ok(json!({"notes": explanation_artifacts.tutor_notes}))
+                let explanation_artifacts = Repository::<ExplanationArtifacts>::find_by_id(
+                    &dialogue.reference.parent_id(),
+                )?;
+                Ok(json!({"notes": explanation_artifacts.read().tutor_notes}))
             }
             ReferenceKind::None => Err(MetisError::InternalDataError(
                 "Dialgoue doesn't have reference kind set".to_string(),
@@ -216,19 +222,21 @@ impl Tool for SetTutorNotesTool {
             "chat context doesn't contain dialogue id".to_string(),
         ))?;
 
-        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+        let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+        let dialogue = dialogue.read();
 
         match dialogue.reference.kind() {
             ReferenceKind::Journey => {
-                let mut artifacts = JourneysRepo::get_artifacts(dialogue.reference.parent_id())?;
-                artifacts.tutor_notes = content;
-                JourneysRepo::update(&artifacts)?;
+                let mut journey = Repository::<artifact::JourneyArtifacts>::find_by_id(
+                    &dialogue.reference.parent_id(),
+                )?;
+                journey.write().tutor_notes = content;
             }
             ReferenceKind::Explanation => {
-                let mut artifacts =
-                    ExplanationsRepo::get_artifacts(dialogue.reference.parent_id())?;
-                artifacts.tutor_notes = content;
-                ExplanationsRepo::update(&artifacts)?;
+                let mut explanation = Repository::<ExplanationArtifacts>::find_by_id(
+                    &dialogue.reference.parent_id(),
+                )?;
+                explanation.write().tutor_notes = content;
             }
             ReferenceKind::None => {
                 return Err(MetisError::InternalDataError(

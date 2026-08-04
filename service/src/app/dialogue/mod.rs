@@ -5,9 +5,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     app::{
         dialogue::{blackboard::Blackboard, segment::Segment},
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
     },
-    db::repo::{explanations::ExplanationsRepo, journeys::JourneysRepo},
+    db::repo::Repository,
     error::{MetisError, Result},
 };
 
@@ -60,13 +61,13 @@ impl DialogueReference {
     pub fn kind(&self) -> ReferenceKind {
         match self {
             DialogueReference::Journey {
-                journey_id,
-                arc_idx,
-                topic_idx,
+                journey_id: _,
+                arc_idx: _,
+                topic_idx: _,
             } => ReferenceKind::Journey,
             DialogueReference::Explanation {
-                explanation_id,
-                step_idx,
+                explanation_id: _,
+                step_idx: _,
             } => ReferenceKind::Explanation,
             DialogueReference::None => ReferenceKind::None,
         }
@@ -75,12 +76,12 @@ impl DialogueReference {
         match self {
             DialogueReference::Journey {
                 journey_id,
-                arc_idx,
-                topic_idx,
+                arc_idx: _,
+                topic_idx: _,
             } => *journey_id,
             DialogueReference::Explanation {
                 explanation_id,
-                step_idx,
+                step_idx: _,
             } => *explanation_id,
             _ => 0,
         }
@@ -89,12 +90,12 @@ impl DialogueReference {
     pub fn get_directory(&self) -> Result<String> {
         match self {
             DialogueReference::Journey { journey_id, .. } => {
-                let artifact = JourneysRepo::get_artifacts(*journey_id)?;
-                Ok(artifact.chapter_dir)
+                let journey = Repository::<artifact::JourneyArtifacts>::find_by_id(journey_id)?;
+                Ok(journey.read().chapter_dir.clone())
             }
             DialogueReference::Explanation { explanation_id, .. } => {
-                let artifact = ExplanationsRepo::get_artifacts(*explanation_id)?;
-                Ok(artifact.explanation_directory)
+                let explanation = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?;
+                Ok(explanation.read().explanation_directory.clone())
             },
             DialogueReference::None => {
                 Err(MetisError::InternalDataError("Directory being requested from the reference that is not associated with any resource".to_string()))

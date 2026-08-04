@@ -34,6 +34,7 @@ books/
 Resources/
 tmp/
 explanations/
+Artifacts/
 
 #claude file
 CLAUDE.md

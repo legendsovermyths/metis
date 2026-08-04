@@ -3,8 +3,9 @@ use async_trait::async_trait;
 use crate::{
     agent::{
         director::tools::{
-            CreateExplainerTool, CreateJourneyTool, GetAllResourcesTool, GetResourceContentTool,
-            IngestResourceTool,
+            CreateExplainerTool, CreateJourneyTool, GetAllResourcesTool, GetAvailableBooksTool,
+            GetNotesTool, GetResourceContentTool, GetResourceStructureTool, GetStudentProfileTool,
+            IngestResourceTool, SetDoneTool, SetNotesTool,
         },
         Agent, AgentResponse,
     },
@@ -15,7 +16,7 @@ use crate::{
         llm_client::LLMChatClient,
         tool::Tool,
     },
-    logs::EventHistory,
+    app::events::EventHistory,
     prompts::get_prompt_provider,
 };
 
@@ -37,9 +38,15 @@ impl<'a> Director<'a> {
 
     fn tools() -> Vec<Box<dyn Tool>> {
         vec![
+            Box::new(GetStudentProfileTool),
             Box::new(IngestResourceTool),
             Box::new(GetAllResourcesTool),
             Box::new(GetResourceContentTool),
+            Box::new(GetResourceStructureTool),
+            Box::new(GetAvailableBooksTool),
+            Box::new(SetNotesTool),
+            Box::new(GetNotesTool),
+            Box::new(SetDoneTool),
             Box::new(CreateJourneyTool),
             Box::new(CreateExplainerTool),
         ]

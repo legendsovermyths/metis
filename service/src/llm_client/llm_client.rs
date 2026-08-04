@@ -1,4 +1,4 @@
-use crate::{error::Result, llm_client::tool::Tool, logs::EventHistory};
+use crate::{error::Result, llm_client::tool::Tool, app::events::EventHistory};
 use async_trait::async_trait;
 
 

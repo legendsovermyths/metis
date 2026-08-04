@@ -12,20 +12,18 @@ use crate::{
     },
     app::{
         dialogue::{Dialogue, DialogueReference},
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
     },
-    db::repo::{
-        dialogue::DialoguesRepo, dialogue_events::DialogueEventsRepo,
-        explanations::ExplanationsRepo, journeys::JourneysRepo,
-    },
+    db::{repo::dialogue_events::DialogueEventsRepo, repo::Repository},
     error::{MetisError, Result},
     llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMChatClient,
         tool::Tool,
     },
-    logs::EventHistory,
+    app::events::EventHistory,
     prompts::get_prompt_provider,
     utils::dialogue::{format_dialogues, get_before_dialogue},
 };
@@ -55,7 +53,8 @@ impl<'a> Tutor<'a> {
     }
 
     async fn build_system_prompt(&self, dialogue_id: i64) -> Result<String> {
-        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+        let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+        let dialogue = dialogue.read();
 
         let reference_kind = dialogue.reference.kind();
 
@@ -72,7 +71,8 @@ impl<'a> Tutor<'a> {
                         dialogue_id
                     )));
                 };
-                let artifact = JourneysRepo::get_artifacts(journey_id)?;
+                let artifact = Repository::<artifact::JourneyArtifacts>::find_by_id(&journey_id)?;
+                let artifact = artifact.read();
                 let (arc_title, topic_title) = (
                     artifact
                         .get_arc(arc_idx)
@@ -111,7 +111,8 @@ impl<'a> Tutor<'a> {
                         dialogue_id
                     )));
                 };
-                let artifact = ExplanationsRepo::get_artifacts(explanation_id)?;
+                let artifact = Repository::<ExplanationArtifacts>::find_by_id(&explanation_id)?;
+                let artifact = artifact.read();
                 let step = artifact
                     .get_step(step_idx)
                     .ok_or(MetisError::InternalDataError(
@@ -164,7 +165,8 @@ impl<'a> Agent for Tutor<'a> {
 
         let full = self.client.get_event_history();
         let new_events: Vec<_> = full.events.iter().skip(pre_count).cloned().collect();
-        let dialogue = DialoguesRepo::get_by_id(dialogue_id)?;
+        let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
+        let dialogue = dialogue.read();
         DialogueEventsRepo::insert_events(dialogue.reference.parent_id(), dialogue_id, &new_events)?;
         AgentResponse::with(response)
     }

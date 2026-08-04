@@ -26,9 +26,25 @@ export interface EventHistory {
 
 export type ReferenceKind = "Journey" | "Explanation" | "None";
 
+/** Mirrors the Rust `AgentResponseInstruction` (externally tagged). */
+export type AgentResponseInstruction =
+  | { ChapterTitle: string }
+  | { ArtifactGenerationInstructions: string }
+  | "None";
+
 export type PendingAction =
-  | { kind: "explainer"; problem_resource_id: number; solution_resource_id: number }
-  | { kind: "journey"; resource_id: number };
+  | {
+      kind: "explainer";
+      problem_resource_id: number;
+      solution_resource_id: number;
+      notes: string;
+    }
+  | {
+      kind: "journey";
+      resource_id: number;
+      instruction: AgentResponseInstruction;
+      notes: string;
+    };
 
 export interface ChatContext {
   phase: MetisPhase;
@@ -39,18 +55,12 @@ export interface ChatContext {
   pending_action: PendingAction | null;
 }
 
-export interface SessionContext {
-  chapter_title: string;
-  book_id: number | null;
-}
-
 export interface TeachingContext {
   artifact_id: number | null;
   artifact_kind: ReferenceKind | null;
 }
 
 export interface AppContext {
-  session: SessionContext;
   chat: ChatContext;
   teaching: TeachingContext;
 }
@@ -153,8 +163,7 @@ export interface JourneyRow {
   advisor_notes: string;
   tutor_notes: string;
   folder_id: number | null;
-  completed_topics: number;
-  total_topics: number;
+  progress: JourneyProgress;
 }
 
 // -- Explanations & folders --
@@ -180,13 +189,30 @@ export interface Explanation {
 export interface ExplanationRow {
   id: number;
   title: string;
-  explanation_dir: string;
+  explanation_directory: string;
   explanation: Explanation;
   created_at: number;
   tutor_notes: string;
   folder_id: number | null;
-  completed_steps: number;
-  total_steps: number;
+  progress: ExplanationProgress;
+}
+
+export function journeyCounts(j: JourneyRow): { completed: number; total: number } {
+  const total = j.journey.arcs.reduce((n, arc) => n + arc.topics.length, 0);
+  if (j.progress.is_journey_complete) return { completed: total, total };
+  let completed = j.progress.topic_idx;
+  for (let i = 0; i < j.progress.arc_idx; i++) {
+    completed += j.journey.arcs[i]?.topics.length ?? 0;
+  }
+  return { completed, total };
+}
+
+export function explanationCounts(e: ExplanationRow): { completed: number; total: number } {
+  const total = e.explanation.steps.length;
+  return {
+    completed: e.progress.is_complete ? total : e.progress.step_idx,
+    total,
+  };
 }
 
 export type FolderScope = "study" | "note";
@@ -224,9 +250,9 @@ export type TeachingArtifact =
 export type TaskStatus = "Pending" | "Running" | "Completed" | "Failed";
 
 export type TaskName =
-  | "analyse_book"
   | "create_journey"
-  | "generate_dialogues"
+  | "draft_dialogue"
+  | "compose_dialogue"
   | "create_explanation";
 
 export interface BackgroundTask {
@@ -312,27 +338,47 @@ async function callTask(
   return data.task_id;
 }
 
-// -- Book types --
+// -- Resource types (mirror Rust ResourceType / Resource) --
 
-export interface BackendChapter {
+export interface Chapter {
   title: string;
   topics: { title: string }[];
 }
 
-export interface BackendBook {
-  id: number;
+export interface Section {
   title: string;
-  table_of_content: BackendChapter[];
+  sub_sections: { title: string }[];
 }
 
-// -- API: books --
+export type DocumentType =
+  | "ResearchPaper"
+  | "BlogPost"
+  | "TechnicalDocument"
+  | "Documentation"
+  | "Infographic"
+  | "Tutorial"
+  | "FAQ";
 
-export async function analyseBook(path: string): Promise<string> {
-  return callTask("analyse_book", { path });
+export type ResourceType =
+  | { TextBook: { table_of_content: Chapter[] } }
+  | { Document: { document_type: DocumentType; table_of_content: Section[] } }
+  | "Question"
+  | "Solution";
+
+export interface Resource {
+  id: number | null;
+  title: string;
+  path: string;
+  description: string;
+  agent_notes: string;
+  resource_type: ResourceType;
+  created_at: number;
 }
 
-export async function getAllBooks(): Promise<BackendBook[]> {
-  return (await callService("GetAllBooks")) as BackendBook[];
+// -- API: resources --
+
+export async function getAllResources(): Promise<Resource[]> {
+  return (await callService("GetAllResources")) as Resource[];
 }
 
 // -- API: journeys --
@@ -346,9 +392,9 @@ export async function getJourney(id: number): Promise<JourneyRow> {
 }
 
 export interface CreateJourneyParams {
-  chapter_title: string;
+  resource_id: number;
+  response_instruction: AgentResponseInstruction;
   advisor_notes: string;
-  book_id: number;
 }
 
 export async function createJourney(params: CreateJourneyParams): Promise<string> {
@@ -392,10 +438,12 @@ export async function moveExplanation(id: number, folderId: number | null): Prom
 export async function createExplanation(
   problemResourceId: number,
   solutionResourceId: number,
+  notes = "",
 ): Promise<string> {
   return callTask("create_explanation", {
     problem_resource_id: problemResourceId,
     solution_resource_id: solutionResourceId,
+    notes,
   });
 }
 
@@ -439,8 +487,8 @@ export async function getAllDialogues(
 
 /**
  * Returns the next prefetched dialogue (marking it visible), or null if none are
- * ready yet. When null, the backend has already spawned a `generate_dialogues`
- * task — callers should listen to task events and retry.
+ * ready yet. When null, the backend has already spawned draft/compose dialogue
+ * tasks — callers should listen to task events and retry.
  */
 export async function getNextDialogue(
   kind: ReferenceKind,
@@ -458,10 +506,6 @@ export async function getContext(): Promise<AppContext> {
 
 export async function setChat(chat: ChatContext): Promise<void> {
   await callService("SetChat", chat as unknown as Record<string, unknown>);
-}
-
-export async function setSession(session: SessionContext): Promise<void> {
-  await callService("SetSession", session as unknown as Record<string, unknown>);
 }
 
 export async function setTeaching(teaching: TeachingContext): Promise<void> {
@@ -583,6 +627,17 @@ export async function submitAgentInput(
 /** Abandon a pending input request so the waiting tool errors out instead of hanging. */
 export async function cancelAgentInput(requestId: string): Promise<void> {
   await callService("CancelUserInput", { request_id: requestId });
+}
+
+/**
+ * Upload material directly (no agent waiting) — runs the same classify→structure
+ * ingestion and returns the new resource's id.
+ */
+export async function uploadResource(inputs: UserInputItem[], notes = ""): Promise<number> {
+  const data = (await callService("SubmitUserInput", { inputs, notes })) as {
+    resource_id: number;
+  };
+  return data.resource_id;
 }
 
 /** Listen for `agent:request_input` events (one popup request at a time). */

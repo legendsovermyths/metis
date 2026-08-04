@@ -266,7 +266,9 @@
 .note-prose {
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: hsl(var(--text-secondary));
-  font-size: 1.0625rem;
+  /* Reader-controlled text zoom (Cmd +/-/0). Everything inside sizes in `em`
+     off this base, so the whole note scales together while the UI stays put. */
+  font-size: calc(1.0625rem * var(--note-scale, 1));
   line-height: 1.8;
   caret-color: hsl(var(--amber));
 }
@@ -283,9 +285,9 @@
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
-.note-prose h1 { font-size: 1.6rem;  margin-top: 1.4em; }
-.note-prose h2 { font-size: 1.3rem;  margin-top: 1.3em; }
-.note-prose h3 { font-size: 1.1rem;  margin-top: 1.2em; }
+.note-prose h1 { font-size: 1.5em;   margin-top: 1.4em; }
+.note-prose h2 { font-size: 1.22em;  margin-top: 1.3em; }
+.note-prose h3 { font-size: 1.04em;  margin-top: 1.2em; }
 .note-prose strong { color: hsl(var(--foreground)); font-weight: 600; }
 .note-prose em { font-style: italic; }
 .note-prose a {
@@ -362,7 +364,7 @@
   padding: 0.9rem 1.1rem;
   overflow-x: auto;
 }
-.note-prose pre code { background: none; border: none; padding: 0; font-size: 0.875rem; }
+.note-prose pre code { background: none; border: none; padding: 0; font-size: 0.82em; }
 .note-prose hr {
   border: none;
   height: 1px;
@@ -408,7 +410,7 @@
   transition: color 150ms ease;
 }
 .rb-tag-button:hover { color: hsl(var(--foreground)); }
-.rb-body { font-size: 1.0625rem; line-height: 1.8; }
+.rb-body { font-size: calc(1.0625rem * var(--note-scale, 1)); line-height: 1.8; }
 .rb-body > * + * { margin-top: 0.6em; }
 .rb-body > *:first-child { margin-top: 0; }
 

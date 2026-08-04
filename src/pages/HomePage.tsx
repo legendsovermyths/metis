@@ -3,7 +3,7 @@ import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
 import { useTheme } from "@/hooks/use-theme";
-import { setChat } from "@/lib/service";
+import { setChat, teachingInit } from "@/lib/service";
 import { useMasthead, mastheadStyle } from "@/lib/editorial";
 import { Watermark } from "@/components/Watermark";
 
@@ -27,14 +27,38 @@ export default function HomePage() {
   const { theme, toggle } = useTheme();
   const onboarded = context ? context.chat.phase !== "Onboarding" : false;
 
-  const goToChatFresh = async () => {
-    if (context) await setChat({ ...context.chat, phase: "Exploring", is_done: false, pending_action: null });
+  const chatInProgress =
+    !!context &&
+    ["Advising", "Idle", "Exploring"].includes(context.chat.phase) &&
+    (context.chat.event_history?.events?.length ?? 0) > 0 &&
+    !context.chat.is_done;
+
+  const resumable =
+    !!context &&
+    context.teaching.artifact_id != null &&
+    (context.teaching.artifact_kind === "Journey" ||
+      context.teaching.artifact_kind === "Explanation");
+
+  const beginDialogue = async () => {
+    if (!chatInProgress && context) {
+      await setChat({
+        ...context.chat,
+        phase: "Advising",
+        is_done: false,
+        pending_action: null,
+        dialogue_id: null,
+        event_history: { events: [] },
+      });
+    }
     navigate("/chat");
   };
 
-  const createJourney = async () => {
-    if (context) await setChat({ ...context.chat, phase: "Advising", is_done: false, pending_action: null });
-    navigate("/chat");
+  const continueStudy = async () => {
+    if (!resumable || !context || context.teaching.artifact_id == null) return;
+    const kind = context.teaching.artifact_kind;
+    if (kind !== "Journey" && kind !== "Explanation") return;
+    await teachingInit(kind, context.teaching.artifact_id);
+    navigate("/teach");
   };
 
   const handleGetStarted = async () => {
@@ -145,19 +169,21 @@ export default function HomePage() {
     <div className="flex items-center gap-7">
       <Button
         variant="outline"
-        onClick={() => void createJourney()}
+        onClick={() => void beginDialogue()}
         className="w-fit rounded-xl px-8 py-5 text-sm font-medium"
         style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
       >
-        Take up a book
+        {chatInProgress ? "Resume the dialogue" : "Begin a dialogue"}
       </Button>
-      <button
-        onClick={() => void goToChatFresh()}
-        className="group text-sm text-text-tertiary hover:text-foreground transition-colors font-display italic"
-      >
-        or, begin a fresh dialogue
-        <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-      </button>
+      {resumable && (
+        <button
+          onClick={() => void continueStudy()}
+          className="group text-sm text-text-tertiary hover:text-foreground transition-colors font-display italic"
+        >
+          or, continue where you left off
+          <span className="ml-1 inline-block transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+        </button>
+      )}
     </div>
   );
 
@@ -169,7 +195,7 @@ export default function HomePage() {
             to={link.path}
             onClick={
               link.path === "/chat"
-                ? (e) => { e.preventDefault(); void goToChatFresh(); }
+                ? (e) => { e.preventDefault(); void beginDialogue(); }
                 : undefined
             }
             className="group flex items-baseline py-3.5 text-text-secondary hover:text-foreground transition-colors duration-200 border-b border-border/15 last:border-0"
@@ -295,18 +321,20 @@ export default function HomePage() {
           </p>
           <Button
             variant="outline"
-            onClick={() => void createJourney()}
+            onClick={() => void beginDialogue()}
             className="w-full rounded-xl px-6 py-5 text-sm font-medium mb-2"
             style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
           >
-            Take up a book
+            {chatInProgress ? "Resume the dialogue" : "Begin a dialogue"}
           </Button>
-          <button
-            onClick={() => void goToChatFresh()}
-            className="w-full text-sm text-text-tertiary font-display italic py-3"
-          >
-            or, begin a fresh dialogue →
-          </button>
+          {resumable && (
+            <button
+              onClick={() => void continueStudy()}
+              className="w-full text-sm text-text-tertiary font-display italic py-3"
+            >
+              or, continue where you left off →
+            </button>
+          )}
 
           <div className="h-px w-full bg-border/30 mt-10 mb-4" />
           <span className="label-whisper text-text-tertiary block mb-1">Table of Contents</span>
@@ -317,7 +345,7 @@ export default function HomePage() {
                   to={link.path}
                   onClick={
                     link.path === "/chat"
-                      ? (e) => { e.preventDefault(); void goToChatFresh(); }
+                      ? (e) => { e.preventDefault(); void beginDialogue(); }
                       : undefined
                   }
                   className="flex items-baseline py-3.5 text-text-secondary border-b border-border/15 last:border-0"

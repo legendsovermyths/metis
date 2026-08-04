@@ -1,83 +1,74 @@
+use dborm::DbRow;
+
 use crate::{
-    db::get_database,
+    db::{persistence::Persistent, object::FromDbRow, repo::Repository},
     error::Result,
-    logs::{Event, EventHistory, EventType},
+    app::events::{Event, EventHistory, EventType},
 };
+
+#[derive(Debug, Clone, DbRow)]
+#[db(table = "dialogue_events")]
+pub struct EventRecord {
+    #[db(id)]
+    pub id: i64,
+    pub parent_id: i64,
+    pub dialogue_id: i64,
+    pub name: String,
+    pub event_type: EventType,
+    pub content: String,
+    pub timestamp: String,
+}
+
+impl FromDbRow for EventRecord {
+    type DbRow = Self;
+    fn from_row_type(row: Self) -> Result<Self> {
+        Ok(row)
+    }
+    fn into_row_type(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl EventRecord {
+    fn into_event(self) -> Event {
+        Event {
+            name: self.name,
+            event_type: self.event_type,
+            content: self.content,
+            timestamp: self.timestamp,
+        }
+    }
+}
 
 pub struct DialogueEventsRepo;
 
-fn event_type_from_str(s: &str) -> EventType {
-    match s {
-        "llm_message" => EventType::LlmMessage,
-        "function_call" => EventType::FunctionCall,
-        "function_response" => EventType::FunctionResponse,
-        "user_request" => EventType::UserRequest,
-        _ => EventType::UserMessage,
-    }
-}
-
-fn event_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Event> {
-    let event_type_str: String = row.get(1)?;
-    Ok(Event {
-        name: row.get(0)?,
-        event_type: event_type_from_str(&event_type_str),
-        content: row.get(2)?,
-        timestamp: row.get(3)?,
-    })
-}
-
 impl DialogueEventsRepo {
     pub fn insert_events(parent_id: i64, dialogue_id: i64, events: &[Event]) -> Result<()> {
-        if events.is_empty() {
-            return Ok(());
-        }
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "INSERT INTO dialogue_events (parent_id, dialogue_id, name, event_type, content, timestamp)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        )?;
-        for event in events {
-            stmt.execute(rusqlite::params![
+        let records: Vec<EventRecord> = events
+            .iter()
+            .map(|event| EventRecord {
+                id: 0,
                 parent_id,
                 dialogue_id,
-                event.name,
-                event.event_type.to_string(),
-                event.content,
-                event.timestamp,
-            ])?;
-        }
-        Ok(())
+                name: event.name.clone(),
+                event_type: event.event_type.clone(),
+                content: event.content.clone(),
+                timestamp: event.timestamp.clone(),
+            })
+            .collect();
+        Repository::<EventRecord>::insert_many(&records)
     }
 
     pub fn get_for_dialogue(dialogue_id: i64) -> Result<EventHistory> {
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT name, event_type, content, timestamp
-             FROM dialogue_events
-             WHERE dialogue_id = ?1
-             ORDER BY id",
-        )?;
-        let mut rows = stmt.query(rusqlite::params![dialogue_id])?;
-        let mut history = EventHistory::new();
-        while let Some(row) = rows.next()? {
-            history.add_event(event_from_row(&row)?);
-        }
-        Ok(history)
+        Self::history(Repository::<EventRecord>::find_all_by("dialogue_id", dialogue_id)?)
     }
 
-    pub fn get_for_parent(parent_id: i64) -> Result<EventHistory> {
-        let conn = get_database().conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT name, event_type, content, timestamp
-             FROM dialogue_events
-             WHERE parent_id = ?1
-             ORDER BY id",
-        )?;
-        let mut rows = stmt.query(rusqlite::params![parent_id])?;
-        let mut history = EventHistory::new();
-        while let Some(row) = rows.next()? {
-            history.add_event(event_from_row(&row)?);
-        }
-        Ok(history)
+    fn history(mut records: Vec<Persistent<EventRecord>>) -> Result<EventHistory> {
+        records.sort_by_key(|record| record.read().id);
+        let events = records
+            .into_iter()
+            .map(|record| record.escape().into_event())
+            .collect();
+        Ok(EventHistory { events })
     }
 }

@@ -8,6 +8,7 @@ pub mod svg;
 pub mod python;
 pub mod latex;
 pub mod chrome;
+pub mod paths;
 pub mod image;
 pub mod text;
 pub mod page;

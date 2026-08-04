@@ -3,8 +3,12 @@ use std::{fs, sync::Arc};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-    app::journey::{artifact::TopicRange, Journey},
-    db::repo::books::BooksRepo,
+    agent::AgentResponseInstruction,
+    app::{
+        journey::{artifact::TopicRange, Journey},
+        resource::resource::{Resource, ResourceType},
+    },
+    db::repo::Repository,
     error::{MetisError, Result},
     llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
     prompts::get_prompt_provider,
@@ -16,35 +20,6 @@ use crate::{
 };
 
 const MAX_CONCURRENT_PRO: usize = 5;
-
-pub fn find_book_for_chapter(
-    chapter_title: &str,
-    preferred_book_id: Option<i64>,
-) -> Result<(String, String)> {
-    let books = BooksRepo::list()?;
-
-    if let Some(id) = preferred_book_id {
-        if let Some(book) = books.iter().find(|b| b.id == id) {
-            for chapter in &book.toc {
-                if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
-                    return Ok((book.path.clone(), book.title.clone()));
-                }
-            }
-        }
-    }
-
-    for book in &books {
-        for chapter in &book.toc {
-            if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
-                return Ok((book.path.clone(), book.title.clone()));
-            }
-        }
-    }
-    Err(MetisError::UtilsError(format!(
-        "No book found containing chapter \"{}\"",
-        chapter_title
-    )))
-}
 
 pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<TopicRange>> {
     let topic_list = topics
@@ -98,7 +73,7 @@ pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<P
             "Failed to parse page range: {e}\nResponse: {response_text}"
         ))
     })?;
-    log::info!(
+    crate::info!(
         "[detect_page_range] complete — PDF pages {}-{}",
         range.chapter_start,
         range.chapter_end
@@ -125,7 +100,7 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
         batch_pdfs.push((page, page_end, batch_pdf));
         page += PAGES_PER_CALL;
     }
-    log::info!("[convert_to_markdown] sliced {total_batches} batch PDFs, uploading + extracting (max {MAX_CONCURRENT_PRO} concurrent)");
+    crate::info!("[convert_to_markdown] sliced {total_batches} batch PDFs, uploading + extracting (max {MAX_CONCURRENT_PRO} concurrent)");
 
     let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_PRO));
     let mut set = JoinSet::new();
@@ -135,7 +110,7 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
         let batch_pages = page_end - batch_start + 1;
 
         set.spawn(async move {
-            let client = GeminiClient::new();
+            let mut client = GeminiClient::new();
 
             let _permit = sem
                 .acquire()
@@ -143,16 +118,11 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
                 .map_err(|e| MetisError::UtilsError(e.to_string()))?;
 
             let prompts = get_prompt_provider();
+            client.set_system_prompt(prompts.get_page_to_md_raw().to_string());
             let prompt = if batch_pages == 1 {
-                format!(
-                    "{}\n\nExtract page 1 of this PDF.",
-                    prompts.get_page_to_md_raw()
-                )
+                "Extract page 1 of this PDF.".to_string()
             } else {
-                format!(
-                    "{}\n\nExtract pages 1 and 2 of this PDF.",
-                    prompts.get_page_to_md_raw()
-                )
+                "Extract pages 1 and 2 of this PDF.".to_string()
             };
 
             let response = client.generate_with_file(prompt, &batch_pdf).await?;
@@ -165,14 +135,14 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
     while let Some(result) = set.join_next().await {
         match result {
             Ok(Ok(batch)) => {
-                log::info!(
+                crate::info!(
                     "[convert_to_markdown] {}/{total_batches} done",
                     batches.len() + 1
                 );
                 batches.push(batch);
             }
             Ok(Err(e)) => {
-                log::error!("[convert_to_markdown] batch failed: {e}");
+                crate::error!("[convert_to_markdown] batch failed: {e}");
                 return Err(e);
             }
             Err(e) => return Err(MetisError::UtilsError(format!("Task join error: {e}"))),
@@ -200,14 +170,16 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
     Ok(combined)
 }
 
-
 pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
-    let books = BooksRepo::list()?;
+    let resources = Repository::<Resource>::all()?;
 
-    for book in &books {
-        for chapter in &book.toc {
-            if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
-                return Ok(chapter.topics.iter().map(|t| t.title.clone()).collect());
+    for resource in &resources {
+        let r = resource.read();
+        if let ResourceType::TextBook(book) = &r.resource_type {
+            for chapter in &book.table_of_content {
+                if chapter.title.contains(chapter_title) || chapter_title.contains(&chapter.title) {
+                    return Ok(chapter.topics.iter().map(|t| t.title.clone()).collect());
+                }
             }
         }
     }
@@ -218,16 +190,29 @@ pub fn find_chapter_topics(chapter_title: &str) -> Result<Vec<String>> {
     )))
 }
 
-pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>> {
+pub async fn extract_topics_from_content(
+    content_md: &str,
+    request: &AgentResponseInstruction,
+) -> Result<Vec<String>> {
     let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
     client.set_system_prompt(get_prompt_provider().get_content_to_topics_prompt());
-
-    let response = client
-        .generate(format!(
-            "Extract the teachable topic list from this chapter content:\n\n{}",
-            content_md
-        ))
-        .await?;
+    let response;
+    if let AgentResponseInstruction::ArtifactGenerationInstructions(instructions) = request {
+        response = client
+            .generate(format!(
+                "Extract the teachable topic list from this chapter content:\n\n{}\n\nWhile extracting the topics please keep this special instructions in mind:\n\n{}",
+                content_md,
+                instructions
+            ))
+            .await?;
+    } else {
+        response = client
+            .generate(format!(
+                "Extract the teachable topic list from this chapter content:\n\n{}",
+                content_md
+            ))
+            .await?;
+    }
 
     let text = response.text();
     let json_text = sanitize_json(&text);
@@ -238,7 +223,7 @@ pub async fn extract_topics_from_content(content_md: &str) -> Result<Vec<String>
 }
 
 pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
-    log::info!(
+    crate::info!(
         "[generate_journey] {} topics — calling LLM to generate arc structure",
         topics.len()
     );
@@ -253,7 +238,7 @@ pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
 
     let journey: Journey =
         serde_json::from_str(&text).map_err(|e| MetisError::JsonError(e.to_string()))?;
-    log::info!(
+    crate::info!(
         "[generate_journey] parsed journey: {} arcs",
         journey.arcs.len()
     );
@@ -266,20 +251,20 @@ pub async fn create_topic_map(chapter_dir: &str, journey: &Journey) -> Result<()
         .iter()
         .flat_map(|arc| arc.topics.iter().map(|t| t.name.clone()))
         .collect();
-    log::info!("[create_topic_map] mapping {} topics", topic_names.len());
+    crate::info!("[create_topic_map] mapping {} topics", topic_names.len());
 
     let content_md = fs::read_to_string(format!("{}/content.md", chapter_dir))
         .map_err(|err| MetisError::FileReadError(err.to_string()))?;
 
     let topic_map = map_topics(&content_md, &topic_names).await?;
-    log::info!("[create_topic_map] got {} mappings", topic_map.len());
+    crate::info!("[create_topic_map] got {} mappings", topic_map.len());
 
     let topic_map_path = format!("{}/topic_map.json", chapter_dir);
     let topic_map_json = serde_json::to_string_pretty(&topic_map)
         .map_err(|e| MetisError::JsonError(e.to_string()))?;
     fs::write(&topic_map_path, &topic_map_json)
         .map_err(|e| MetisError::UtilsError(e.to_string()))?;
-    log::info!(
+    crate::info!(
         "[create_topic_map] saved topic_map.json ({} mappings)",
         topic_map.len()
     );

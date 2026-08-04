@@ -4,5 +4,6 @@
 
 fn main() {
     dotenvy::dotenv().ok();
+    dotenvy::from_path(app_lib::utils::paths::base().join(".env")).ok();
     app_lib::run();
 }

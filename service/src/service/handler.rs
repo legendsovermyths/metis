@@ -8,9 +8,9 @@ use crate::{
     app::AppContext,
     error::{MetisError, Result},
     service::handlers::{
-        cancel_user_input::cancel_user_input, create_folder::create_folder, create_note::create_note, delete_explanation::delete_explanation, delete_folder::delete_folder, delete_journey::{self, delete_journey}, delete_note::delete_note, move_note::move_note, get_all_books::get_all_books, get_all_dialogues::get_all_dialogues, get_all_explanations::get_all_explanations, get_explanation::get_explanation, get_all_journeys::get_all_journeys, get_all_notes::get_all_notes, get_artifact::get_artifact, get_context::get_context, get_folders::get_folders, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, move_explanation::move_explanation, move_journey::move_journey, move_folder::move_folder, rename_folder::rename_folder, set_chat::set_chat, set_dialogue::set_dialogue, set_session::set_session, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init, update_note::update_note
+        cancel_user_input::cancel_user_input, create_folder::create_folder, create_note::create_note, delete_explanation::delete_explanation, delete_folder::delete_folder, delete_journey::delete_journey, delete_note::delete_note, move_note::move_note, get_all_resources::get_all_resources, get_all_dialogues::get_all_dialogues, get_all_explanations::get_all_explanations, get_explanation::get_explanation, get_all_journeys::get_all_journeys, get_all_notes::get_all_notes, get_artifact::get_artifact, get_context::get_context, get_folders::get_folders, get_journey::get_journey, get_next_dialogue::get_next_dialogue, list_tasks::list_tasks, move_explanation::move_explanation, move_journey::move_journey, move_folder::move_folder, rename_folder::rename_folder, set_chat::set_chat, set_dialogue::set_dialogue, set_teaching::set_teaching, submit_user_input::submit_user_input, teaching_init::teaching_init, update_note::update_note
     },
-    task::{task_type::TaskType, TaskRequest},
+    task::TaskRequest,
 };
 
 pub type BoxFuture<'a> = Pin<Box<dyn Future<Output = Result<ServiceResponse>> + Send + 'a>>;
@@ -33,7 +33,7 @@ impl<'a> ServiceHandler<'a> {
             context,
         };
 
-        handler.register(ServiceRequestType::GetAllBooks, get_all_books);
+        handler.register(ServiceRequestType::GetAllResources, get_all_resources);
         handler.register(ServiceRequestType::GetAllDialogues, get_all_dialogues);
         handler.register(ServiceRequestType::GetAllJourneys, get_all_journeys);
         handler.register(ServiceRequestType::GetJourney, get_journey);
@@ -43,7 +43,6 @@ impl<'a> ServiceHandler<'a> {
         handler.register(ServiceRequestType::TeachingInit, teaching_init);
         handler.register(ServiceRequestType::SetChat, set_chat);
         handler.register(ServiceRequestType::SetDialogue, set_dialogue);
-        handler.register(ServiceRequestType::SetSession, set_session);
         handler.register(ServiceRequestType::SetTeaching, set_teaching);
         handler.register(ServiceRequestType::DeleteJourney, delete_journey);
         handler.register(ServiceRequestType::SubmitUserInput, submit_user_input);
