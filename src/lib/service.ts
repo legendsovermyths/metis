@@ -251,7 +251,8 @@ export type TaskStatus = "Pending" | "Running" | "Completed" | "Failed";
 
 export type TaskName =
   | "create_journey"
-  | "generate_dialogues"
+  | "draft_dialogue"
+  | "compose_dialogue"
   | "create_explanation";
 
 export interface BackgroundTask {
@@ -486,8 +487,8 @@ export async function getAllDialogues(
 
 /**
  * Returns the next prefetched dialogue (marking it visible), or null if none are
- * ready yet. When null, the backend has already spawned a `generate_dialogues`
- * task — callers should listen to task events and retry.
+ * ready yet. When null, the backend has already spawned draft/compose dialogue
+ * tasks — callers should listen to task events and retry.
  */
 export async function getNextDialogue(
   kind: ReferenceKind,

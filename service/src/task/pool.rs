@@ -15,7 +15,6 @@ use crate::{
 
 pub struct TaskPool {
     sender: mpsc::Sender<Task>,
-    handles: Vec<JoinHandle<()>>,
 }
 
 impl TaskPool {
@@ -26,16 +25,10 @@ impl TaskPool {
     ) -> Self {
         let (tx, rx) = mpsc::channel(2048);
         let rx = Arc::new(Mutex::new(rx));
-        let mut handles = Vec::new();
         for _ in 0..size {
-            let handle =
-                TaskWorker::new(Arc::clone(&rx), task_request_tx.clone(), app_handle.clone());
-            handles.push(handle);
+            TaskWorker::new(Arc::clone(&rx), task_request_tx.clone(), app_handle.clone());
         }
-        Self {
-            sender: tx,
-            handles,
-        }
+        Self { sender: tx }
     }
 
     pub async fn execute(&self, task: Task) {

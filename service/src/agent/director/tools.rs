@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        user_input::resource::{Resource, ResourceType},
+        resource::resource::{Resource, ResourceType},
         AppContext, PendingAction,
     },
     bridges::user_input::UserInputBridge,

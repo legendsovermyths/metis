@@ -1,0 +1,27 @@
+graph BT
+    n0[["Build a small language model in Rust"]]
+    n1["The Matrix Calculus You Need For Deep Learning (Parr & Howard) — Sections 1-6"]
+    n2["Deep Learning (Goodfellow, Bengio, Courville) — Chapter 6: Deep Feedforward Networks"]
+    n3["Deep Learning (Goodfellow, Bengio, Courville) — Chapter 8: Optimization for Training Deep Models"]
+    n4["Speech and Language Processing (Jurafsky & Martin) — Chapter 2: Regular Expressions, Text Normalization, Edit Distance"]
+    n5["Speech and Language Processing (Jurafsky & Martin) — Chapter 10: Transformers and Large Language Models"]
+    n6("Deep Learning (Goodfellow, Bengio, Courville) — Chapter 4: Numerical Computation")
+    n7("Deep Learning (Goodfellow, Bengio, Courville) — Chapter 5: Machine Learning Basics")
+    n8("Speech and Language Processing (Jurafsky & Martin) — Chapter 7: Neural Networks and Neural Language Models")
+    n9("Deep Learning (Goodfellow, Bengio, Courville) — Chapter 3: Probability and Information Theory")
+    n10("Speech and Language Processing (Jurafsky & Martin) — Chapter 5: Logistic Regression")
+    n11("Speech and Language Processing (Jurafsky & Martin) — Chapter 3: N-gram Language Models")
+    n1 --> n0
+    n2 --> n0
+    n3 --> n0
+    n4 --> n0
+    n5 --> n0
+    n6 --> n2
+    n7 --> n2
+    n2 --> n3
+    n8 --> n5
+    n9 --> n7
+    n6 --> n7
+    n10 --> n8
+    n11 --> n8
+    n4 --> n11

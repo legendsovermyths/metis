@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{explanation::folder::Folder, AppContext},
+    app::{folder::Folder, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
@@ -13,7 +13,7 @@ pub struct MoveFolderParams {
     parent_id: Option<i64>,
 }
 
-pub fn move_folder(params: MoveFolderParams, _: &AppContext) -> BoxFuture {
+pub fn move_folder(params: MoveFolderParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut folder = Repository::<Folder>::find_by_id(&params.id)?;
         folder.write().parent_id = params.parent_id;

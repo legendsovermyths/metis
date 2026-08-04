@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use crate::app::resource::document::Document;
 
 use crate::agent::AgentResponseInstruction;
-use crate::app::book::{Book, Document};
+use crate::app::resource::book::Book;
 use crate::error::{MetisError, Result};
 use crate::utils::journey::{convert_to_markdown, detect_page_range};
 use crate::utils::pdf::{extract_page_range, get_page_count};

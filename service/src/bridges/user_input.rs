@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
 
-use crate::{app::user_input::resource::Resource, db::repo::Repository, error::{MetisError, Result}};
+use crate::{app::resource::resource::Resource, db::repo::Repository, error::{MetisError, Result}};
 
 const REQUEST_EVENT: &str = "agent:request_input";
 

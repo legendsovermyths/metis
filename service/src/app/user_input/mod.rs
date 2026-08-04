@@ -11,7 +11,6 @@ use crate::{
         text::text_to_pdf,
     },
 };
-pub mod resource;
 
 #[derive(Deserialize)]
 pub enum UserInput {

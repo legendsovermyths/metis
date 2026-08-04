@@ -40,7 +40,7 @@ export default function LibraryPage() {
     <div className="paper-texture relative min-h-[calc(100vh-57px)] flex flex-col pb-20 md:pb-0">
       <Watermark />
       <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
-      <div className="relative mx-auto w-full max-w-5xl flex-1 flex flex-col px-6 md:px-8">
+      <div className="relative mx-auto w-full max-w-3xl flex-1 flex flex-col px-6 md:px-8">
         {/* Masthead */}
         <header className="pt-8 md:pt-10">
           <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
@@ -132,7 +132,7 @@ export default function LibraryPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {/* Pending uploads — classifying */}
                 {pendingUploads.map((u) => (
                   <div

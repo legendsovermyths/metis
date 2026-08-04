@@ -1,7 +1,7 @@
 use crate::{
     app::{
         dialogue::{DialogueReference, ReferenceKind},
-        explanation::ExplanationArtifacts,
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
     },

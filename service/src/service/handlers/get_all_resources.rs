@@ -1,14 +1,14 @@
 use serde::Deserialize;
 
 use crate::{
-    app::{user_input::resource::Resource, AppContext},
+    app::{resource::resource::Resource, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
 
 #[derive(Deserialize)]
 pub struct GetAllResourcesParams;
-pub fn get_all_resources(_: GetAllResourcesParams, _context: &AppContext) -> BoxFuture {
+pub fn get_all_resources(_: GetAllResourcesParams, _context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let resources: Vec<_> = Repository::<Resource>::all()?
             .into_iter()

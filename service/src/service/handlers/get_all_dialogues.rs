@@ -12,7 +12,7 @@ pub struct GetAllDialoguesParams {
     pub parent_id: i64,
 }
 
-pub fn get_all_dialogues(params: GetAllDialoguesParams, _: &AppContext) -> BoxFuture {
+pub fn get_all_dialogues(params: GetAllDialoguesParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let dialogues: Vec<_> = DialoguesRepo::get_for_parent(params.kind, params.parent_id)?
             .into_iter()

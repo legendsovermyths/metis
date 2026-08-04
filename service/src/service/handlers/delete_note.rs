@@ -12,7 +12,7 @@ pub struct DeleteNoteParams {
     id: i64,
 }
 
-pub fn delete_note(params: DeleteNoteParams, _: &AppContext) -> BoxFuture {
+pub fn delete_note(params: DeleteNoteParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         Repository::<Note>::delete(&params.id)?;
         Ok(json!({ "ok": true }).into())

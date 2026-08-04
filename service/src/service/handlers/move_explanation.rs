@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{explanation::ExplanationArtifacts, AppContext},
+    app::{explanation::artifact::ExplanationArtifacts, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
@@ -13,7 +13,7 @@ pub struct MoveExplanationParams {
     folder_id: Option<i64>,
 }
 
-pub fn move_explanation(params: MoveExplanationParams, _: &AppContext) -> BoxFuture {
+pub fn move_explanation(params: MoveExplanationParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut explanation = Repository::<ExplanationArtifacts>::find_by_id(&params.id)?;
         explanation.write().folder_id = params.folder_id;

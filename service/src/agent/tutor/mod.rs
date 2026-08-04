@@ -12,7 +12,7 @@ use crate::{
     },
     app::{
         dialogue::{Dialogue, DialogueReference},
-        explanation::ExplanationArtifacts,
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
     },

@@ -3,7 +3,7 @@ use printpdf::{Mm, Op, PdfDocument, PdfPage, PdfSaveOptions, RawImage, XObjectTr
 use crate::{
     error::{MetisError, Result},
     llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
-    prompts::{get_prompt_provider, PromptProvider},
+    prompts::get_prompt_provider,
 };
 
 pub async fn convert_image_to_markdown(image_path: &str, mime: &str) -> Result<String> {

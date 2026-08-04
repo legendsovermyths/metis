@@ -10,7 +10,7 @@ use crate::{
 #[derive(Deserialize)]
 pub struct GetAllJourneysParams;
 
-pub fn get_all_journeys(_: GetAllJourneysParams, _: &AppContext) -> BoxFuture {
+pub fn get_all_journeys(_: GetAllJourneysParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let journeys = Repository::<JourneyArtifacts>::all()?;
         Ok(serde_json::to_value(journeys)?.into())

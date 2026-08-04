@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use serde_json::json;
 use tauri::Manager;
 
 use crate::{
@@ -32,9 +31,20 @@ pub fn run() {
         .setup(|tauri_app| {
             logs::init();
             crate::bridges::user_input::init(tauri_app.app_handle().clone());
-            let app = App::new(context, tauri_app.app_handle().clone())
-                .expect("failed to initialize App");
-            tauri_app.manage(Arc::new(app));
+            let app = Arc::new(
+                App::new(context, tauri_app.app_handle().clone())
+                    .expect("failed to initialize App"),
+            );
+            tauri_app.manage(Arc::clone(&app));
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = app.resume().await {
+                    logs::log(
+                        logs::Level::Error,
+                        "resume",
+                        format!("failed to resume pending tasks: {e}"),
+                    );
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -56,10 +66,4 @@ async fn handle_request(
     let context = app.context.value().await.unwrap();
     response.context = Some(context);
     Ok(response)
-}
-
-#[tauri::command]
-async fn resume_pending_task(app: tauri::State<'_, Arc<App<'_>>>)->Result<Response, String>{
-    app.resume_tasks().await;
-    Ok(Response::ok(json!({"status": "success"})))
 }

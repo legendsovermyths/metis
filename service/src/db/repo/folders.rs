@@ -2,7 +2,8 @@ use dborm::DbRow;
 
 use crate::{
     app::{
-        explanation::{folder::Folder, ExplanationArtifacts},
+        explanation::artifact::ExplanationArtifacts,
+        folder::Folder,
         journey::artifact::JourneyArtifacts,
         notes::Note,
     },

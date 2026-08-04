@@ -13,7 +13,7 @@ pub struct MoveJourneyParams {
     folder_id: Option<i64>,
 }
 
-pub fn move_journey(params: MoveJourneyParams, _: &AppContext) -> BoxFuture {
+pub fn move_journey(params: MoveJourneyParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut journey = Repository::<JourneyArtifacts>::find_by_id(&params.id)?;
         journey.write().folder_id = params.folder_id;

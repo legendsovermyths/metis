@@ -1,10 +1,12 @@
 use std::{collections::HashSet, fs, path::Path};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     app::dialogue::{blackboard::{Blackboard, ElementDescriptor}, segment::{Segment, SegmentAction}}, error::{MetisError, Result}, llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
-    }, prompts::get_prompt_provider, task::tasks::generate_dialogue::{
+    }, prompts::get_prompt_provider, task::tasks::compose_dialogue::{
         annotation::EnhancerOutput,
         layout::{layout, LayoutInput, LayoutOutput},
         templates::COORDINATE_SAVE,
@@ -28,6 +30,7 @@ pub struct EnhancerRequest<'a> {
     pub chapter_dir: &'a str,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnhancementResult {
     pub blackboard: Blackboard,
     pub parts: Vec<ElementDescriptor>,

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{app::{dialogue::ReferenceKind, journey::artifact::JourneyArtifacts}, db::persistence::Persistent};
+use crate::app::dialogue::ReferenceKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetisPhase {

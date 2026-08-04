@@ -1,7 +1,7 @@
 use serde_json::Value;
 use tokio::sync::mpsc;
 
-use crate::task::{progress::TaskProgress, task_type::TaskType, TaskRequest};
+use crate::task::{progress::TaskProgress, TaskRequest};
 
 
 pub struct TaskContext{

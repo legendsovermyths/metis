@@ -1,12 +1,12 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::{json, Value};
-use tauri::{AppHandle, Emitter};
+use serde_json::Value;
+use tauri::AppHandle;
 use tokio::sync::mpsc;
 
 use crate::{
-    db::{repo::task::TasksRepo, repo::Repository},
+    db::repo::{task::TasksRepo, Repository},
     error::Result,
     task::{
         gaurd::TaskGaurd,
@@ -14,9 +14,10 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
+            compose_dialogue::{ComposeDialogueCheckpoint, ComposeParam},
             create_explainer::{CreateExplanationCheckpoint, CreateExplanationParams},
             create_journey::{CreateJourneyCheckpoint, CreateJourneyParams},
-            generate_dialogue::{GenerationCheckpoint, GenerationParams},
+            draft_dialogues::{DraftCheckpoint, DraftParams},
         },
         Task,
     },
@@ -85,16 +86,20 @@ impl TaskMangager {
                 )
                 .await
             }
-            TaskType::GenerateDialogues => {
-                self.queue::<GenerationCheckpoint, GenerationParams>(
-                    TaskType::GenerateDialogues,
+            TaskType::CreateExplanation => {
+                self.queue::<CreateExplanationCheckpoint, CreateExplanationParams>(
+                    TaskType::CreateExplanation,
                     params,
                 )
                 .await
             }
-            TaskType::CreateExplanation => {
-                self.queue::<CreateExplanationCheckpoint, CreateExplanationParams>(
-                    TaskType::CreateExplanation,
+            TaskType::DraftDialogue => {
+                self.queue::<DraftCheckpoint, DraftParams>(TaskType::DraftDialogue, params)
+                    .await
+            },
+            TaskType::ComposeDialogue => {
+                self.queue::<ComposeDialogueCheckpoint, ComposeParam>(
+                    TaskType::ComposeDialogue,
                     params,
                 )
                 .await

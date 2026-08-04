@@ -13,7 +13,7 @@ pub struct MoveNoteParams {
     folder_id: Option<i64>,
 }
 
-pub fn move_note(params: MoveNoteParams, _: &AppContext) -> BoxFuture {
+pub fn move_note(params: MoveNoteParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut note = Repository::<Note>::find_by_id(&params.id)?;
         note.write().folder_id = params.folder_id;

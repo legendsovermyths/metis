@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{explanation::folder::Folder, AppContext},
+    app::{folder::Folder, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
@@ -13,7 +13,7 @@ pub struct RenameFolderParams {
     name: String,
 }
 
-pub fn rename_folder(params: RenameFolderParams, _: &AppContext) -> BoxFuture {
+pub fn rename_folder(params: RenameFolderParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut folder = Repository::<Folder>::find_by_id(&params.id)?;
         folder.write().name = params.name;

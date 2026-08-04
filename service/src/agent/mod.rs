@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    app::dialogue::{segment::Segment, Dialogue},
     app::events::EventHistory,
     error::Result,
 };

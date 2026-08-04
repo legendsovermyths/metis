@@ -6,11 +6,11 @@ use serde_json::json;
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        explanation::{Explanation, ExplanationArtifacts, ExplanationProgress, Step},
-        user_input::resource::Resource,
+        explanation::{artifact::ExplanationArtifacts, progress::ExplanationProgress, Explanation, Step},
+        resource::resource::Resource,
     },
     db::repo::{appdata::AppDataRepo, Repository},
-    error::{MetisError, Result},
+    error::MetisError,
     llm_client::factory::{ClientType, LLMClientFactory},
     prompts::get_prompt_provider,
     task::{context::TaskContext, gaurd::TaskGaurd, manager::TaskFuture},

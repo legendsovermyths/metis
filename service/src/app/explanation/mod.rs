@@ -1,18 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-pub mod folder;
+pub mod artifact;
+pub mod progress;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ExplanationArtifacts {
-    pub id: Option<i64>,
-    pub title: String,
-    pub explanation_directory: String,
-    pub explanation: Explanation,
-    pub folder_id: Option<i64>,
-    pub created_at: i64,
-    pub progress: ExplanationProgress,
-    pub tutor_notes: String,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Explanation {
@@ -25,11 +15,6 @@ impl Explanation {
     }
 }
 
-impl ExplanationArtifacts {
-    pub fn get_step(&self, step_idx: usize) -> Option<&Step> {
-        self.explanation.steps.get(step_idx)
-    }
-}
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Step {
@@ -59,19 +44,3 @@ impl ExplanationLabel {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ExplanationProgress {
-    pub explanation_id: i64,
-    pub step_idx: usize,
-    pub is_complete: bool
-}
-
-impl ExplanationProgress {
-    pub fn new(explanation_id: i64) -> Self {
-        ExplanationProgress {
-            explanation_id,
-            step_idx: 0,
-            is_complete: false,
-        }
-    }
-}

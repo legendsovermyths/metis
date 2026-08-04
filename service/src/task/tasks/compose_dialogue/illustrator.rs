@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     app::dialogue::blackboard::{Blackboard, ElementDescriptor}, error::{MetisError, Result}, llm_client::{
@@ -14,12 +14,14 @@ use crate::{
 };
 const MAX_RETRIES: usize = 5;
 
-#[derive(Deserialize)]
-pub struct IllustratorOutput {
+#[derive(Deserialize, Serialize)]
+struct IllustratorOutput {
     library: String,
     code: String,
 }
 
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct IllustrationResult {
     pub blackboard: Blackboard,
     pub source_code: Option<String>,

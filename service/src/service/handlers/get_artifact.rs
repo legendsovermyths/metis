@@ -3,7 +3,7 @@ use serde_json::json;
 
 use crate::{
     app::{
-        dialogue::ReferenceKind, explanation::ExplanationArtifacts,
+        dialogue::ReferenceKind, explanation::artifact::ExplanationArtifacts,
         journey::artifact::JourneyArtifacts, AppContext,
     },
     db::repo::Repository,
@@ -17,7 +17,7 @@ pub struct GetArtifactParams {
     pub parent_id: i64,
 }
 
-pub fn get_artifact(params: GetArtifactParams, _: &AppContext) -> BoxFuture {
+pub fn get_artifact(params: GetArtifactParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let value = match params.kind {
             ReferenceKind::Journey => {

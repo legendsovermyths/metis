@@ -5,11 +5,12 @@ use serde_json::json;
 
 use crate::{
     app::{
-        book::{Book, Chapter, Document, DocumentType, Section},
-        user_input::{
+        resource::{
+            book::{Book, Chapter},
+            document::{Document, DocumentType, Section},
             resource::{Resource, ResourceType},
-            UserInput,
         },
+        user_input::UserInput,
         AppContext,
     },
     bridges::user_input::UserInputBridge,
@@ -51,7 +52,7 @@ struct DocumentStructure {
     table_of_content: Vec<Section>,
 }
 
-pub fn submit_user_input(params: SubmitUserInputParams, _context: &AppContext) -> BoxFuture {
+pub fn submit_user_input(params: SubmitUserInputParams, _context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut pdf_paths: Vec<String> = Vec::new();
         for input in &params.inputs {

@@ -6,7 +6,7 @@ use crate::{
     agent::AgentResponseInstruction,
     app::{
         journey::{artifact::TopicRange, Journey},
-        user_input::resource::{Resource, ResourceType},
+        resource::resource::{Resource, ResourceType},
     },
     db::repo::Repository,
     error::{MetisError, Result},
@@ -110,7 +110,7 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
         let batch_pages = page_end - batch_start + 1;
 
         set.spawn(async move {
-            let client = GeminiClient::new();
+            let mut client = GeminiClient::new();
 
             let _permit = sem
                 .acquire()
@@ -118,16 +118,11 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
                 .map_err(|e| MetisError::UtilsError(e.to_string()))?;
 
             let prompts = get_prompt_provider();
+            client.set_system_prompt(prompts.get_page_to_md_raw().to_string());
             let prompt = if batch_pages == 1 {
-                format!(
-                    "{}\n\nExtract page 1 of this PDF.",
-                    prompts.get_page_to_md_raw()
-                )
+                "Extract page 1 of this PDF.".to_string()
             } else {
-                format!(
-                    "{}\n\nExtract pages 1 and 2 of this PDF.",
-                    prompts.get_page_to_md_raw()
-                )
+                "Extract pages 1 and 2 of this PDF.".to_string()
             };
 
             let response = client.generate_with_file(prompt, &batch_pdf).await?;

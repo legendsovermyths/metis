@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    app::{explanation::folder::Folder, AppContext},
+    app::{folder::Folder, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
@@ -16,7 +16,7 @@ fn default_scope() -> String {
     "study".to_string()
 }
 
-pub fn get_folders(params: GetFoldersParams, _: &AppContext) -> BoxFuture {
+pub fn get_folders(params: GetFoldersParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut folders = Repository::<Folder>::find_all_by("scope", params.scope)?;
         folders.sort_by(|a, b| {

@@ -18,7 +18,7 @@ pub struct CreateNoteParams {
     folder_id: Option<i64>,
 }
 
-pub fn create_note(params: CreateNoteParams, _: &AppContext) -> BoxFuture {
+pub fn create_note(params: CreateNoteParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

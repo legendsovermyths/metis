@@ -1,10 +1,10 @@
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::{
     app::{state::MetisPhase, AppContext},
-    db::repo::{dialogue::DialoguesRepo, dialogue_events::DialogueEventsRepo},
-    error::{MetisError, Result},
+    db::repo::dialogue_events::DialogueEventsRepo,
+    error::MetisError,
     service::handler::BoxFuture,
 };
 
@@ -13,7 +13,7 @@ pub struct SetDialogueParams {
     pub dialogue_id: i64,
 }
 
-pub fn set_dialogue(params: SetDialogueParams, context: &AppContext) -> BoxFuture {
+pub fn set_dialogue(params: SetDialogueParams, context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let phase = context.chat.lock().await.phase;
         if phase != MetisPhase::Teaching {

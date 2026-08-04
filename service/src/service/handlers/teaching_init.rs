@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::{
     app::{
@@ -18,7 +18,7 @@ pub struct TeachingInitParams {
     pub artifact_kind: ReferenceKind,
 }
 
-pub fn teaching_init(params: TeachingInitParams, context: &AppContext) -> BoxFuture {
+pub fn teaching_init(params: TeachingInitParams, context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let teaching_state = TeachingContext {
             artifact_kind: Some(params.artifact_kind),

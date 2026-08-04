@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 use tokio::sync::Mutex;
@@ -8,20 +8,21 @@ use tokio::sync::Mutex;
 use crate::agent::handler::AgentHandler;
 use crate::agent::AgentResponseInstruction;
 use crate::api::request::Request;
+use crate::app::events::EventHistory;
 use crate::app::state::{MetisPhase, TeachingContext};
 use crate::db::repo::appdata::AppDataRepo;
 use crate::error::{MetisError, Result};
-use crate::app::events::EventHistory;
 use crate::service::handler::ServiceHandler;
 use crate::task::manager::TaskMangager;
 use crate::task::TaskRequest;
 use crate::utils::python::ensure_venv;
-pub mod book;
 pub mod dialogue;
 pub mod events;
 pub mod explanation;
+pub mod folder;
 pub mod journey;
 pub mod notes;
+pub mod resource;
 pub mod state;
 pub mod user_input;
 
@@ -82,8 +83,8 @@ impl App<'_> {
         Ok(())
     }
 
-    pub async fn resume_tasks(&self) {
-        self.task_manager.resume().await;
+    pub async fn resume(&self) -> Result<()> {
+        self.task_manager.resume().await
     }
 }
 

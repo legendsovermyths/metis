@@ -1,7 +1,7 @@
 use dborm::DbRow;
 
 use crate::{
-    app::user_input::resource::{Resource, ResourceType},
+    app::resource::resource::{Resource, ResourceType},
     db::object::FromDbRow,
     error::Result,
 };

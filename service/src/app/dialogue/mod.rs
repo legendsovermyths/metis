@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     app::{
         dialogue::{blackboard::Blackboard, segment::Segment},
-        explanation::ExplanationArtifacts,
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
     },
     db::repo::Repository,
@@ -61,13 +61,13 @@ impl DialogueReference {
     pub fn kind(&self) -> ReferenceKind {
         match self {
             DialogueReference::Journey {
-                journey_id,
-                arc_idx,
-                topic_idx,
+                journey_id: _,
+                arc_idx: _,
+                topic_idx: _,
             } => ReferenceKind::Journey,
             DialogueReference::Explanation {
-                explanation_id,
-                step_idx,
+                explanation_id: _,
+                step_idx: _,
             } => ReferenceKind::Explanation,
             DialogueReference::None => ReferenceKind::None,
         }
@@ -76,12 +76,12 @@ impl DialogueReference {
         match self {
             DialogueReference::Journey {
                 journey_id,
-                arc_idx,
-                topic_idx,
+                arc_idx: _,
+                topic_idx: _,
             } => *journey_id,
             DialogueReference::Explanation {
                 explanation_id,
-                step_idx,
+                step_idx: _,
             } => *explanation_id,
             _ => 0,
         }

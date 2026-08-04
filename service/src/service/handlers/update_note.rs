@@ -14,7 +14,7 @@ pub struct UpdateNoteParams {
     content: String,
 }
 
-pub fn update_note(params: UpdateNoteParams, _: &AppContext) -> BoxFuture {
+pub fn update_note(params: UpdateNoteParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

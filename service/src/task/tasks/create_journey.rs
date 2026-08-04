@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        journey::{self, artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
-        user_input::resource::{self, Resource},
+        journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
+        resource::resource::Resource,
     },
     db::repo::Repository,
     task::{
@@ -19,7 +19,7 @@ use crate::{
         progress::{TaskProgress, TaskStatus},
     },
     utils::journey::{
-        convert_to_markdown, create_topic_map, detect_page_range, extract_topics_from_content,
+        create_topic_map, extract_topics_from_content,
         generate_journey,
     },
 };
@@ -56,7 +56,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
         if checkpoint.journey_dir.is_none() {
             let artifact_dir = crate::utils::paths::artifact_dir();
             let journey_dir = artifact_dir.join(uuid::Uuid::new_v4().to_string());
-            create_dir_all(&journey_dir);
+            create_dir_all(&journey_dir)?;
             let _ = context.progress_tx.send(TaskProgress {
                 task_id: context.id.clone(),
                 checkpoint: serde_json::to_value(&checkpoint)?,
@@ -76,7 +76,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
                 .await?;
             let content_md_path = Path::new(&journey_dir).join("content.md");
 
-            fs::write(content_md_path, &content);
+            fs::write(content_md_path, &content)?;
 
             checkpoint.content_md = Some(content);
             let _ = context.progress_tx.send(TaskProgress {

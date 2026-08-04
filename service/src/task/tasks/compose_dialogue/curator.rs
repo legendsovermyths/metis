@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     app::dialogue::{
@@ -26,6 +26,8 @@ pub struct CuratorRequest<'a> {
     pub blackboard_instruction: &'a str,
 }
 
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct CuratedResult {
     pub dialogue: String,
     pub parts: Vec<ElementDescriptor>,

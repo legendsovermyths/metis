@@ -3,7 +3,7 @@ use dborm::DbRow;
 use crate::{
     app::{
         dialogue::{Dialogue, DialogueReference, ReferenceKind},
-        explanation::{Explanation, ExplanationArtifacts, ExplanationProgress},
+        explanation::{artifact::ExplanationArtifacts, progress::ExplanationProgress, Explanation},
     },
     db::{repo::dialogue::DialoguesRepo, object::FromDbRow},
     error::{MetisError, Result},

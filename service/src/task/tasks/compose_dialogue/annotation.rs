@@ -1,6 +1,6 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Annotation {
     Header { text: String },
@@ -11,7 +11,7 @@ pub enum Annotation {
     Label { target_gid: String, text: String },
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct EnhancerOutput {
     #[serde(default)]
     pub annotations: Vec<Annotation>,

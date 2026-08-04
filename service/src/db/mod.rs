@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    db::{object::DbObject, persistence::Persistent},
+    db::object::DbObject,
     error::{MetisError, Result},
 };
 

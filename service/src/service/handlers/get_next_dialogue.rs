@@ -3,8 +3,8 @@ use serde_json::{json, Value};
 
 use crate::{
     app::{
-        dialogue::{self, Dialogue, DialogueReference, ReferenceKind},
-        explanation::ExplanationArtifacts,
+        dialogue::{Dialogue, DialogueReference, ReferenceKind},
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact::JourneyArtifacts,
         AppContext,
     },
@@ -73,20 +73,39 @@ fn create_task_request(
             !d.visible && d.is_ready
         })
         .count();
+
+    let mut task_requests = Vec::new();
     if remaining_dialogues_count < DIALOGUE_REMAINING_THRESHOLD {
-        return Ok(Some(vec![TaskRequest {
-            task_type: TaskType::GenerateDialogues,
+        task_requests.push(TaskRequest {
+            task_type: TaskType::DraftDialogue,
             params: json!({
                 "parent_id": params.parent_id,
                 "dialogue_reference": dialogue_reference,
                 "num_dialogues": PREFETCH_BATCH,
             }),
-        }]));
+        });
     }
-    Ok(None)
+    let next_dialogue = dialogues.iter().find(|p| {
+        let d = p.read();
+        !d.visible
+    });
+    if let Some(next_dialogue) = next_dialogue {
+        if !next_dialogue.read().is_ready {
+            task_requests.push(TaskRequest {
+                task_type: TaskType::ComposeDialogue,
+                params: json!({
+                    "dialogue_id": next_dialogue.read().id.unwrap()
+                }),
+            });
+        }
+    }
+    if task_requests.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(task_requests))
 }
 
-pub fn get_next_dialogue(params: GetNextDialogueParams, _: &AppContext) -> BoxFuture {
+pub fn get_next_dialogue(params: GetNextDialogueParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let mut dialogues = DialoguesRepo::get_for_parent(params.kind, params.parent_id)?;
         let task_request = create_task_request(&dialogues, &params)?;

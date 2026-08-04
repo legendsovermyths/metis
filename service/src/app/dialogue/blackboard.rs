@@ -13,7 +13,6 @@ pub struct ElementDescriptor {
     pub desc: String,
 }
 
-
 impl Blackboard {
     pub fn empty() -> Self {
         Self {
@@ -46,6 +45,15 @@ impl<'de> Deserialize<'de> for BlackboardInstructions {
         match instruction.to_lowercase().as_str() {
             "clear" => Ok(BlackboardInstructions::Clear),
             other => Ok(BlackboardInstructions::Detailed(other.to_string())),
+        }
+    }
+}
+
+impl ToString for BlackboardInstructions {
+    fn to_string(&self) -> String {
+        match self {
+            BlackboardInstructions::Clear => String::from("Clear"),
+            BlackboardInstructions::Detailed(s) => s.clone(),
         }
     }
 }

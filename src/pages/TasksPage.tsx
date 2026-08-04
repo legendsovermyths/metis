@@ -9,7 +9,8 @@ import { Watermark } from "@/components/Watermark";
 const TASK_LABELS: Record<string, string> = {
   create_journey: "Creating journey",
   create_explanation: "Composing explanation",
-  generate_dialogues: "Preparing dialogues",
+  draft_dialogue: "Drafting dialogues",
+  compose_dialogue: "Composing dialogue",
 };
 
 function chapterTitleOf(params: Record<string, unknown>): string {
@@ -27,8 +28,8 @@ function describeTask(task: BackgroundTask): string {
       const chapter = chapterTitleOf(params);
       return chapter ? `${label} · ${chapter}` : label;
     }
-    case "generate_dialogues": {
-      const id = params.id;
+    case "draft_dialogue": {
+      const id = params.parent_id;
       return id != null ? `${label} · journey ${id}` : label;
     }
     default:

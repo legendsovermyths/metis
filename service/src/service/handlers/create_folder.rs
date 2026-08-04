@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    app::{explanation::folder::Folder, AppContext},
+    app::{folder::Folder, AppContext},
     db::repo::Repository,
     service::handler::BoxFuture,
 };
@@ -19,7 +19,7 @@ fn default_scope() -> String {
     "study".to_string()
 }
 
-pub fn create_folder(params: CreateFolderParams, _: &AppContext) -> BoxFuture {
+pub fn create_folder(params: CreateFolderParams, _: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

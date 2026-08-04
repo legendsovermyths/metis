@@ -14,7 +14,7 @@ pub struct DeleteJourneyParams {
     id: i64,
 }
 
-pub fn delete_journey(params: DeleteJourneyParams, _context: &AppContext) -> BoxFuture {
+pub fn delete_journey(params: DeleteJourneyParams, _context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
         let journey_id = params.id;
 

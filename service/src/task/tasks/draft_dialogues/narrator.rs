@@ -3,9 +3,9 @@ use serde::Deserialize;
 use crate::{
     app::{
         dialogue::{
-            blackboard::BlackboardInstructions, Dialogue, DialogueReference, ReferenceKind,
+            blackboard::BlackboardInstructions, DialogueReference,
         },
-        explanation::ExplanationArtifacts,
+        explanation::artifact::ExplanationArtifacts,
         journey::artifact,
     },
     db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, Repository},

@@ -8,6 +8,16 @@ import { useTasks } from "@/context/TasksContext";
 import { createJourney, type AgentResponseInstruction, type Resource } from "@/lib/service";
 import { canBuildJourney, resourceCover, resourceStructure } from "@/lib/resources";
 import { useMasthead, mastheadStyle } from "@/lib/editorial";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,11 +26,21 @@ export default function ResourceDetailPage() {
   const { resources, loading } = useResources();
   const tasks = useTasks();
   const [building, setBuilding] = useState(false);
+  // A build the reader has asked for but not yet confirmed. `label` names what
+  // they're about to weave (the whole volume, or a single chapter).
+  const [pending, setPending] = useState<{ instruction: AgentResponseInstruction; label: string } | null>(null);
 
   const resource = useMemo<Resource | undefined>(
     () => resources.find((r) => String(r.id) === id),
     [resources, id],
   );
+
+  const confirmBuild = () => {
+    if (!pending) return;
+    const { instruction } = pending;
+    setPending(null);
+    void build(instruction);
+  };
 
   const build = async (instruction: AgentResponseInstruction) => {
     if (!resource || resource.id == null || building) return;
@@ -117,7 +137,7 @@ export default function ResourceDetailPage() {
                 {/* Document / whole-resource journey action */}
                 {canBuildJourney(resource) && structure.type !== "chapters" && (
                   <button
-                    onClick={() => void build("None")}
+                    onClick={() => setPending({ instruction: "None", label: resource.title })}
                     disabled={building}
                     className="group mt-7 inline-flex items-center gap-1.5 rounded-xl border px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
                     style={{ color: "hsl(var(--amber))", borderColor: "hsl(var(--amber) / 0.35)" }}
@@ -150,7 +170,7 @@ export default function ResourceDetailPage() {
                         style={{ animationDelay: `${Math.min(ci * 40, 400)}ms` }}
                       >
                         <button
-                          onClick={() => void build({ ChapterTitle: ch.title })}
+                          onClick={() => setPending({ instruction: { ChapterTitle: ch.title }, label: ch.title })}
                           disabled={building}
                           className="flex w-full items-baseline gap-3 text-left disabled:opacity-50"
                         >
@@ -218,6 +238,33 @@ export default function ResourceDetailPage() {
             </>
           )}
         </main>
+
+        {/* Confirm before weaving — building a journey is not instant, so ask first */}
+        <AlertDialog open={pending !== null} onOpenChange={(o) => { if (!o) setPending(null); }}>
+          <AlertDialogContent className="max-w-sm border-border/60 bg-background">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display italic text-base font-normal text-foreground">
+                Weave a journey from this?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-display text-sm italic text-text-secondary leading-relaxed">
+                Metis will chart a course through{" "}
+                <span className="text-foreground/80">{pending?.label}</span> and weave it into a
+                journey. It takes a little while, and will appear in your study when it's ready.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-2">
+              <AlertDialogCancel className="font-display italic text-sm border-border/50 bg-transparent text-text-secondary hover:bg-surface-hover/40 hover:text-foreground">
+                Not yet
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBuild}
+                className="font-display italic text-sm bg-foreground/90 text-background hover:bg-foreground"
+              >
+                Weave it
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Colophon */}
         <footer className="pb-8 md:pb-10">

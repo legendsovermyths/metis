@@ -9,8 +9,8 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
-            create_explainer::create_explanation, create_journey::create_journey,
-            generate_dialogue::generate_dialogues,
+            compose_dialogue::compose_dialogue, create_explainer::create_explanation,
+            create_journey::create_journey, draft_dialogues::draft_dialogue,
         },
     },
 };
@@ -41,8 +41,9 @@ impl Task {
             MetisError::InternalDataError("the task name does not match any task type".to_string())
         })? {
             TaskType::CreateJourney => Ok(create_journey),
-            TaskType::GenerateDialogues => Ok(generate_dialogues),
             TaskType::CreateExplanation => Ok(create_explanation),
+            TaskType::DraftDialogue => Ok(draft_dialogue),
+            TaskType::ComposeDialogue => Ok(compose_dialogue),
         }
     }
 }

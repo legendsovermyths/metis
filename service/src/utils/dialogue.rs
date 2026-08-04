@@ -1,11 +1,17 @@
 use serde_json::{json, Value};
 
 use crate::{
-    app::dialogue::Dialogue,
-    db::{persistence::Persistent, repo::dialogue::DialoguesRepo, repo::Repository},
+    app::dialogue::{
+        blackboard::{Blackboard, ElementDescriptor},
+        segment::Segment,
+        Dialogue,
+    },
+    db::{
+        persistence::Persistent,
+        repo::{dialogue::DialoguesRepo, Repository},
+    },
     error::Result,
 };
-
 
 pub fn format_dialogues(dialogues: &[Dialogue]) -> String {
     if dialogues.is_empty() {
@@ -15,7 +21,10 @@ pub fn format_dialogues(dialogues: &[Dialogue]) -> String {
     for d in dialogues {
         s.push_str(&format!(
             "### {} ({}, idx {})\n{}\n",
-            d.heading, format_reference(d), d.idx, d.content
+            d.heading,
+            format_reference(d),
+            d.idx,
+            d.content
         ));
         if !d.blackboard.description.trim().is_empty() {
             s.push_str(&format!("Blackboard: {}\n", d.blackboard.description));
@@ -36,11 +45,18 @@ pub fn dialogue_to_summary(d: &Dialogue) -> Value {
     })
 }
 
-pub fn format_reference(d: &Dialogue)->String{
-    match d.reference{
+pub fn format_reference(d: &Dialogue) -> String {
+    match d.reference {
         crate::app::dialogue::DialogueReference::None => String::new(),
-        crate::app::dialogue::DialogueReference::Explanation { explanation_id, step_idx } => format!("step {}", step_idx),
-        crate::app::dialogue::DialogueReference::Journey { journey_id, arc_idx, topic_idx } => format!("arc {}, topic {}", arc_idx, topic_idx)
+        crate::app::dialogue::DialogueReference::Explanation {
+            explanation_id: _,
+            step_idx,
+        } => format!("step {}", step_idx),
+        crate::app::dialogue::DialogueReference::Journey {
+            journey_id: _,
+            arc_idx,
+            topic_idx,
+        } => format!("arc {}, topic {}", arc_idx, topic_idx),
     }
 }
 
@@ -76,4 +92,26 @@ pub fn get_after_dialogue(dialogue_id: i64, n: usize) -> Result<Vec<Dialogue>> {
         .take(end.saturating_sub(start))
         .map(Persistent::escape)
         .collect())
+}
+
+pub fn finalize_parts_and_segments(
+    parts: Vec<ElementDescriptor>,
+    segments: Vec<Segment>,
+    blackboard: &Blackboard,
+) -> (Vec<ElementDescriptor>, Vec<Segment>) {
+    if blackboard.image_url.is_some() {
+        return (parts, segments);
+    }
+    let joined_text = segments
+        .iter()
+        .map(|s| s.text.as_str())
+        .collect::<Vec<_>>()
+        .join("");
+    let fallback = vec![Segment {
+        text: joined_text,
+        actions: Vec::new(),
+        transcript: None,
+        audio_path: None,
+    }];
+    (Vec::new(), fallback)
 }
