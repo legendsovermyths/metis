@@ -291,15 +291,71 @@
 .note-prose strong { color: hsl(var(--foreground)); font-weight: 600; }
 .note-prose em { font-style: italic; }
 .note-prose a {
-  color: hsl(var(--amber));
+  color: hsl(var(--foreground));
   text-decoration: underline;
-  text-decoration-color: hsl(var(--amber) / 0.45);
+  text-decoration-color: hsl(var(--foreground) / 0.28);
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
   cursor: pointer;
-  transition: text-decoration-color 140ms;
+  transition: text-decoration-color 140ms, color 140ms;
 }
-.note-prose a:hover { text-decoration-color: hsl(var(--amber)); }
+.note-prose a:hover {
+  color: hsl(var(--amber));
+  text-decoration-color: hsl(var(--amber) / 0.6);
+}
+/* External-link affordance — a small mark that says "this leaves the page". */
+.note-prose a::after {
+  content: "↗";
+  display: inline-block;
+  margin-left: 0.1em;
+  font-size: 0.72em;
+  vertical-align: 0.3em;
+  color: hsl(var(--text-tertiary) / 0.75);
+  transition: color 140ms;
+}
+.note-prose a:hover::after { color: hsl(var(--amber)); }
+
+/* ── Link hover card (destination + actions) ── */
+.link-card {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 18rem;
+  max-width: calc(100vw - 1.5rem);
+  padding: 0.6rem 0.7rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: 0.6rem;
+  background: hsl(var(--card) / 0.97);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-large);
+}
+.link-card-url {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: hsl(var(--text-secondary));
+  word-break: break-all;
+}
+.link-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+  padding-top: 0.45rem;
+}
+.link-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 0.4rem;
+  color: hsl(var(--text-tertiary));
+  transition: background-color 140ms, color 140ms;
+}
+.link-card-action:hover { background: hsl(var(--foreground) / 0.06); color: hsl(var(--foreground)); }
+.link-card-action.is-open:hover { background: hsl(var(--amber) / 0.12); color: hsl(var(--amber)); }
+.link-card-action.is-danger:hover { background: hsl(var(--destructive) / 0.12); color: hsl(var(--destructive)); }
 
 /* ── Link editor popover (⌘K / /link) ── */
 .link-popover {

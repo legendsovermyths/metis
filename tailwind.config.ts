@@ -141,6 +141,7 @@ export default {
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         shimmer: "shimmer 2s linear infinite",
         "blur-in": "blur-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "blur-in-settle": "blur-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards",
         "scale-enter": "scale-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "reveal-line": "reveal-line 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },

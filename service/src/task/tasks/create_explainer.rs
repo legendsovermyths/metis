@@ -97,6 +97,7 @@ pub fn create_explanation(context: TaskContext) -> TaskFuture {
             folder_id: None,
             created_at,
             progress: ExplanationProgress::new(0),
+            generation_progress: ExplanationProgress::new(0),
             tutor_notes: params.notes,
         })?;
         let id = created.read().id.unwrap();

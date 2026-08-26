@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { toast } from "sonner";
+import { ExternalLink, Copy, Pencil, Unlink } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -36,8 +38,23 @@ function normalizeUrl(raw: string): string {
   return `https://${t}`;
 }
 
+/** Open a URL in the OS default browser, surfacing failures instead of swallowing them. */
+function openExternal(href: string) {
+  openUrl(href).catch((err) => {
+    console.error("[note] failed to open link", href, err);
+    toast.error("Couldn't open the link");
+  });
+}
+
 interface LinkEditorState {
   url: string;
+  left: number;
+  top: number;
+}
+
+interface HoverLinkState {
+  href: string;
+  pos: number | null;
   left: number;
   top: number;
 }
@@ -66,6 +83,19 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
   const [link, setLink] = useState<LinkEditorState | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [scale, setScale] = useState<number>(loadScale);
+  const [hoverLink, setHoverLink] = useState<HoverLinkState | null>(null);
+  const hoverCloseTimer = useRef<number | null>(null);
+
+  const cancelHoverClose = () => {
+    if (hoverCloseTimer.current) {
+      clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = null;
+    }
+  };
+  const scheduleHoverClose = () => {
+    cancelHoverClose();
+    hoverCloseTimer.current = window.setTimeout(() => setHoverLink(null), 140);
+  };
 
   // Cmd/Ctrl +/-/0 zooms the note text (not the app). Intercepted so it
   // overrides the webview's own page zoom.
@@ -155,7 +185,7 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
           const a = (event.target as HTMLElement).closest("a");
           const href = a?.getAttribute("href");
           if (href) {
-            openUrl(href).catch((err) => console.error("[note] failed to open link", href, err));
+            openExternal(href);
             return true;
           }
           return false;
@@ -188,6 +218,61 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
     return () => dom.removeEventListener("metis:link", open);
   }, [editor]);
 
+  // Hovering a link raises a card with the destination and its actions.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const onOver = (e: Event) => {
+      const a = (e.target as HTMLElement).closest("a");
+      if (!a || !dom.contains(a)) return;
+      const href = a.getAttribute("href");
+      if (!href) return;
+      cancelHoverClose();
+      const rect = a.getBoundingClientRect();
+      let pos: number | null = null;
+      try {
+        pos = editor.view.posAtDOM(a, 0);
+      } catch {
+        pos = null;
+      }
+      const left = Math.min(rect.left, window.innerWidth - 300);
+      setHoverLink({ href, pos, left: Math.max(left, 12), top: rect.bottom + 6 });
+    };
+    const onOut = (e: Event) => {
+      if (!(e.target as HTMLElement).closest("a")) return;
+      scheduleHoverClose();
+    };
+    dom.addEventListener("mouseover", onOver);
+    dom.addEventListener("mouseout", onOut);
+    return () => {
+      dom.removeEventListener("mouseover", onOver);
+      dom.removeEventListener("mouseout", onOut);
+      cancelHoverClose();
+    };
+  }, [editor]);
+
+  function editHoverLink() {
+    if (!editor || !hoverLink) return;
+    if (hoverLink.pos != null) {
+      editor.chain().focus().setTextSelection(hoverLink.pos).extendMarkRange("link").run();
+    }
+    editor.view.dom.dispatchEvent(new CustomEvent("metis:link"));
+    setHoverLink(null);
+  }
+
+  function removeHoverLink() {
+    if (!editor || !hoverLink || hoverLink.pos == null) return;
+    editor.chain().focus().setTextSelection(hoverLink.pos).extendMarkRange("link").unsetLink().run();
+    setHoverLink(null);
+  }
+
+  function copyHoverLink() {
+    if (!hoverLink) return;
+    void navigator.clipboard?.writeText(hoverLink.href);
+    toast.success("Link copied");
+    setHoverLink(null);
+  }
+
   function applyLink() {
     if (!editor || !link) return;
     const href = normalizeUrl(link.url);
@@ -207,6 +292,52 @@ export function NoteEditor({ noteId, initialContent, onChange }: NoteEditorProps
   return (
     <div style={{ "--note-scale": String(scale) } as CSSProperties}>
       <EditorContent editor={editor} />
+      {hoverLink && !link && createPortal(
+        <div
+          className="link-card animate-blur-in"
+          style={{ left: hoverLink.left, top: hoverLink.top }}
+          onMouseEnter={cancelHoverClose}
+          onMouseLeave={scheduleHoverClose}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="link-card-url">{hoverLink.href.replace(/^https?:\/\//, "")}</div>
+          <div className="link-card-actions">
+            <button
+              className="link-card-action is-open label-whisper"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { openExternal(hoverLink.href); setHoverLink(null); }}
+            >
+              <ExternalLink className="h-3 w-3" strokeWidth={1.5} />
+              Open
+            </button>
+            <button
+              className="link-card-action label-whisper"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={copyHoverLink}
+            >
+              <Copy className="h-3 w-3" strokeWidth={1.5} />
+              Copy
+            </button>
+            <button
+              className="link-card-action label-whisper"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={editHoverLink}
+            >
+              <Pencil className="h-3 w-3" strokeWidth={1.5} />
+              Edit
+            </button>
+            <button
+              className="link-card-action is-danger label-whisper"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={removeHoverLink}
+            >
+              <Unlink className="h-3 w-3" strokeWidth={1.5} />
+              Remove
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
       {link && createPortal(
         <div
           className="link-popover animate-blur-in"

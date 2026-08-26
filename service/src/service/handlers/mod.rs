@@ -1,4 +1,6 @@
 pub mod get_all_resources;
+pub mod delete_resource;
+pub mod get_dialogue_location;
 pub mod get_all_dialogues;
 pub mod ingest_resources;
 pub mod get_all_journeys;

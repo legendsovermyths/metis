@@ -484,8 +484,8 @@ export default function ChatPage() {
 
       {/* Input area — framed as the bottom of a page */}
       {context && !chatDone && (
-        <div className="relative z-10 px-6 pb-5 pt-3 md:px-10 md:pb-6 bg-background/70 backdrop-blur-xl">
-          <div className="mx-auto max-w-3xl">
+        <div className="relative z-10 px-6 pb-5 pt-3 md:px-10 md:pb-6">
+          <div className="mx-auto max-w-3xl bg-background/70 backdrop-blur-xl">
             <div className="flex items-baseline justify-between mb-1.5">
               <span className="label-whisper text-text-tertiary">your reply</span>
               <span className="label-whisper text-text-tertiary tabular-nums">

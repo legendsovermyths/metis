@@ -33,8 +33,9 @@ impl FromDbRow for JourneyArtifacts {
         let progress = derive_progress(
             record.id,
             &record.journey,
-            dialogues.last().map(|p| p.read()),
+            dialogues.iter().rfind(|p| p.read().visible).map(|p| p.read()),
         )?;
+        let generation_progress = derive_progress(record.id, &record.journey, dialogues.iter().last().map(|d| d.read()))?;
         Ok(JourneyArtifacts {
             id: Some(record.id),
             chapter_title: record.chapter_title,
@@ -45,6 +46,7 @@ impl FromDbRow for JourneyArtifacts {
             folder_id: record.folder_id,
             created_at: record.created_at,
             progress,
+            generation_progress
         })
     }
 

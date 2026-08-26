@@ -28,7 +28,7 @@ fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueRefere
         ReferenceKind::Journey => {
             let progress = Repository::<JourneyArtifacts>::find_by_id(&parent_id)?
                 .read()
-                .progress
+                .generation_progress
                 .clone();
             Ok((
                 DialogueReference::Journey {
@@ -42,7 +42,7 @@ fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueRefere
         ReferenceKind::Explanation => {
             let progress = Repository::<ExplanationArtifacts>::find_by_id(&parent_id)?
                 .read()
-                .progress
+                .generation_progress
                 .clone();
             Ok((
                 DialogueReference::Explanation {
@@ -62,28 +62,27 @@ fn create_task_request(
     dialogues: &[Persistent<Dialogue>],
     params: &GetNextDialogueParams,
 ) -> Result<Option<Vec<TaskRequest>>> {
-    let (dialogue_reference, is_complete) = seed_reference(params.kind, params.parent_id)?;
-    if is_complete {
-        return Ok(None);
-    }
-    let remaining_dialogues_count = dialogues
-        .iter()
-        .filter(|p| {
-            let d = p.read();
-            !d.visible && d.is_ready
-        })
-        .count();
+    let (dialogue_reference, generation_complete) = seed_reference(params.kind, params.parent_id)?;
 
     let mut task_requests = Vec::new();
-    if remaining_dialogues_count < DIALOGUE_REMAINING_THRESHOLD {
-        task_requests.push(TaskRequest {
-            task_type: TaskType::DraftDialogue,
-            params: json!({
-                "parent_id": params.parent_id,
-                "dialogue_reference": dialogue_reference,
-                "num_dialogues": PREFETCH_BATCH,
-            }),
-        });
+    if !generation_complete {
+        let remaining_dialogues_count = dialogues
+            .iter()
+            .filter(|p| {
+                let d = p.read();
+                !d.visible && d.is_ready
+            })
+            .count();
+        if remaining_dialogues_count < DIALOGUE_REMAINING_THRESHOLD {
+            task_requests.push(TaskRequest {
+                task_type: TaskType::DraftDialogue,
+                params: json!({
+                    "parent_id": params.parent_id,
+                    "dialogue_reference": dialogue_reference,
+                    "num_dialogues": PREFETCH_BATCH,
+                }),
+            });
+        }
     }
     let next_dialogue = dialogues.iter().find(|p| {
         let d = p.read();
@@ -109,18 +108,15 @@ pub fn get_next_dialogue(params: GetNextDialogueParams, _: &AppContext) -> BoxFu
     Box::pin(async move {
         let mut dialogues = DialoguesRepo::get_for_parent(params.kind, params.parent_id)?;
         let task_request = create_task_request(&dialogues, &params)?;
-        match dialogues.iter_mut().find(|p| {
-            let d = p.read();
-            !d.visible && d.is_ready
-        }) {
-            Some(dialogue) => {
+        match dialogues.iter_mut().find(|p| !p.read().visible) {
+            Some(dialogue) if dialogue.read().is_ready => {
                 dialogue.write().visible = true;
                 Ok(ServiceResponse {
                     response: serde_json::to_value(dialogue.read())?,
                     task_request,
                 })
             }
-            None => Ok(ServiceResponse {
+            _ => Ok(ServiceResponse {
                 response: Value::Null,
                 task_request,
             }),

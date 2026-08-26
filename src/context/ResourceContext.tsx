@@ -5,7 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { getAllResources, uploadResource, type Resource, type UserInputItem } from "@/lib/service";
+import { deleteResource, getAllResources, uploadResource, type Resource, type UserInputItem } from "@/lib/service";
 
 export interface PendingUpload {
   tempId: string;
@@ -20,6 +20,8 @@ interface ResourceContextValue {
   refresh: (silent?: boolean) => Promise<void>;
   /** Fire-and-forget: stages an optimistic pending card, ingests, then refreshes. */
   upload: (inputs: UserInputItem[], label: string, notes?: string) => void;
+  /** Removes a resource from the library (and its file on disk), then refreshes. */
+  remove: (id: number) => Promise<void>;
 }
 
 const ResourceContext = createContext<ResourceContextValue | null>(null);
@@ -64,8 +66,16 @@ export function ResourceProvider({ children }: { children: React.ReactNode }) {
     [refresh],
   );
 
+  const remove = useCallback(
+    async (id: number) => {
+      await deleteResource(id);
+      await refresh(true);
+    },
+    [refresh],
+  );
+
   return (
-    <ResourceContext.Provider value={{ resources, loading, error, pendingUploads, refresh, upload }}>
+    <ResourceContext.Provider value={{ resources, loading, error, pendingUploads, refresh, upload, remove }}>
       {children}
     </ResourceContext.Provider>
   );

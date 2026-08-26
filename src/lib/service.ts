@@ -405,6 +405,10 @@ export async function deleteJourney(id: number): Promise<void> {
   await callService("DeleteJourney", { id });
 }
 
+export async function deleteResource(id: number): Promise<void> {
+  await callService("DeleteResource", { id });
+}
+
 export async function moveJourney(id: number, folderId: number | null): Promise<void> {
   await callService("MoveJourney", { id, folder_id: folderId });
 }
@@ -521,6 +525,15 @@ export async function teachingInit(
 
 export async function setDialogue(dialogueId: number): Promise<void> {
   await callService("SetDialogue", { dialogue_id: dialogueId });
+}
+
+export async function getDialogueLocation(
+  dialogueId: number,
+): Promise<{ artifact_kind: ReferenceKind; artifact_id: number }> {
+  return (await callService("GetDialogueLocation", { dialogue_id: dialogueId })) as {
+    artifact_kind: ReferenceKind;
+    artifact_id: number;
+  };
 }
 
 // -- Notes --

@@ -112,7 +112,7 @@ fn find_qpdf() -> Result<PathBuf> {
 pub fn get_page_count(src: &str) -> Result<u32> {
     let qpdf = find_qpdf()?;
     let out = Command::new(qpdf)
-        .args(["--show-npages", src])
+        .args(["--warning-exit-0", "--show-npages", src])
         .env("DYLD_LIBRARY_PATH", "/opt/homebrew/lib")
         .output()
         .map_err(|e| MetisError::UtilsError(format!("qpdf failed: {}", e)))?;
@@ -130,6 +130,7 @@ pub fn get_page_count(src: &str) -> Result<u32> {
 
 fn run_qpdf(qpdf: &Path, args: &[&str]) -> Result<()> {
     let out = Command::new(qpdf)
+        .arg("--warning-exit-0")
         .args(args)
         .env("DYLD_LIBRARY_PATH", "/opt/homebrew/lib")
         .output()
@@ -151,7 +152,7 @@ pub fn merge_pdfs<P: AsRef<Path>>(input_paths: &[P], output_path: &str) -> Resul
     }
 
     let mut cmd = Command::new(qpdf);
-    cmd.arg("--empty").arg("--pages");
+    cmd.arg("--warning-exit-0").arg("--empty").arg("--pages");
 
     for path in input_paths {
         cmd.arg(path.as_ref());

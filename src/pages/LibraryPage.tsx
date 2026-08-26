@@ -33,8 +33,10 @@ export default function LibraryPage() {
   }, [shelf, search]);
 
   const totalCount = shelf.length + pendingUploads.length;
-  const isEmpty =
-    !loading && !error && filtered.length === 0 && pendingUploads.length === 0;
+  const isEmptyLibrary =
+    !loading && !error && shelf.length === 0 && pendingUploads.length === 0;
+  const noMatch =
+    shelf.length > 0 && filtered.length === 0 && pendingUploads.length === 0;
 
   return (
     <div className="paper-texture relative min-h-[calc(100vh-57px)] flex flex-col pb-20 md:pb-0">
@@ -55,34 +57,15 @@ export default function LibraryPage() {
         <main className="flex-1 py-10 md:py-12">
           {/* Hero */}
           <section className="relative mb-12 animate-blur-in">
-            <div className="flex items-end justify-between gap-6">
-              <div className="min-w-0">
-                <p className="label-whisper text-text-tertiary mb-2">Collection</p>
-                <h1 className="display-hero text-5xl text-foreground">Library</h1>
-                <div
-                  className="h-px w-12 mt-5 mb-4 animate-reveal-line"
-                  style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "left" }}
-                />
-                <p className="font-display italic text-base text-text-secondary leading-relaxed max-w-md">
-                  Every book and paper you've set down, ordered by the hand of its keeper.
-                </p>
-              </div>
-
-              <div className="relative flex items-center shrink-0 self-end">
-                <Search className="absolute left-0 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="find a title…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className={cn(
-                    "w-44 border-b border-border/30 bg-transparent pb-1 pl-5 pr-1",
-                    "font-display text-sm italic text-foreground placeholder:text-text-tertiary",
-                    "focus:outline-none focus:border-foreground/25 transition-colors",
-                  )}
-                />
-              </div>
-            </div>
+            <p className="label-whisper text-text-tertiary mb-2">Collection</p>
+            <h1 className="display-hero text-5xl text-foreground">Library</h1>
+            <div
+              className="h-px w-12 mt-5 mb-4 animate-reveal-line"
+              style={{ backgroundColor: "hsl(var(--amber))", transformOrigin: "left" }}
+            />
+            <p className="font-display italic text-base text-text-secondary leading-relaxed max-w-md">
+              Every book and paper you've set down, ordered by the hand of its keeper.
+            </p>
           </section>
 
           {error && (
@@ -99,39 +82,56 @@ export default function LibraryPage() {
             </div>
           )}
 
-          {isEmpty && (
-            <div className="flex flex-col items-center py-24 text-center animate-blur-in">
+          {isEmptyLibrary && (
+            <div className="flex flex-col items-center py-24 text-center animate-blur-in-settle">
               <span className="display-hero text-[8rem] text-foreground/[0.06] select-none leading-none mb-6">
                 ∑
               </span>
               <p className="font-display italic text-base text-foreground/70 max-w-sm leading-relaxed">
-                {shelf.length === 0
-                  ? "An empty shelf awaits its first volume."
-                  : "No titles match your search."}
+                An empty shelf awaits its first volume.
               </p>
-              {shelf.length === 0 && (
-                <button
-                  onClick={() => setUploadOpen(true)}
-                  className="mt-5 label-whisper text-text-tertiary hover:text-foreground/70 underline underline-offset-4 decoration-border transition-colors"
-                >
-                  Acquire your first
-                </button>
-              )}
+              <button
+                onClick={() => setUploadOpen(true)}
+                className="mt-5 label-whisper text-text-tertiary hover:text-foreground/70 underline underline-offset-4 decoration-border transition-colors"
+              >
+                Acquire your first
+              </button>
             </div>
           )}
 
-          {(filtered.length > 0 || pendingUploads.length > 0) && (
+          {(shelf.length > 0 || pendingUploads.length > 0) && (
             <section>
-              <div className="flex items-baseline gap-4 mb-6">
+              <div className="flex items-center gap-4 mb-6">
                 <span className="label-whisper text-text-tertiary">The Shelf</span>
                 <div className="flex-1 h-px bg-border/30" />
+                <div className="relative shrink-0">
+                  <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-3 w-3 text-text-tertiary pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="find a title…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className={cn(
+                      "w-36 border-b border-border/30 bg-transparent pb-0.5 pl-4 pr-1",
+                      "font-display text-sm italic text-foreground placeholder:text-text-tertiary",
+                      "focus:outline-none focus:border-foreground/25 transition-colors",
+                    )}
+                  />
+                </div>
                 {totalCount > 0 && (
-                  <span className="label-whisper text-text-tertiary">
+                  <span className="label-whisper text-text-tertiary shrink-0">
                     {totalCount} {totalCount === 1 ? "item" : "items"}
                   </span>
                 )}
               </div>
 
+              {noMatch ? (
+                <div className="flex flex-col items-center py-16 text-center animate-blur-in-settle">
+                  <p className="font-display italic text-sm text-foreground/60 max-w-xs leading-relaxed">
+                    No titles match “{search.trim()}”.
+                  </p>
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {/* Pending uploads — classifying */}
                 {pendingUploads.map((u) => (
@@ -227,6 +227,7 @@ export default function LibraryPage() {
                   </span>
                 </button>
               </div>
+              )}
             </section>
           )}
         </main>

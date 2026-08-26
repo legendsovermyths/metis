@@ -18,6 +18,7 @@ import {
 } from "@/lib/service";
 
 type DoneListener = (event: TaskDoneEvent) => void;
+type ErrorListener = (taskId: string) => void;
 
 interface TasksContextValue {
   tasks: BackgroundTask[];
@@ -32,6 +33,8 @@ interface TasksContextValue {
   refresh: () => Promise<void>;
   /** Subscribe to `task:done` payloads — fires for every completion. */
   onTaskDone: (listener: DoneListener) => () => void;
+  /** Subscribe to `task:error` — fires with the failed task id. */
+  onTaskError: (listener: ErrorListener) => () => void;
 }
 
 const TasksCtx = createContext<TasksContextValue | null>(null);
@@ -42,6 +45,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<BackgroundTask[]>([]);
   const [loading, setLoading] = useState(true);
   const doneListenersRef = useRef<Set<DoneListener>>(new Set());
+  const errorListenersRef = useRef<Set<ErrorListener>>(new Set());
 
   const refresh = useCallback(async () => {
     try {
@@ -88,6 +92,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const handleError = useCallback(
     (taskId: string) => {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      errorListenersRef.current.forEach((l) => {
+        try {
+          l(taskId);
+        } catch (e) {
+          console.error("[Metis] task error listener threw:", e);
+        }
+      });
       void refresh();
     },
     [refresh],
@@ -123,6 +134,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const onTaskError = useCallback((listener: ErrorListener) => {
+    errorListenersRef.current.add(listener);
+    return () => {
+      errorListenersRef.current.delete(listener);
+    };
+  }, []);
+
   const value = useMemo<TasksContextValue>(() => {
     const active = tasks.filter((t) => ACTIVE_STATUSES.has(t.status));
     return {
@@ -133,8 +151,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       byIdentity: (identity) => active.find((t) => t.identity === identity),
       refresh,
       onTaskDone,
+      onTaskError,
     };
-  }, [tasks, loading, refresh, onTaskDone]);
+  }, [tasks, loading, refresh, onTaskDone, onTaskError]);
 
   return <TasksCtx.Provider value={value}>{children}</TasksCtx.Provider>;
 }

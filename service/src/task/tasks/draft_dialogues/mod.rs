@@ -38,7 +38,7 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
         DialogueReference::Explanation { explanation_id, .. } => {
             let progress = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?
                 .read()
-                .progress
+                .generation_progress
                 .clone();
             if progress.is_complete {
                 Ok(None)
@@ -52,7 +52,7 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
         DialogueReference::Journey { journey_id, .. } => {
             let progress = Repository::<JourneyArtifacts>::find_by_id(journey_id)?
                 .read()
-                .progress
+                .generation_progress
                 .clone();
             if progress.is_journey_complete {
                 Ok(None)

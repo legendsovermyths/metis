@@ -147,6 +147,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
             folder_id: None,
             created_at,
             progress: JourneyProgress::new(0),
+            generation_progress: JourneyProgress::new(0)
         };
 
         let created = Repository::<JourneyArtifacts>::create(artifacts)?;

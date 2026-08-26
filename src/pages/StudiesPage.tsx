@@ -277,7 +277,7 @@ export default function StudiesPage() {
 
           {/* Whole-study empty state */}
           {studyEmpty && (
-            <div className="flex flex-col items-center py-24 text-center animate-blur-in">
+            <div className="flex flex-col items-center py-24 text-center animate-blur-in-settle">
               <span className="display-hero text-[8rem] text-foreground/[0.06] select-none leading-none mb-6">
                 ∴
               </span>
@@ -292,7 +292,7 @@ export default function StudiesPage() {
 
           {/* Empty shelf */}
           {isEmpty && !studyEmpty && (
-            <div className="flex flex-col items-center py-20 text-center animate-blur-in">
+            <div className="flex flex-col items-center py-20 text-center animate-blur-in-settle">
               <span className="display-hero text-[6rem] text-foreground/[0.05] select-none leading-none mb-4">
                 ◇
               </span>

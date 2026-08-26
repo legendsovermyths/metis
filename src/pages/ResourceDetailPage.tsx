@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Watermark } from "@/components/Watermark";
@@ -23,9 +23,11 @@ export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const masthead = useMasthead();
-  const { resources, loading } = useResources();
+  const { resources, loading, remove } = useResources();
   const tasks = useTasks();
   const [building, setBuilding] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   // A build the reader has asked for but not yet confirmed. `label` names what
   // they're about to weave (the whole volume, or a single chapter).
   const [pending, setPending] = useState<{ instruction: AgentResponseInstruction; label: string } | null>(null);
@@ -40,6 +42,21 @@ export default function ResourceDetailPage() {
     const { instruction } = pending;
     setPending(null);
     void build(instruction);
+  };
+
+  const confirmRemove = async () => {
+    if (!resource || resource.id == null || removing) return;
+    setRemoving(true);
+    try {
+      await remove(resource.id);
+      toast.success("Removed from your library", {
+        description: `“${resource.title}” is gone, and Metis will no longer see it.`,
+      });
+      navigate("/library");
+    } catch {
+      setRemoving(false);
+      // Error already surfaced via toast by the service layer.
+    }
   };
 
   const build = async (instruction: AgentResponseInstruction) => {
@@ -71,13 +88,24 @@ export default function ResourceDetailPage() {
       <div className="relative mx-auto w-full max-w-3xl flex-1 flex flex-col px-6 md:px-8">
         {/* Masthead */}
         <header className="pt-8 md:pt-10">
-          <Link
-            to="/library"
-            className="group inline-flex items-center gap-1.5 text-text-tertiary transition-colors hover:text-foreground mb-6"
-          >
-            <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
-            <span className="label-whisper">The library</span>
-          </Link>
+          <div className="flex items-center justify-between mb-6">
+            <Link
+              to="/library"
+              className="group inline-flex items-center gap-1.5 text-text-tertiary transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              <span className="label-whisper">The library</span>
+            </Link>
+            {resource && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="group inline-flex items-center gap-1.5 text-text-tertiary transition-colors hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                <span className="label-whisper">Remove</span>
+              </button>
+            )}
+          </div>
           <div className="flex items-baseline justify-between text-text-tertiary" style={mastheadStyle}>
             <span>Metis · A Volume</span>
             <span className="hidden sm:inline">
@@ -97,7 +125,7 @@ export default function ResourceDetailPage() {
           )}
 
           {!loading && !resource && (
-            <div className="flex flex-col items-center py-24 text-center animate-blur-in">
+            <div className="flex flex-col items-center py-24 text-center animate-blur-in-settle">
               <span className="display-hero text-[8rem] text-foreground/[0.06] select-none leading-none mb-6">
                 ◇
               </span>
@@ -261,6 +289,34 @@ export default function ResourceDetailPage() {
                 className="font-display italic text-sm bg-foreground/90 text-background hover:bg-foreground"
               >
                 Weave it
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Confirm before removing — deleting a resource is permanent */}
+        <AlertDialog open={confirmDelete} onOpenChange={(o) => { if (!o) setConfirmDelete(false); }}>
+          <AlertDialogContent className="max-w-sm border-border/60 bg-background">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display italic text-base font-normal text-foreground">
+                Remove this from your library?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-display text-sm italic text-text-secondary leading-relaxed">
+                <span className="text-foreground/80">{resource?.title}</span> will be taken off the
+                shelf and Metis will no longer see it. Journeys or explanations you've already woven
+                from it stay where they are.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-2">
+              <AlertDialogCancel className="font-display italic text-sm border-border/50 bg-transparent text-text-secondary hover:bg-surface-hover/40 hover:text-foreground">
+                Keep it
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmRemove}
+                disabled={removing}
+                className="font-display italic text-sm bg-destructive/90 text-background hover:bg-destructive"
+              >
+                {removing ? "removing…" : "Remove"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

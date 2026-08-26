@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 import { canSplit, liftTarget } from "@tiptap/pm/transform";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { ReasoningBlockView } from "../ReasoningBlockView";
@@ -78,7 +79,31 @@ export const ReasoningBlock = Node.create({
   },
 
   addKeyboardShortcuts() {
+    // Escape (and Mod-Enter) leaves the block and lands the cursor in the paragraph
+    // directly below it, reusing one if it's already there and creating exactly one
+    // otherwise — a single normal paragraph gap, no stray line.
+    const exitBlock = ({ editor }: { editor: import("@tiptap/core").Editor }) => {
+      const { state } = editor;
+      const { $from, empty } = state.selection;
+      if (!empty) return false;
+      let depth = $from.depth;
+      while (depth > 0 && $from.node(depth).type.name !== this.name) depth -= 1;
+      if (depth === 0) return false;
+      const after = $from.after(depth);
+      return editor.commands.command(({ tr, dispatch }) => {
+        if (!dispatch) return true;
+        const nodeAfter = tr.doc.resolve(after).nodeAfter;
+        if (!nodeAfter || nodeAfter.type.name !== "paragraph") {
+          tr.insert(after, state.schema.nodes.paragraph.create());
+        }
+        tr.setSelection(TextSelection.create(tr.doc, after + 1));
+        tr.scrollIntoView();
+        return true;
+      });
+    };
     return {
+      Escape: exitBlock,
+      "Mod-Enter": exitBlock,
       // Enter is a plain single-level split — a new line, nothing else. The default
       // Enter chain (liftEmptyBlock / createParagraphNear / defining boundary-split)
       // misbehaves around this defining block: it lifts empty lines out, or recreates

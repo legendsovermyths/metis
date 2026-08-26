@@ -24,10 +24,10 @@ import { useTasks } from "@/context/TasksContext";
 import { useNoteAnchor } from "@/context/NoteAnchorContext";
 import { ContentNotes } from "@/components/notes/ContentNotes";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import katex from "katex";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
@@ -37,26 +37,19 @@ gsap.registerPlugin(MotionPathPlugin, MorphSVGPlugin);
 
 const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
 
-function preprocessMath(md: string): string {
-  let result = md.replace(/\\\$/g, ESC_DOLLAR);
-
-  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
-    } catch {
-      return `$$${tex}$$`;
-    }
-  });
-  result = result.replace(/(?<!\$)\$(?!\$)((?:[^$\n\\]|\\.){1,200}?)\$(?!\$)/g, (_, tex) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
-    } catch {
-      return `$${tex}$`;
-    }
-  });
-
-  result = result.split(ESC_DOLLAR).join("$");
-  return result;
+// Reshape inline `$$…$$` into fenced-block form (`$$` on its own lines) so
+// remark-math renders it as *display* math — v6 only treats `$$` as display when
+// the fences sit on their own lines. Escaped `\$` (currency) is protected so it
+// stays literal. Rendering is left entirely to remark-math + rehype-katex; the
+// math is never turned into HTML here, so Markdown cannot reinterpret the
+// underscores inside it as emphasis (the cause of the garbled-equation bug).
+function normalizeDisplayMath(md: string): string {
+  const protectedMd = md.split("\\$").join(ESC_DOLLAR);
+  const blocked = protectedMd.replace(
+    /\$\$([\s\S]*?)\$\$/g,
+    (_, tex) => `\n\n$$\n${tex.trim()}\n$$\n\n`,
+  );
+  return blocked.split(ESC_DOLLAR).join("\\$");
 }
 
 /// Slices `text` to `len` chars, but never lands inside an unclosed math
@@ -514,7 +507,7 @@ function Frontispiece({
   const ctaLabel = isJourney ? "Begin the journey" : "Begin the route";
 
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in">
+    <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in-settle">
       <span
         className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display italic leading-none text-foreground/[0.03]"
         style={{ fontSize: "min(60vh, 60vw)" }}
@@ -569,6 +562,12 @@ function Frontispiece({
 export default function TeachingPage() {
   const { context } = useAppContext();
   const navigate = useNavigate();
+  const location = useLocation();
+  // A note's provenance chip can open teaching pointed at a specific dialogue.
+  // Captured once; consumed by the seed effect to land on that dialogue.
+  const pendingDialogueRef = useRef<number | null>(
+    (location.state as { dialogueId?: number } | null)?.dialogueId ?? null,
+  );
   const ts = context?.teaching;
 
   const [pageIndex, setPageIndex] = useState(0);
@@ -669,7 +668,7 @@ export default function TeachingPage() {
   const [artifact, setArtifact] = useState<TeachingArtifact | null>(null);
   const [dialogues, setDialogues] = useState<Dialogue[]>([]);
   const [waitingForNext, setWaitingForNext] = useState(false);
-  const { onTaskDone } = useTasks();
+  const { onTaskDone, onTaskError } = useTasks();
   const seedKeyRef = useRef<string | null>(null);
 
   // Seed the artifact + dialogue history on mount / artifact change.
@@ -687,10 +686,18 @@ export default function TeachingPage() {
         // Everything already in the DB has been seen before — render it fully,
         // and resume on the last passage revealed rather than the first.
         revealedUpToRef.current = Math.max(0, rows.length - 1);
-        const lastIdx = Math.max(0, rows.length - 1);
-        const last = rows[lastIdx];
-        setPageIndex(lastIdx);
-        setCursor(last?.segments ? settledCursor(last.segments) : CURSOR_START);
+        // Default to the last passage; if we arrived via a note's provenance chip,
+        // land on that dialogue instead (it's already visible, so it's in `rows`).
+        let landIdx = Math.max(0, rows.length - 1);
+        const target = pendingDialogueRef.current;
+        if (target != null) {
+          const found = rows.findIndex((r) => r.id === target);
+          if (found >= 0) landIdx = found;
+          pendingDialogueRef.current = null;
+        }
+        const landing = rows[landIdx];
+        setPageIndex(landIdx);
+        setCursor(landing?.segments ? settledCursor(landing.segments) : CURSOR_START);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -942,13 +949,22 @@ export default function TeachingPage() {
   // While waiting for a ready dialogue, retry whenever any background task
   // completes — readiness is produced by a compose_dialogue task finishing, and
   // getNextDialogue is idempotent, so an unrelated completion just re-probes and
-  // returns null. The listener is torn down once a fetch succeeds (waiting clears).
+  // returns null. A failed compose re-probes too: the probe re-enqueues compose
+  // for the next hidden dialogue, so a transient failure recovers instead of
+  // wedging the in-order reveal. Torn down once a fetch succeeds (waiting clears).
   useEffect(() => {
     if (!waitingForNext) return;
-    return onTaskDone(() => {
+    const offDone = onTaskDone(() => {
       void fetchNextDialogue();
     });
-  }, [waitingForNext, onTaskDone, fetchNextDialogue]);
+    const offError = onTaskError(() => {
+      void fetchNextDialogue();
+    });
+    return () => {
+      offDone();
+      offError();
+    };
+  }, [waitingForNext, onTaskDone, onTaskError, fetchNextDialogue]);
 
   // The one advance owner. While playing, reveal the next segment; at the end of
   // a passage, STOP. Playback never crosses passages on its own — the reader
@@ -1453,7 +1469,7 @@ export default function TeachingPage() {
 
         if (onCompletionPage) {
           return (
-            <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in">
+            <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden px-6 text-center animate-blur-in-settle">
               <span className="pointer-events-none absolute inset-0 flex items-center justify-center select-none font-display italic leading-none text-foreground/[0.03]" style={{ fontSize: "min(60vh, 60vw)" }}>
                 {GLYPHS[Math.abs(model.glyphSeed) % GLYPHS.length]}
               </span>
@@ -1572,8 +1588,8 @@ export default function TeachingPage() {
                                 )}
                                 style={{ opacity: isSettled || isCurrent ? 1 : 0.4 }}
                               >
-                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                                  {preprocessMath(text)}
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                  {normalizeDisplayMath(text)}
                                 </ReactMarkdown>
                               </article>
                             </Fragment>
@@ -1582,8 +1598,8 @@ export default function TeachingPage() {
                       </div>
                     ) : (
                       <article className={cn(proseClasses, isFirstOfArc && "metis-dropcap")}>
-                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                          {preprocessMath(currentDialogue?.content ?? "")}
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {normalizeDisplayMath(currentDialogue?.content ?? "")}
                         </ReactMarkdown>
                       </article>
                     )}
@@ -1842,8 +1858,8 @@ export default function TeachingPage() {
                       "[&_.katex]:text-foreground",
                     )}
                   >
-                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                      {preprocessMath(ex.answer)}
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {normalizeDisplayMath(ex.answer)}
                     </ReactMarkdown>
                   </article>
                   {i < exchanges.length - 1 && (

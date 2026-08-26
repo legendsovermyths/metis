@@ -5,7 +5,7 @@ use crate::{
         dialogue::{Dialogue, DialogueReference, ReferenceKind},
         explanation::{artifact::ExplanationArtifacts, progress::ExplanationProgress, Explanation},
     },
-    db::{repo::dialogue::DialoguesRepo, object::FromDbRow},
+    db::{object::FromDbRow, repo::dialogue::DialoguesRepo},
     error::{MetisError, Result},
 };
 
@@ -32,7 +32,15 @@ impl FromDbRow for ExplanationArtifacts {
         let progress = derive_progress(
             record.id,
             &record.explanation,
-            dialogues.last().map(|p| p.read()),
+            dialogues
+                .iter()
+                .rfind(|p| p.read().visible)
+                .map(|p| p.read()),
+        )?;
+        let generation_progress = derive_progress(
+            record.id,
+            &record.explanation,
+            dialogues.iter().last().map(|d| d.read()),
         )?;
         Ok(ExplanationArtifacts {
             id: Some(record.id),
@@ -41,6 +49,7 @@ impl FromDbRow for ExplanationArtifacts {
             explanation: record.explanation,
             folder_id: record.folder_id,
             created_at: record.created_at,
+            generation_progress,
             progress,
             tutor_notes: record.tutor_notes,
         })

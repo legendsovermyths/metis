@@ -12,6 +12,7 @@ pub struct ExplanationArtifacts {
     pub folder_id: Option<i64>,
     pub created_at: i64,
     pub progress: ExplanationProgress,
+    pub generation_progress: ExplanationProgress,
     pub tutor_notes: String,
 }
 

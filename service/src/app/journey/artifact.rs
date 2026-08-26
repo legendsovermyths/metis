@@ -13,6 +13,7 @@ pub struct JourneyArtifacts {
     pub folder_id: Option<i64>,
     pub created_at: i64,
     pub progress: JourneyProgress,
+    pub generation_progress: JourneyProgress,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,4 +32,3 @@ impl JourneyArtifacts {
         self.get_arc(arc_idx).and_then(|a| a.topics.get(topic_idx))
     }
 }
-

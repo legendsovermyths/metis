@@ -53,7 +53,7 @@ impl TaskWorker {
                         Ok(runner) => {
                             let (tx, mut rx) = mpsc::channel::<TaskProgress>(100);
                             let progress_app = app_handle.clone();
-                            tokio::spawn(async move {
+                            let progress_listener = tokio::spawn(async move {
                                 while let Some(progress) = rx.recv().await {
                                     let _ = TasksRepo::update(&progress);
                                     let _ = progress_app.emit("task:progress", &progress);
@@ -66,7 +66,9 @@ impl TaskWorker {
                                 checkpoint: task.checkpoint.clone(),
                                 task_request_tx: task_request_tx.clone()
                             };
-                            match runner(context).await {
+                            let runner_result = runner(context).await;
+                            let _ = progress_listener.await;
+                            match runner_result {
                                 Ok(val) => {
                                     let _ = TasksRepo::mark_complete(&task.id);
                                     let _ = app_handle.emit(

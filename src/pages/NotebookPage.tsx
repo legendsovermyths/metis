@@ -12,6 +12,8 @@ import { FolderBreadcrumb, FolderRow, NewFolderComposer } from "@/components/fol
 import {
   getAllExplanations,
   getAllJourneys,
+  getDialogueLocation,
+  teachingInit,
   type Folder,
   type Note,
   type NoteAnchor,
@@ -38,6 +40,8 @@ interface Provenance {
   prefix: string;
   label: string;
   to: string | null;
+  /** For dialogue-born notes: the dialogue to reopen (resolved to its study on click). */
+  dialogueId?: number;
 }
 
 /** Where a note was born, resolved to a human line (and a link, when one exists). */
@@ -56,7 +60,7 @@ function provenanceFor(
     return { prefix: "From", label: explanations.get(id) ?? "an explainer", to: `/explanations/${id}` };
   }
   if ("Dialogue" in anchor) {
-    return { prefix: "Born in", label: "a dialogue", to: null };
+    return { prefix: "Born in", label: "a dialogue", to: null, dialogueId: anchor.Dialogue.dialogue_id };
   }
   return null;
 }
@@ -268,6 +272,19 @@ export default function NotebookPage() {
 
   const provenance = selected ? provenanceFor(selected.anchor, journeyNames, explanationNames) : null;
 
+  const openDialogue = useCallback(
+    async (dialogueId: number) => {
+      try {
+        const loc = await getDialogueLocation(dialogueId);
+        await teachingInit(loc.artifact_kind, loc.artifact_id);
+        navigate("/teach", { state: { dialogueId } });
+      } catch {
+        // Error already surfaced via toast by the service layer.
+      }
+    },
+    [navigate],
+  );
+
   const sectionLabel =
     shelf.breadcrumb.length > 0 ? shelf.breadcrumb[shelf.breadcrumb.length - 1].name : "All notes";
   const notebookEmpty = !notesLoading && notes.length === 0 && shelf.folders.length === 0;
@@ -339,10 +356,13 @@ export default function NotebookPage() {
 
               {provenance && (
                 <button
-                  onClick={() => provenance.to && navigate(provenance.to)}
-                  disabled={!provenance.to}
+                  onClick={() => {
+                    if (provenance.to) navigate(provenance.to);
+                    else if (provenance.dialogueId != null) void openDialogue(provenance.dialogueId);
+                  }}
+                  disabled={!provenance.to && provenance.dialogueId == null}
                   className={`group mt-4 inline-flex items-center gap-2 rounded-full border border-border/40 bg-surface/40 px-3 py-1 transition-colors duration-200 ${
-                    provenance.to ? "hover:border-amber/40" : "cursor-default"
+                    provenance.to || provenance.dialogueId != null ? "hover:border-amber/40" : "cursor-default"
                   }`}
                 >
                   <CornerDownRight

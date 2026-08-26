@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 
 use crate::{
     app::AppContext,
+    app::state::MetisPhase,
     db::repo::appdata::{self, AppDataRepo},
     error::Result,
     llm_client::tool::{Parameter, Parameters, Tool},
@@ -78,6 +79,7 @@ impl Tool for SetDoneTool {
         }
         let user_profile = ctx.notes.clone().unwrap();
         AppDataRepo::set("user_profile", &user_profile)?;
+        ctx.phase = MetisPhase::Advising;
         ctx.set_done();
         Ok(json!({ "status": "done", "message": "Onboarding complete." }))
     }

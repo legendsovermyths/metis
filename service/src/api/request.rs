@@ -46,6 +46,8 @@ impl Loggable for Request {
 #[derive(Debug, PartialEq, Eq, Hash, Deserialize)]
 pub enum ServiceRequestType {
     GetAllResources,
+    DeleteResource,
+    GetDialogueLocation,
     GetAllDialogues,
     GetAllJourneys,
     GetContext,
