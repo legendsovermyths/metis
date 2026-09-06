@@ -2,9 +2,10 @@ use dborm::DbRow;
 
 use crate::{
     app::dialogue::{
-        blackboard::Blackboard, segment::Segment, Dialogue, DialogueReference, ReferenceKind,
+        blackboard::Blackboard, kind::DialogueKind, segment::Segment, Dialogue, DialogueReference,
+        ReferenceKind,
     },
-    db::{persistence::Persistent, object::FromDbRow, repo::Repository},
+    db::{object::FromDbRow, persistence::Persistent, repo::Repository},
     error::Result,
 };
 
@@ -29,6 +30,8 @@ pub struct DialogueRecord {
     pub segments: Option<Vec<Segment>>,
     #[db(column = "reference_json", json)]
     pub reference: DialogueReference,
+    pub kind: DialogueKind,
+    pub concluded: bool,
 }
 
 impl FromDbRow for Dialogue {
@@ -46,6 +49,8 @@ impl FromDbRow for Dialogue {
             visible: record.visible,
             segments: record.segments.unwrap_or_default(),
             is_ready: record.is_ready,
+            kind: record.kind,
+            concluded: record.concluded,
         })
     }
 
@@ -63,6 +68,8 @@ impl FromDbRow for Dialogue {
             heading: self.heading.clone(),
             segments: Some(self.segments.clone()),
             reference: self.reference.clone(),
+            kind: self.kind.clone(),
+            concluded: self.concluded,
         }
     }
 }
@@ -70,19 +77,22 @@ impl FromDbRow for Dialogue {
 pub struct DialoguesRepo;
 
 impl DialoguesRepo {
-    pub fn get_for_parent(kind: ReferenceKind, parent_id: i64) -> Result<Vec<Persistent<Dialogue>>> {
+    pub fn get_for_parent(
+        reference_kind: ReferenceKind,
+        parent_id: i64,
+    ) -> Result<Vec<Persistent<Dialogue>>> {
         Repository::<Dialogue>::query(
             "SELECT * FROM dialogues
              WHERE reference_kind = ?1 AND parent_id = ?2
              ORDER BY idx",
-            rusqlite::params![kind.as_str(), parent_id],
+            rusqlite::params![reference_kind.as_str(), parent_id],
         )
     }
 
-    pub fn delete_for_parent(kind: ReferenceKind, parent_id: i64) -> Result<()> {
+    pub fn delete_for_parent(reference_kind: ReferenceKind, parent_id: i64) -> Result<()> {
         Repository::<Dialogue>::delete_where(
             "reference_kind = ?1 AND parent_id = ?2",
-            rusqlite::params![kind.as_str(), parent_id],
+            rusqlite::params![reference_kind.as_str(), parent_id],
         )
     }
 }

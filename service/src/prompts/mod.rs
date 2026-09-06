@@ -23,11 +23,13 @@ pub struct PromptProvider {
     content_to_topics_prompt: String,
     journey_narrator_system_prompt: String,
     explainer_narrator_system_prompt: String,
+    questioner_system_prompt: String,
     blackboard_system_prompt: String,
     curator_system_prompt: String,
     enhancer_system_prompt: String,
     tutor_system_prompt: String,
     explainer_tutor_system_prompt: String,
+    evaluator_system_prompt: String,
     explanation_architect_prompt: String,
     content_to_transcript_prompt: String,
 }
@@ -51,11 +53,13 @@ impl PromptProvider {
                 .to_string(),
             explainer_narrator_system_prompt: include_str!("markdowns/explainer_narrator.md")
                 .to_string(),
+            questioner_system_prompt: include_str!("markdowns/questioner.md").to_string(),
             blackboard_system_prompt: include_str!("markdowns/blackboard.md").to_string(),
             curator_system_prompt: include_str!("markdowns/curator.md").to_string(),
             enhancer_system_prompt: include_str!("markdowns/enhancer.md").to_string(),
             tutor_system_prompt: include_str!("markdowns/tutor.md").to_string(),
             explainer_tutor_system_prompt: include_str!("markdowns/explainer_tutor.md").to_string(),
+            evaluator_system_prompt: include_str!("markdowns/evaluator.md").to_string(),
             explanation_architect_prompt: include_str!("markdowns/explanation_architect.md")
                 .to_string(),
             content_to_transcript_prompt: include_str!("markdowns/content_to_transcript.md")
@@ -101,6 +105,11 @@ impl PromptProvider {
     }
     pub fn get_content_to_transcript_prompt(&self) -> String {
         self.content_to_transcript_prompt.clone()
+    }
+    pub fn get_questioner_prompt(&self, arc: &str, previous_questions: &str) -> String {
+        self.questioner_system_prompt
+            .replace("{arc}", arc)
+            .replace("{previous_questions}", previous_questions)
     }
     pub fn get_journey_narrator_prompt(
         &self,
@@ -215,6 +224,18 @@ impl PromptProvider {
                     last_10_dialogues
                 },
             )
+    }
+
+    pub fn get_evaluator_system_prompt(
+        &self,
+        chapter_title: &str,
+        arc_title: &str,
+        problem: &str,
+    ) -> String {
+        self.evaluator_system_prompt
+            .replace("{chapter_title}", chapter_title)
+            .replace("{arc_title}", arc_title)
+            .replace("{problem}", problem)
     }
 
     pub fn get_explanation_architect_prompt(

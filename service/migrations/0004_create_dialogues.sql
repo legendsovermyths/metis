@@ -11,5 +11,7 @@ CREATE TABLE IF NOT EXISTS dialogues (
     heading         TEXT    NOT NULL DEFAULT '',
     segments_json   TEXT,
     reference_json  TEXT    NOT NULL,
+    kind            TEXT    NOT NULL DEFAULT 'Explainer',
+    concluded       INTEGER NOT NULL DEFAULT 0,
     UNIQUE(reference_kind, parent_id, idx)
 );

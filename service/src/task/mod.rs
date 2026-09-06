@@ -9,8 +9,9 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
-            compose_dialogue::compose_dialogue, create_explainer::create_explanation,
-            create_journey::create_journey, draft_dialogues::draft_dialogue,
+            compose_explainer::compose_explainer, compose_question::compose_question,
+            create_explainer::create_explanation, create_journey::create_journey,
+            draft_dialogues::draft_dialogue,
         },
     },
 };
@@ -43,7 +44,8 @@ impl Task {
             TaskType::CreateJourney => Ok(create_journey),
             TaskType::CreateExplanation => Ok(create_explanation),
             TaskType::DraftDialogue => Ok(draft_dialogue),
-            TaskType::ComposeDialogue => Ok(compose_dialogue),
+            TaskType::ComposeExplainer => Ok(compose_explainer),
+            TaskType::ComposeQuestion => Ok(compose_question),
         }
     }
 }

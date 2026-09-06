@@ -47,11 +47,11 @@ pub fn create_explanation(context: TaskContext) -> TaskFuture {
             "## Problem\n\n{}\n\n## Solution\n\n{}",
             problem
                 .read()
-                .get_content(&AgentResponseInstruction::None)
+                .get_content(&AgentResponseInstruction::None, None)
                 .await?,
             solution
                 .read()
-                .get_content(&AgentResponseInstruction::None)
+                .get_content(&AgentResponseInstruction::None, None)
                 .await?
         );
 

@@ -14,7 +14,8 @@ use crate::{
         progress::TaskStatus,
         task_type::TaskType,
         tasks::{
-            compose_dialogue::{ComposeDialogueCheckpoint, ComposeParam},
+            compose_explainer::{ComposeExplainerCheckpoint, ComposeParam},
+            compose_question::{ComposeQuestionCheckpoint, ComposeQuestionParam},
             create_explainer::{CreateExplanationCheckpoint, CreateExplanationParams},
             create_journey::{CreateJourneyCheckpoint, CreateJourneyParams},
             draft_dialogues::{DraftCheckpoint, DraftParams},
@@ -97,9 +98,16 @@ impl TaskMangager {
                 self.queue::<DraftCheckpoint, DraftParams>(TaskType::DraftDialogue, params)
                     .await
             },
-            TaskType::ComposeDialogue => {
-                self.queue::<ComposeDialogueCheckpoint, ComposeParam>(
-                    TaskType::ComposeDialogue,
+            TaskType::ComposeExplainer => {
+                self.queue::<ComposeExplainerCheckpoint, ComposeParam>(
+                    TaskType::ComposeExplainer,
+                    params,
+                )
+                .await
+            }
+            TaskType::ComposeQuestion => {
+                self.queue::<ComposeQuestionCheckpoint, ComposeQuestionParam>(
+                    TaskType::ComposeQuestion,
                     params,
                 )
                 .await

@@ -1,10 +1,11 @@
 pub mod blackboard;
+pub mod kind;
 pub mod segment;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     app::{
-        dialogue::{blackboard::Blackboard, segment::Segment},
+        dialogue::{blackboard::Blackboard, kind::DialogueKind, segment::Segment},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact,
     },
@@ -24,6 +25,8 @@ pub struct Dialogue {
     pub visible: bool,
     pub segments: Vec<Segment>,
     pub is_ready: bool,
+    pub kind: DialogueKind,
+    pub concluded: bool,
 }
 
 impl Default for Dialogue {
@@ -39,6 +42,8 @@ impl Default for Dialogue {
             visible: true,
             segments: Vec::new(),
             is_ready: false,
+            kind: DialogueKind::Explainer,
+            concluded: false,
         }
     }
 }
@@ -100,6 +105,33 @@ impl DialogueReference {
             DialogueReference::None => {
                 Err(MetisError::InternalDataError("Directory being requested from the reference that is not associated with any resource".to_string()))
             }
+        }
+    }
+
+    pub fn get_dialogue_kind(&self) -> Result<DialogueKind> {
+        match self {
+            DialogueReference::Journey {
+                journey_id,
+                arc_idx,
+                topic_idx,
+            } => {
+                let journey = Repository::<artifact::JourneyArtifacts>::find_by_id(journey_id)?;
+                let topic = journey.read().get_topic(*arc_idx, *topic_idx);
+                if let Some(topic) = topic {
+                    Ok(topic.generation_kind)
+                } else {
+                    Err(MetisError::InternalDataError(
+                        "the topic used to fetch dialogue kind does not exist".to_string(),
+                    ))
+                }
+            }
+            DialogueReference::Explanation {
+                explanation_id: _,
+                step_idx: _,
+            } => Ok(DialogueKind::Explainer),
+            DialogueReference::None => Err(MetisError::InternalDataError(
+                "No reference exist for the dialogue that is trying to fetch the kind".to_string(),
+            )),
         }
     }
 }

@@ -113,7 +113,6 @@ fn derive_progress(
             }
         }
     }
-
     Ok(JourneyProgress {
         journey_id,
         arc_idx,

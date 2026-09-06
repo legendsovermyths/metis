@@ -7,18 +7,14 @@ use crate::{
         },
         explanation::artifact::ExplanationArtifacts,
         journey::artifact,
-    },
-    db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, Repository},
-    error::{MetisError, Result},
-    llm_client::{
+    }, db::repo::{appdata::AppDataRepo, dialogue::DialoguesRepo, Repository}, error::{MetisError, Result}, llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
-    },
-    prompts::get_prompt_provider,
-    utils::{
+    }, prompts::get_prompt_provider, task::tasks::draft_dialogues::DialogueDraft, utils::{
+        dialogue::{pedagogy_arc_json, pedagogy_topic_json},
         format::sanitize_json,
         narrator::{load_explanation_material, load_topic_content},
-    },
+    }
 };
 
 #[derive(Deserialize)]
@@ -69,8 +65,7 @@ impl Narrator {
                 let artifact = Repository::<artifact::JourneyArtifacts>::find_by_id(&journey_id)?;
                 let artifact = artifact.read();
                 let arc = artifact.get_arc(arc_idx);
-                let arc_json = serde_json::to_string_pretty(&arc)
-                    .map_err(|e| MetisError::JsonError(e.to_string()))?;
+                let arc_json = pedagogy_arc_json(arc)?;
                 let topic =
                     artifact
                         .get_topic(arc_idx, topic_idx)
@@ -78,8 +73,7 @@ impl Narrator {
                             "invalid arc index or topic index for the journey reference"
                                 .to_string(),
                         ))?;
-                let current_topic_json = serde_json::to_string_pretty(&topic)
-                    .map_err(|e| MetisError::JsonError(e.to_string()))?;
+                let current_topic_json = pedagogy_topic_json(topic)?;
                 let reference_material = load_topic_content(&artifact.chapter_dir, &topic.name);
                 get_prompt_provider().get_journey_narrator_prompt(
                     &profile,
@@ -130,5 +124,16 @@ impl Narrator {
         let raw = response.text();
         let fixed = sanitize_json(&raw);
         Ok(serde_json::from_str(&fixed)?)
+    }
+}
+
+impl From<NarratorOutput> for DialogueDraft {
+    fn from(output: NarratorOutput) -> Self {
+        DialogueDraft {
+            title: output.title,
+            content: output.dialogue,
+            blackboard_instructions: output.blackboard_instructions.to_string(),
+            topic_complete: output.topic_complete,
+        }
     }
 }

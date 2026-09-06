@@ -1,6 +1,5 @@
 use crate::app::journey::artifact::TopicRange;
 
-
 pub fn load_topic_content(chapter_dir: &str, topic_name: &str) -> String {
     let topic_map_path = format!("{}/topic_map.json", chapter_dir);
     let content_md_path = format!("{}/content.md", chapter_dir);

@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 
 use crate::{
     app::{
-        dialogue::{Dialogue, DialogueReference, ReferenceKind},
+        dialogue::{kind::DialogueKind, Dialogue, DialogueReference, ReferenceKind},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact::JourneyArtifacts,
         AppContext,
@@ -90,8 +90,12 @@ fn create_task_request(
     });
     if let Some(next_dialogue) = next_dialogue {
         if !next_dialogue.read().is_ready {
+            let task_type = match next_dialogue.read().kind {
+                DialogueKind::Question => TaskType::ComposeQuestion,
+                DialogueKind::Explainer => TaskType::ComposeExplainer,
+            };
             task_requests.push(TaskRequest {
-                task_type: TaskType::ComposeDialogue,
+                task_type,
                 params: json!({
                     "dialogue_id": next_dialogue.read().id.unwrap()
                 }),

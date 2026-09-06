@@ -8,6 +8,7 @@ use crate::{
 };
 
 pub mod director;
+pub mod evaluator;
 pub mod handler;
 pub mod onboarder;
 pub mod tutor;

@@ -4,3 +4,4 @@ pub const GEMINI_TTS_MODEL: &str = "gemini-3.1-flash-tts-preview";
 pub const GEMINI_TTS_VOICE: &str = "Aoede";
 pub const GEMINI_TTS_LANGUAGE: &str = "en-US";
 pub const CLOUD_TTS_URL: &str = "https://texttospeech.googleapis.com/v1/text:synthesize";
+pub const QUESTION_COUNT_PER_ARC: usize = 5;

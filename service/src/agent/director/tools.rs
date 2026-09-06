@@ -163,7 +163,7 @@ impl Tool for GetResourceContentTool {
                 "error": "This is a textbook — call get_resource_structure to see its chapters, then create_journey with a chapter_title."
             }));
         }
-        match resource.get_content(&AgentResponseInstruction::None).await {
+        match resource.get_content(&AgentResponseInstruction::None, None).await {
             Ok(content) => Ok(json!({ "resource_id": id, "content": content })),
             Err(e) => Ok(json!({ "resource_id": id, "error": e.to_string() })),
         }

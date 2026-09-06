@@ -21,7 +21,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    app::dialogue::{blackboard::ElementDescriptor, segment::{Segment, SegmentAction}}, task::tasks::compose_dialogue::{annotation::Annotation, templates}, utils::svg::Bbox
+    app::dialogue::{
+        blackboard::ElementDescriptor,
+        segment::{Segment, SegmentAction},
+    },
+    task::tasks::compose_explainer::{annotation::Annotation, templates},
+    utils::svg::Bbox,
 };
 
 pub struct LayoutInput<'a> {
@@ -72,7 +77,9 @@ pub fn layout(input: LayoutInput) -> LayoutOutput {
                 dyk.get_or_insert(ann);
             }
             _ => {
-                let Some(target) = ann.target_gid() else { continue };
+                let Some(target) = ann.target_gid() else {
+                    continue;
+                };
                 match bboxes.get(target) {
                     Some(bb) => anchored.push((ann, *bb)),
                     None => crate::warn!(
@@ -137,15 +144,33 @@ pub fn layout(input: LayoutInput) -> LayoutOutput {
 
     if let Some(Annotation::Header { text }) = header {
         let gid = counter.next("header");
-        push(&mut out, gid, templates::header(text), descify("Header", text), 0);
+        push(
+            &mut out,
+            gid,
+            templates::header(text),
+            descify("Header", text),
+            0,
+        );
     }
     if let Some(Annotation::Footer { text }) = footer {
         let gid = counter.next("footer");
-        push(&mut out, gid, templates::footer(text), descify("Footer", text), last_seg);
+        push(
+            &mut out,
+            gid,
+            templates::footer(text),
+            descify("Footer", text),
+            last_seg,
+        );
     }
     if let Some(Annotation::DidYouKnow { text }) = dyk {
         let gid = counter.next("did-you-know");
-        push(&mut out, gid, templates::did_you_know(text), descify("Did you know", text), last_seg);
+        push(
+            &mut out,
+            gid,
+            templates::did_you_know(text),
+            descify("Did you know", text),
+            last_seg,
+        );
     }
 
     out

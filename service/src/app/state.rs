@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::app::dialogue::ReferenceKind;
+use crate::app::dialogue::{kind::DialogueKind, ReferenceKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetisPhase {
@@ -8,7 +8,17 @@ pub enum MetisPhase {
     Onboarding,
     Advising,
     Teaching,
+    Evaluating,
     Exploring
+}
+
+impl MetisPhase {
+    pub fn for_dialogue_kind(kind: DialogueKind) -> Self {
+        match kind {
+            DialogueKind::Question => MetisPhase::Evaluating,
+            DialogueKind::Explainer => MetisPhase::Teaching,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]

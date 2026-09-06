@@ -6,7 +6,7 @@ use crate::{
 
 pub fn set_chat(mut chat: ChatContext, context: &AppContext) -> BoxFuture<'_> {
     Box::pin(async move {
-        if chat.phase != MetisPhase::Teaching {
+        if chat.phase != MetisPhase::Teaching && chat.phase != MetisPhase::Evaluating {
             chat.dialogue_id = None;
         }
         let mut current = context.chat.lock().await;

@@ -1,17 +1,51 @@
 use serde_json::{json, Value};
 
 use crate::{
-    app::dialogue::{
-        blackboard::{Blackboard, ElementDescriptor},
-        segment::Segment,
-        Dialogue,
+    app::{
+        dialogue::{
+            blackboard::{Blackboard, ElementDescriptor},
+            kind::DialogueKind,
+            segment::Segment,
+            Dialogue,
+        },
+        journey::{ArcTopic, JourneyArc},
     },
     db::{
         persistence::Persistent,
         repo::{dialogue::DialoguesRepo, Repository},
     },
-    error::Result,
+    error::{MetisError, Result},
 };
+
+pub fn pedagogy_arc_json(arc: Option<&JourneyArc>) -> Result<String> {
+    let mut value = to_value(&arc)?;
+    if let Some(topics) = value.get_mut("topics").and_then(Value::as_array_mut) {
+        let question = to_value(&DialogueKind::Question)?;
+        topics.retain(|t| t.get("generation_kind") != Some(&question));
+        for topic in topics.iter_mut() {
+            if let Some(object) = topic.as_object_mut() {
+                object.remove("generation_kind");
+            }
+        }
+    }
+    to_pretty(&value)
+}
+
+pub fn pedagogy_topic_json(topic: &ArcTopic) -> Result<String> {
+    let mut value = to_value(&topic)?;
+    if let Some(object) = value.as_object_mut() {
+        object.remove("generation_kind");
+    }
+    to_pretty(&value)
+}
+
+fn to_value<T: serde::Serialize>(value: &T) -> Result<Value> {
+    serde_json::to_value(value).map_err(|e| MetisError::JsonError(e.to_string()))
+}
+
+fn to_pretty(value: &Value) -> Result<String> {
+    serde_json::to_string_pretty(value).map_err(|e| MetisError::JsonError(e.to_string()))
+}
 
 pub fn format_dialogues(dialogues: &[Dialogue]) -> String {
     if dialogues.is_empty() {

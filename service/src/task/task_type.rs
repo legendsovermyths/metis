@@ -6,7 +6,8 @@ pub enum TaskType {
     CreateJourney,
     CreateExplanation,
     DraftDialogue,
-    ComposeDialogue
+    ComposeExplainer,
+    ComposeQuestion
 }
 
 impl Into<String> for TaskType {
@@ -15,7 +16,8 @@ impl Into<String> for TaskType {
             Self::CreateJourney => String::from("create_journey"),
             Self::CreateExplanation => String::from("create_explanation"),
             Self::DraftDialogue => String::from("draft_dialogue"),
-            Self::ComposeDialogue => String::from("compose_dialogue")
+            Self::ComposeExplainer => String::from("compose_explainer"),
+            Self::ComposeQuestion => String::from("compose_question")
         }
     }
 }
@@ -28,7 +30,8 @@ impl TryFrom<&str> for TaskType {
             "create_journey" => Ok(Self::CreateJourney),
             "create_explanation" => Ok(Self::CreateExplanation),
             "draft_dialogue" => Ok(Self::DraftDialogue),
-            "compose_dialogue" => Ok(Self::ComposeDialogue),
+            "compose_explainer" => Ok(Self::ComposeExplainer),
+            "compose_question" => Ok(Self::ComposeQuestion),
             _ => Err(()),
         }
     }

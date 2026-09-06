@@ -4,7 +4,9 @@ import { toast } from "sonner";
 
 // -- AppContext types (mirrors Rust AppContext) --
 
-export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching" | "Exploring";
+export type MetisPhase = "Idle" | "Onboarding" | "Advising" | "Teaching" | "Evaluating" | "Exploring";
+
+export type DialogueKind = "Explainer" | "Question";
 
 export type EventType =
   | "UserMessage"
@@ -132,6 +134,8 @@ export interface Dialogue {
   visible: boolean;
   segments: Segment[];
   is_ready: boolean;
+  kind: DialogueKind;
+  concluded: boolean;
 }
 
 export function journeyRef(
@@ -487,6 +491,28 @@ export async function getAllDialogues(
   parentId: number,
 ): Promise<Dialogue[]> {
   return (await callService("GetAllDialogues", { kind, parent_id: parentId })) as Dialogue[];
+}
+
+export async function getDialogue(dialogueId: number): Promise<Dialogue> {
+  return (await callService("GetDialogue", { dialogue_id: dialogueId })) as Dialogue;
+}
+
+/** Records the student's committed answer on a question dialogue, returning it with the attempt appended to its content. */
+export async function commitAttempt(
+  dialogueId: number,
+  chosen: string,
+  reasoning: string,
+): Promise<Dialogue> {
+  return (await callService("CommitAttempt", {
+    dialogue_id: dialogueId,
+    chosen,
+    reasoning,
+  })) as Dialogue;
+}
+
+/** Marks a dialogue fully consumed — set when an explainer's last segment is revealed. */
+export async function concludeDialogue(dialogueId: number): Promise<void> {
+  await callService("ConcludeDialogue", { dialogue_id: dialogueId });
 }
 
 /**

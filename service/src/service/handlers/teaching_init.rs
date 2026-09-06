@@ -32,16 +32,23 @@ pub fn teaching_init(params: TeachingInitParams, context: &AppContext) -> BoxFut
 
         let dialogues = DialoguesRepo::get_for_parent(params.artifact_kind, params.artifact_id)?;
         let last = dialogues.iter().rfind(|p| p.read().visible);
-        let (dialogue_id, event_history) = match last {
+        let (dialogue_id, event_history, phase) = match last {
             Some(p) => {
-                let id = p.read().id.unwrap();
-                (Some(id), DialogueEventsRepo::get_for_dialogue(id)?)
+                let (id, kind) = {
+                    let d = p.read();
+                    (d.id.unwrap(), d.kind)
+                };
+                (
+                    Some(id),
+                    DialogueEventsRepo::get_for_dialogue(id)?,
+                    MetisPhase::for_dialogue_kind(kind),
+                )
             }
-            None => (None, EventHistory::new()),
+            None => (None, EventHistory::new(), MetisPhase::Teaching),
         };
 
         let mut ctx = context.chat.lock().await;
-        ctx.phase = MetisPhase::Teaching;
+        ctx.phase = phase;
         ctx.is_done = false;
         ctx.dialogue_id = dialogue_id;
         ctx.event_history = event_history;

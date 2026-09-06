@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
-        resource::resource::Resource,
+        dialogue::kind::DialogueKind,
+        journey::{artifact::JourneyArtifacts, progress::JourneyProgress, ArcTopic, Journey},
+        resource::resource::{Resource, ResourceType},
     },
     db::repo::Repository,
     task::{
@@ -18,10 +19,7 @@ use crate::{
         manager::TaskFuture,
         progress::{TaskProgress, TaskStatus},
     },
-    utils::journey::{
-        create_topic_map, extract_topics_from_content,
-        generate_journey,
-    },
+    utils::journey::{create_topic_map, extract_topics_from_content, generate_journey},
 };
 
 #[derive(Deserialize)]
@@ -72,7 +70,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
         let resource = resource.read();
         if checkpoint.content_md.is_none() {
             let content = resource
-                .get_content(&params.response_instruction)
+                .get_content(&params.response_instruction, Some(Path::new(&journey_dir)))
                 .await?;
             let content_md_path = Path::new(&journey_dir).join("content.md");
 
@@ -91,8 +89,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
 
         if checkpoint.topics.is_none() {
             let topics =
-                extract_topics_from_content(&content_md, &params.response_instruction)
-                    .await?;
+                extract_topics_from_content(&content_md, &params.response_instruction).await?;
             checkpoint.topics = Some(topics);
             let _ = context.progress_tx.send(TaskProgress {
                 task_id: context.id.clone(),
@@ -105,7 +102,16 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
         let topics = checkpoint.topics.clone().unwrap();
 
         if checkpoint.journey.is_none() {
-            let journey = generate_journey(topics).await?;
+            let mut journey = generate_journey(topics).await?;
+            if let ResourceType::TextBook(_) = resource.resource_type {
+                for arc in journey.arcs.iter_mut() {
+                    arc.topics.push(ArcTopic {
+                        name: "Problems".into(),
+                        mode: None,
+                        generation_kind: DialogueKind::Question,
+                    });
+                }
+            }
             checkpoint.journey = Some(journey);
             let _ = context.progress_tx.send(TaskProgress {
                 task_id: context.id.clone(),
@@ -147,7 +153,7 @@ pub fn create_journey(context: TaskContext) -> TaskFuture {
             folder_id: None,
             created_at,
             progress: JourneyProgress::new(0),
-            generation_progress: JourneyProgress::new(0)
+            generation_progress: JourneyProgress::new(0),
         };
 
         let created = Repository::<JourneyArtifacts>::create(artifacts)?;

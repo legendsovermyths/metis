@@ -6,7 +6,7 @@ use crate::{
     app::dialogue::{blackboard::{Blackboard, ElementDescriptor}, segment::{Segment, SegmentAction}}, error::{MetisError, Result}, llm_client::{
         factory::{ClientType, LLMClientFactory},
         llm_client::LLMClient,
-    }, prompts::get_prompt_provider, task::tasks::compose_dialogue::{
+    }, prompts::get_prompt_provider, task::tasks::compose_explainer::{
         annotation::EnhancerOutput,
         layout::{layout, LayoutInput, LayoutOutput},
         templates::COORDINATE_SAVE,

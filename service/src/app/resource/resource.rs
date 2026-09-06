@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 use crate::app::resource::document::Document;
 
@@ -33,7 +35,11 @@ impl Resource {
             .into_owned()
     }
 
-    pub async fn get_content(&self, request: &AgentResponseInstruction) -> Result<String> {
+    pub async fn get_content(
+        &self,
+        request: &AgentResponseInstruction,
+        artifact_dir: Option<&Path>,
+    ) -> Result<String> {
         match &self.resource_type {
             ResourceType::TextBook(_book) => {
                 let chapter_title;
@@ -44,10 +50,16 @@ impl Resource {
                         "Agent didn't send any chapter name for book".to_string(),
                     ));
                 }
-                let chapter_pdf = crate::utils::paths::tmp_dir()
-                    .join(format!("{}.pdf", uuid::Uuid::new_v4()))
-                    .to_string_lossy()
-                    .into_owned();
+                let (chapter_pdf, persist) = match artifact_dir {
+                    Some(dir) => (dir.join("chapter.pdf").to_string_lossy().into_owned(), true),
+                    None => (
+                        crate::utils::paths::tmp_dir()
+                            .join(format!("{}.pdf", uuid::Uuid::new_v4()))
+                            .to_string_lossy()
+                            .into_owned(),
+                        false,
+                    ),
+                };
 
                 let page_range = detect_page_range(&self.path, chapter_title).await?;
 
@@ -61,7 +73,9 @@ impl Resource {
                 )?;
 
                 let content_md = convert_to_markdown(&chapter_pdf, pages).await?;
-                let _ = std::fs::remove_file(&chapter_pdf);
+                if !persist {
+                    let _ = std::fs::remove_file(&chapter_pdf);
+                }
                 Ok(content_md)
             }
             _ => {

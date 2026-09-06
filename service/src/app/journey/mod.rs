@@ -3,6 +3,8 @@ pub mod progress;
 
 use serde::{Deserialize, Serialize};
 
+use crate::app::dialogue::kind::DialogueKind;
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Journey {
     pub journey_title: String,
@@ -18,7 +20,10 @@ pub struct JourneyArc {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ArcTopic {
     pub name: String,
-    pub mode: TeachingMode,
+    #[serde(default)]
+    pub mode: Option<TeachingMode>,
+    #[serde(default)]
+    pub generation_kind: DialogueKind
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -13,6 +13,9 @@ import {
   explanationRef,
   sendMessage,
   setDialogue,
+  commitAttempt,
+  concludeDialogue,
+  getDialogue,
   type Dialogue,
   type ElementDescriptor,
   type Segment,
@@ -20,6 +23,7 @@ import {
   type TeachingArtifact,
   type Note,
 } from "@/lib/service";
+import QuaestioColumn from "@/components/teaching/QuaestioColumn";
 import { useTasks } from "@/context/TasksContext";
 import { useNoteAnchor } from "@/context/NoteAnchorContext";
 import { ContentNotes } from "@/components/notes/ContentNotes";
@@ -29,28 +33,12 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { normalizeDisplayMath } from "@/lib/markdown";
 import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
 
 gsap.registerPlugin(MotionPathPlugin, MorphSVGPlugin);
-
-const ESC_DOLLAR = "\u0000ESCDOLLAR\u0000";
-
-// Reshape inline `$$…$$` into fenced-block form (`$$` on its own lines) so
-// remark-math renders it as *display* math — v6 only treats `$$` as display when
-// the fences sit on their own lines. Escaped `\$` (currency) is protected so it
-// stays literal. Rendering is left entirely to remark-math + rehype-katex; the
-// math is never turned into HTML here, so Markdown cannot reinterpret the
-// underscores inside it as emphasis (the cause of the garbled-equation bug).
-function normalizeDisplayMath(md: string): string {
-  const protectedMd = md.split("\\$").join(ESC_DOLLAR);
-  const blocked = protectedMd.replace(
-    /\$\$([\s\S]*?)\$\$/g,
-    (_, tex) => `\n\n$$\n${tex.trim()}\n$$\n\n`,
-  );
-  return blocked.split(ESC_DOLLAR).join("\\$");
-}
 
 /// Slices `text` to `len` chars, but never lands inside an unclosed math
 /// expression — if the cut would fall inside `$...$` or `$$...$$`, retreat
@@ -683,9 +671,14 @@ export default function TeachingPage() {
         if (cancelled) return;
         setArtifact(art);
         setDialogues(rows);
-        // Everything already in the DB has been seen before — render it fully,
-        // and resume on the last passage revealed rather than the first.
-        revealedUpToRef.current = Math.max(0, rows.length - 1);
+        // Concluded passages have been fully consumed — render them settled. The
+        // last visible passage may be unconcluded (in-flight): it becomes the
+        // frontier and replays rather than showing settled.
+        let lastConcluded = -1;
+        rows.forEach((r, i) => {
+          if (r.concluded) lastConcluded = i;
+        });
+        revealedUpToRef.current = Math.max(0, lastConcluded);
         // Default to the last passage; if we arrived via a note's provenance chip,
         // land on that dialogue instead (it's already visible, so it's in `rows`).
         let landIdx = Math.max(0, rows.length - 1);
@@ -697,7 +690,9 @@ export default function TeachingPage() {
         }
         const landing = rows[landIdx];
         setPageIndex(landIdx);
-        setCursor(landing?.segments ? settledCursor(landing.segments) : CURSOR_START);
+        setCursor(
+          landing?.concluded && landing.segments ? settledCursor(landing.segments) : CURSOR_START,
+        );
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -716,7 +711,7 @@ export default function TeachingPage() {
   // hall playback stops cleanly.
   const reachedEnd = useMemo(() => {
     const last = allDialogues[allDialogues.length - 1];
-    if (!last || !last.marked_complete || !artifact) return false;
+    if (!last || !last.marked_complete || !last.concluded || !artifact) return false;
     if (artifact.kind === "Journey") {
       const ref = journeyRef(last.reference);
       if (!ref) return false;
@@ -813,6 +808,90 @@ export default function TeachingPage() {
   const segments = useMemo(() => currentDialogue?.segments ?? [], [currentDialogue]);
   const currentImageUrl = currentDialogue?.blackboard?.image_url ?? null;
   const segIdx = segments.length > 0 ? cursor.segmentIndex : -1;
+
+  const isQuestion = currentDialogue?.kind === "Question";
+  const currentConcluded = !!currentDialogue?.concluded;
+  // A passage is "settled" when fully consumed: an explainer once its last
+  // segment is typed, a question once it's concluded. This drives both the
+  // forward transport and the auto-conclude of explainers below.
+  const currentSettled = isQuestion
+    ? currentConcluded
+    : segments.length > 0 &&
+      cursor.segmentIndex >= segments.length - 1 &&
+      cursor.typedLen >= (segments[segments.length - 1]?.text.length ?? 0);
+
+  // Replace a single dialogue in place (after commit / conclude / refresh).
+  const patchDialogue = useCallback((updated: Dialogue) => {
+    setDialogues((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+  }, []);
+  // Questions concluded during this session keep their disputation open in the
+  // resolved view; a later revisit folds it away into the clean keepsake.
+  const [freshlyResolved, setFreshlyResolved] = useState<Set<number>>(new Set());
+  const refreshDialogue = useCallback(async (id: number) => {
+    try {
+      const d = await getDialogue(id);
+      if (d.concluded && d.kind === "Question") {
+        setFreshlyResolved((s) => (s.has(id) ? s : new Set(s).add(id)));
+      }
+      patchDialogue(d);
+    } catch {
+      // handled via toast in callBackend
+    }
+  }, [patchDialogue]);
+
+  const [committing, setCommitting] = useState(false);
+
+  // Commit an answer: persist the attempt into the dialogue content, then seed
+  // the Evaluator with it so it opens the disputation. Its response and the
+  // concluded flag are picked up from the refreshed context / dialogue.
+  const handleCommit = useCallback(
+    async (chosen: string, reasoning: string) => {
+      const id = currentDialogue?.id;
+      if (id == null || committing) return;
+      setCommitting(true);
+      try {
+        patchDialogue(await commitAttempt(id, chosen, reasoning));
+        setIsThinking(true);
+        await sendMessage(`I chose ${chosen}. My reasoning: ${reasoning.trim() || "(none given)"}`);
+      } finally {
+        setIsThinking(false);
+        setCommitting(false);
+        await refreshDialogue(id);
+      }
+    },
+    [currentDialogue, committing, patchDialogue, refreshDialogue],
+  );
+
+  // A turn of the disputation. The Evaluator may conclude on any turn, so the
+  // dialogue is refreshed afterward to catch the flag flip.
+  const handleQuaestioAsk = useCallback(
+    async (question: string) => {
+      const id = currentDialogue?.id;
+      if (id == null || isThinking) return;
+      setPendingQuestion(question);
+      setIsThinking(true);
+      try {
+        await sendMessage(question);
+      } finally {
+        setPendingQuestion(null);
+        setIsThinking(false);
+        await refreshDialogue(id);
+      }
+    },
+    [currentDialogue, isThinking, refreshDialogue],
+  );
+
+  // Auto-conclude an explainer the moment its last segment is revealed, so the
+  // "fully consumed" state persists across reloads (resume replays what wasn't).
+  const concludeFiredRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const d = currentDialogue;
+    if (!d?.id || d.kind === "Question" || d.concluded || !currentSettled) return;
+    if (concludeFiredRef.current.has(d.id)) return;
+    concludeFiredRef.current.add(d.id);
+    patchDialogue({ ...d, concluded: true });
+    void concludeDialogue(d.id);
+  }, [currentDialogue, currentSettled, patchDialogue]);
 
   // Provenance: a note born now attaches to the dialogue+segment on screen.
   const { setAnchor } = useNoteAnchor();
@@ -1092,6 +1171,8 @@ export default function TeachingPage() {
     } else if (!(cursor.segmentIndex >= segments.length - 1 && cursor.typedLen >= (seg?.text.length ?? 0))) {
       return; // immersive auto-playing; wait for it to settle
     }
+    // A question holds the reader until it's resolved — no leaving before then.
+    if (isQuestion && !currentConcluded) return;
     if (pageIndex < allDialogues.length - 1) {
       goToPassage(pageIndex + 1);
       return;
@@ -1104,6 +1185,8 @@ export default function TeachingPage() {
     cursor.segmentIndex,
     cursor.typedLen,
     immersive,
+    isQuestion,
+    currentConcluded,
     pageIndex,
     playSession,
     reachedEnd,
@@ -1116,11 +1199,11 @@ export default function TeachingPage() {
   // from the top, segments advancing on their own with narration. Exiting drops
   // back to the manual split view at the same passage.
   const enterImmersive = useCallback(() => {
-    if (!currentImageUrl) return;
+    if (!currentImageUrl || isQuestion) return;
     setSurface("immersive");
     setCursor(CURSOR_START);
     setPaused(false);
-  }, [currentImageUrl]);
+  }, [currentImageUrl, isQuestion]);
   const exitImmersive = useCallback(() => {
     audioRef.current?.pause();
     setPaused(false);
@@ -1206,11 +1289,6 @@ export default function TeachingPage() {
   const completionPageIndex = allDialogues.length;
   const onCompletionPage = hasCompletionPage && pageIndex >= completionPageIndex;
   const isOnLastContentPage = totalPages > 0 && pageIndex === totalPages - 1;
-  // Current passage fully revealed (last segment, fully typed).
-  const currentSettled =
-    segments.length > 0 &&
-    cursor.segmentIndex >= segments.length - 1 &&
-    cursor.typedLen >= (segments[segments.length - 1]?.text.length ?? 0);
   const hasRevealedNext = totalPages > 0 && pageIndex < totalPages - 1;
   const showConclude = isOnLastContentPage && reachedEnd && currentSettled;
   // The forward CTA: label + whether it's actionable right now. "Continue"
@@ -1233,6 +1311,8 @@ export default function TeachingPage() {
   } else {
     forwardActionable = false;
   }
+  // A question holds the transport until it's resolved.
+  if (isQuestion && !currentConcluded) forwardActionable = false;
   const forwardBusy = isLoading || waitingForNext;
   const displayHeading = currentDialogue?.heading || model.headingFallback;
   const displayArc = model.groupLabel(currentDialogue);
@@ -1263,7 +1343,8 @@ export default function TeachingPage() {
 
   const currentHasSegments = segments.length > 0;
   const currentHasAudio = segments.some((s) => !!s.audio_path);
-  const currentHasBoard = Boolean(currentImageUrl);
+  // A question may carry a figure, but the immersive hall (narrated segments) doesn't apply to it.
+  const currentHasBoard = Boolean(currentImageUrl) && !isQuestion;
 
   return (
     <div
@@ -1495,7 +1576,10 @@ export default function TeachingPage() {
             {hasBoard && (
               <div
                 className={cn(
-                  "relative flex items-center justify-center overflow-hidden bg-background min-h-[42vh] p-4 transition-all duration-700 ease-in-out",
+                  "relative flex items-center justify-center overflow-hidden bg-background min-h-[42vh] p-4",
+                  // Width transition is for the immersive "board fills the room"
+                  // effect only — not for ordinary passage-to-passage navigation.
+                  immersive && "transition-all duration-700 ease-in-out",
                   boardOnly
                     ? "flex-1 lg:flex-none lg:w-full lg:p-12"
                     : "lg:flex-none lg:w-[55%] border-b lg:border-b-0 lg:border-r border-border/20 lg:p-8"
@@ -1535,7 +1619,8 @@ export default function TeachingPage() {
             <div
               ref={dialogueScrollRef}
               className={cn(
-                "overflow-y-auto transition-all duration-700 ease-in-out",
+                "overflow-y-auto",
+                immersive && "transition-all duration-700 ease-in-out",
                 boardOnly
                   ? "max-h-0 opacity-0 pointer-events-none lg:max-h-none lg:w-0 lg:flex-none"
                   : hasBoard
@@ -1543,6 +1628,22 @@ export default function TeachingPage() {
                     : "flex-1"
               )}
             >
+              {isQuestion && currentDialogue ? (
+                <div key={pageIndex} className="animate-blur-in">
+                  <QuaestioColumn
+                    dialogue={currentDialogue}
+                    arcLabel={displayArc}
+                    folio={`fol. ${toRoman(pageIndex + 1).toLowerCase()}`}
+                    exchanges={exchanges}
+                    pendingQuestion={pendingQuestion}
+                    isThinking={isThinking}
+                    committing={committing}
+                    freshlyResolved={currentDialogue.id != null && freshlyResolved.has(currentDialogue.id)}
+                    onCommit={handleCommit}
+                    onAsk={handleQuaestioAsk}
+                  />
+                </div>
+              ) : (
               <div className={cn("mx-auto px-6 py-10 md:px-8", hasBoard ? "max-w-2xl" : "max-w-2xl lg:max-w-3xl")}>
                 <header className="relative mb-10 animate-blur-in">
                   <p className="label-whisper text-text-tertiary mb-3">
@@ -1651,13 +1752,15 @@ export default function TeachingPage() {
                 )}
 
               </div>
+              )}
             </div>
           </div>
         );
       })()}
 
-      {/* Floating raise hand button — no lecture to ask about until we've begun */}
-      {!hasNoPages && (
+      {/* Floating raise hand button — no lecture to ask about until we've begun.
+          On a question the disputation composer lives inline, so it's hidden. */}
+      {!hasNoPages && !isQuestion && (
         <button
           onClick={openAside}
           className="fixed bottom-20 right-5 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/40 bg-background/80 backdrop-blur-sm text-text-tertiary transition-colors hover:text-amber hover:border-amber/40"

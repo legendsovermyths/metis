@@ -5,10 +5,9 @@ use tokio::{sync::Semaphore, task::JoinSet};
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        journey::{artifact::TopicRange, Journey},
-        resource::resource::{Resource, ResourceType},
+        dialogue::{self, kind::DialogueKind, DialogueReference}, journey::{artifact::TopicRange, Journey}, resource::resource::{Resource, ResourceType}
     },
-    db::repo::Repository,
+    db::repo::{dialogue::DialoguesRepo, Repository},
     error::{MetisError, Result},
     llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
     prompts::get_prompt_provider,
@@ -269,4 +268,25 @@ pub async fn create_topic_map(chapter_dir: &str, journey: &Journey) -> Result<()
         topic_map.len()
     );
     Ok(())
+}
+
+pub fn get_arc_questions(search_arc_idx: usize, journey_id: i64) -> Result<Vec<String>> {
+    let dialogues =
+        DialoguesRepo::get_for_parent(crate::app::dialogue::ReferenceKind::Journey, journey_id)?;
+    let mut contents = Vec::new();
+    for d in dialogues.iter() {
+        let d = d.read();
+        if d.kind == DialogueKind::Question {
+            if let DialogueReference::Journey { arc_idx, .. } = d.reference {
+                if arc_idx == search_arc_idx {
+                    contents.push(d.content.clone());
+                }
+            }
+        }
+    }
+    Ok(contents)
+}
+
+pub fn get_arc_question_count(search_arc_idx: usize, journey_id: i64) -> Result<usize> {
+    Ok(get_arc_questions(search_arc_idx, journey_id)?.len())
 }

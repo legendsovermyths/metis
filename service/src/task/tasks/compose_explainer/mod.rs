@@ -5,6 +5,7 @@ pub mod enhancer;
 pub mod illustrator;
 pub mod layout;
 pub mod templates;
+
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -16,7 +17,7 @@ use crate::{
         gaurd::TaskGaurd,
         manager::TaskFuture,
         progress::{TaskProgress, TaskStatus},
-        tasks::compose_dialogue::{
+        tasks::compose_explainer::{
             audio_renderer::{AudioRenderer, AudioRendererInput},
             curator::{CuratedResult, Curator},
             enhancer::{EnhancementResult, Enhancer, EnhancerRequest},
@@ -26,19 +27,20 @@ use crate::{
     utils::dialogue::finalize_parts_and_segments,
 };
 
+
 #[derive(Serialize, Deserialize)]
 pub struct ComposeParam {
     dialogue_id: i64,
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct ComposeDialogueCheckpoint {
+pub struct ComposeExplainerCheckpoint {
     curation_output: Option<CuratedResult>,
     illustration_output: Option<IllustrationResult>,
     enhancer_output: Option<EnhancementResult>,
 }
 
-pub fn compose_dialogue(context: TaskContext) -> TaskFuture {
+pub fn compose_explainer(context: TaskContext) -> TaskFuture {
     Box::pin(async move {
         let params: ComposeParam = serde_json::from_value(context.params)?;
         let mut dialogue = Repository::<Dialogue>::find_by_id(&params.dialogue_id)?;
@@ -52,7 +54,7 @@ pub fn compose_dialogue(context: TaskContext) -> TaskFuture {
         let mut enhancer = Enhancer::new();
         let audio_renderer = AudioRenderer::new();
 
-        let mut checkpoint: ComposeDialogueCheckpoint = serde_json::from_value(context.checkpoint)?;
+        let mut checkpoint: ComposeExplainerCheckpoint = serde_json::from_value(context.checkpoint)?;
 
         if checkpoint.curation_output.is_none() {
             let curated = curator
@@ -159,9 +161,9 @@ impl TaskGaurd for ComposeParam {
     }
 }
 
-impl Default for ComposeDialogueCheckpoint {
+impl Default for ComposeExplainerCheckpoint {
     fn default() -> Self {
-        ComposeDialogueCheckpoint {
+        ComposeExplainerCheckpoint {
             curation_output: None,
             illustration_output: None,
             enhancer_output: None,
