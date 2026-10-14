@@ -35,7 +35,7 @@ use app_lib::{
         dialogue::{
             blackboard::{BlackboardInstructions, ElementDescriptor},
             segment::{Segment, SegmentAction},
-            Dialogue, DialogueReference,
+            Dialogue, ArtifactReference,
         },
         events::{Event, EventHistory, EventType},
         explanation::{artifact::ExplanationArtifacts, Step},
@@ -176,7 +176,7 @@ async fn narrator(id: i64, model: &str, out: &Out, log: &mut Vec<Value>) -> Resu
     let blackboard_state = prior.last().map(|d| d.blackboard.description.clone()).unwrap_or_default();
 
     let prompt = match target.reference {
-        DialogueReference::Journey { journey_id, arc_idx, topic_idx } => {
+        ArtifactReference::Journey { journey_id, arc_idx, topic_idx } => {
             let a = Repository::<JourneyArtifacts>::find_by_id(&journey_id)?;
             let a = a.read();
             let arc_json = pedagogy_arc_json(a.get_arc(arc_idx))?;
@@ -185,7 +185,7 @@ async fn narrator(id: i64, model: &str, out: &Out, log: &mut Vec<Value>) -> Resu
             let reference = load_topic_content(&a.chapter_dir, &topic.name);
             get_prompt_provider().get_journey_narrator_prompt(&profile, &arc_json, &topic_json, &recent_content, &reference, &blackboard_state)
         }
-        DialogueReference::Explanation { explanation_id, step_idx } => {
+        ArtifactReference::Explanation { explanation_id, step_idx } => {
             let a = Repository::<ExplanationArtifacts>::find_by_id(&explanation_id)?;
             let a = a.read();
             let plan = serde_json::to_string_pretty(&a.explanation)?;
@@ -194,7 +194,7 @@ async fn narrator(id: i64, model: &str, out: &Out, log: &mut Vec<Value>) -> Resu
             let reference = load_explanation_material(&a.explanation_directory);
             get_prompt_provider().get_explainer_narrator_prompt(&profile, &plan, &step_s, &recent_content, &reference, &blackboard_state)
         }
-        DialogueReference::None => return Err(MetisError::ParamsError("no reference".into())),
+        ArtifactReference::None => return Err(MetisError::ParamsError("no reference".into())),
     };
     out.write("narrator.prompt.md", &prompt);
     let mut client = make_client(model);
@@ -521,7 +521,7 @@ async fn chat(did: i64, turn: usize, model: &str, out: &Out, log: &mut Vec<Value
     }
 
     let system = match d.reference {
-        DialogueReference::Journey { journey_id, arc_idx, topic_idx } => {
+        ArtifactReference::Journey { journey_id, arc_idx, topic_idx } => {
             let a = Repository::<JourneyArtifacts>::find_by_id(&journey_id)?;
             let a = a.read();
             let arc = a.get_arc(arc_idx).ok_or(MetisError::ParamsError("arc".into()))?;
@@ -533,14 +533,14 @@ async fn chat(did: i64, turn: usize, model: &str, out: &Out, log: &mut Vec<Value
                 get_prompt_provider().get_tutor_system_prompt(&a.chapter_title, &arc.arc_title, &topic.name, &formatted)
             }
         }
-        DialogueReference::Explanation { explanation_id, step_idx } => {
+        ArtifactReference::Explanation { explanation_id, step_idx } => {
             let a = Repository::<ExplanationArtifacts>::find_by_id(&explanation_id)?;
             let a = a.read();
             let step = a.get_step(step_idx).ok_or(MetisError::ParamsError("step".into()))?;
             let formatted = format_dialogues(&get_before_dialogue(did, 10, true)?);
             get_prompt_provider().get_explainer_tutor_system_prompt(&a.title, &step.name, step.label.as_str(), &step.brief, &formatted)
         }
-        DialogueReference::None => return Err(MetisError::ParamsError("none".into())),
+        ArtifactReference::None => return Err(MetisError::ParamsError("none".into())),
     };
 
     let full = DialogueEventsRepo::get_for_dialogue(did)?;

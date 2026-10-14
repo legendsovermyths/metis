@@ -2,7 +2,7 @@ use dborm::DbRow;
 
 use crate::{
     app::dialogue::{
-        blackboard::Blackboard, kind::DialogueKind, segment::Segment, Dialogue, DialogueReference,
+        blackboard::Blackboard, kind::DialogueKind, segment::Segment, Dialogue, ArtifactReference,
         ReferenceKind,
     },
     db::{object::FromDbRow, persistence::Persistent, repo::Repository},
@@ -29,7 +29,7 @@ pub struct DialogueRecord {
     #[db(column = "segments_json", json)]
     pub segments: Option<Vec<Segment>>,
     #[db(column = "reference_json", json)]
-    pub reference: DialogueReference,
+    pub reference: ArtifactReference,
     pub kind: DialogueKind,
     pub concluded: bool,
 }

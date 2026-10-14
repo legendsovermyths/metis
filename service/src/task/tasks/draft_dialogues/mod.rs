@@ -6,7 +6,7 @@ use serde_json::json;
 
 use crate::{
     app::{
-        dialogue::{blackboard::Blackboard, kind::DialogueKind, Dialogue, DialogueReference},
+        dialogue::{blackboard::Blackboard, kind::DialogueKind, Dialogue, ArtifactReference},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact::JourneyArtifacts,
     },
@@ -26,7 +26,7 @@ use crate::{
 #[derive(Deserialize, Serialize)]
 pub struct DraftParams {
     parent_id: i64,
-    dialogue_reference: DialogueReference,
+    dialogue_reference: ArtifactReference,
     num_dialogues: usize,
 }
 
@@ -42,9 +42,9 @@ pub struct DialogueDraft {
     title: String,
 }
 
-fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueReference>> {
+fn refresh_reference(reference: &ArtifactReference) -> Result<Option<ArtifactReference>> {
     match reference {
-        DialogueReference::Explanation { explanation_id, .. } => {
+        ArtifactReference::Explanation { explanation_id, .. } => {
             let progress = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?
                 .read()
                 .generation_progress
@@ -52,13 +52,13 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
             if progress.is_complete {
                 Ok(None)
             } else {
-                Ok(Some(DialogueReference::Explanation {
+                Ok(Some(ArtifactReference::Explanation {
                     explanation_id: *explanation_id,
                     step_idx: progress.step_idx,
                 }))
             }
         }
-        DialogueReference::Journey { journey_id, .. } => {
+        ArtifactReference::Journey { journey_id, .. } => {
             let progress = Repository::<JourneyArtifacts>::find_by_id(journey_id)?
                 .read()
                 .generation_progress
@@ -66,14 +66,14 @@ fn refresh_reference(reference: &DialogueReference) -> Result<Option<DialogueRef
             if progress.is_journey_complete {
                 Ok(None)
             } else {
-                Ok(Some(DialogueReference::Journey {
+                Ok(Some(ArtifactReference::Journey {
                     journey_id: *journey_id,
                     arc_idx: progress.arc_idx,
                     topic_idx: progress.topic_idx,
                 }))
             }
         }
-        DialogueReference::None => Ok(None),
+        ArtifactReference::None => Ok(None),
     }
 }
 
@@ -168,7 +168,7 @@ impl TaskGaurd for DraftParams {
 impl Dialogue {
     fn try_draft(
         draft: DialogueDraft,
-        reference: &DialogueReference,
+        reference: &ArtifactReference,
         dialogue_kind: &DialogueKind,
     ) -> Result<Self> {
         let dialogues = DialoguesRepo::get_for_parent(reference.kind(), reference.parent_id())?;

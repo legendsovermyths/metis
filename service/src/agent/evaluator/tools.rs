@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 
 use crate::{
     app::{
-        dialogue::{kind::DialogueKind, Dialogue, DialogueReference},
+        dialogue::{kind::DialogueKind, Dialogue, ArtifactReference},
         journey::artifact,
         AppContext,
     },
@@ -24,7 +24,7 @@ impl Tool for FetchArcMaterialTool {
 
         let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
         let (journey_id, arc_idx) = match dialogue.read().reference {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx,
                 ..

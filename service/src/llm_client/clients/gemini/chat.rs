@@ -5,17 +5,11 @@ use reqwest::Client;
 use serde_json::{json, Value};
 
 use crate::{
-    app::AppContext,
-    error::{MetisError, Result},
-    llm_client::{
-        clients::gemini::{
-            auth::{ServiceAccount, get_access_token, load_service_account},
-            client::VERTEX_BASE_URL,
-        },
+    app::{events::{Event, EventHistory, EventType}, AppContext}, constants::VERTEX_BASE_URL, error::{MetisError, Result}, llm_client::{
+        clients::gemini::auth::{get_access_token, load_service_account, ServiceAccount},
         llm_client::{LLMChatClient, LLMResponse},
         tool::Tool,
-    },
-    app::events::{Event, EventHistory, EventType},
+    }
 };
 
 pub struct GeminiChat<'a> {

@@ -9,7 +9,7 @@ use crate::{
         Agent, AgentResponse,
     },
     app::{
-        dialogue::{Dialogue, DialogueReference},
+        dialogue::{Dialogue, ArtifactReference},
         events::EventHistory,
         journey::artifact,
         AppContext,
@@ -50,7 +50,7 @@ impl<'a> Evaluator<'a> {
         let dialogue = Repository::<Dialogue>::find_by_id(&dialogue_id)?;
         let dialogue = dialogue.read();
 
-        let DialogueReference::Journey {
+        let ArtifactReference::Journey {
             journey_id,
             arc_idx,
             ..

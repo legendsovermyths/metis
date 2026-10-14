@@ -11,7 +11,7 @@ use crate::{
         Agent, AgentResponse,
     },
     app::{
-        dialogue::{Dialogue, DialogueReference},
+        dialogue::{Dialogue, ArtifactReference},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
@@ -60,7 +60,7 @@ impl<'a> Tutor<'a> {
 
         match reference_kind {
             crate::app::dialogue::ReferenceKind::Journey => {
-                let DialogueReference::Journey {
+                let ArtifactReference::Journey {
                     journey_id,
                     arc_idx,
                     topic_idx,
@@ -101,7 +101,7 @@ impl<'a> Tutor<'a> {
                 ));
             }
             crate::app::dialogue::ReferenceKind::Explanation => {
-                let DialogueReference::Explanation {
+                let ArtifactReference::Explanation {
                     explanation_id,
                     step_idx,
                 } = dialogue.reference

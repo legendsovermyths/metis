@@ -5,7 +5,7 @@ use tokio::{sync::Semaphore, task::JoinSet};
 use crate::{
     agent::AgentResponseInstruction,
     app::{
-        dialogue::{self, kind::DialogueKind, DialogueReference}, journey::{artifact::TopicRange, Journey}, resource::resource::{Resource, ResourceType}
+        dialogue::{self, kind::DialogueKind, ArtifactReference}, journey::{artifact::TopicRange, Journey}, resource::resource::{Resource, ResourceType}
     },
     db::repo::{dialogue::DialoguesRepo, Repository},
     error::{MetisError, Result},
@@ -280,7 +280,7 @@ pub fn get_arc_questions(search_arc_idx: usize, journey_id: i64) -> Result<Vec<S
     for d in dialogues.iter() {
         let d = d.read();
         if d.kind == DialogueKind::Question {
-            if let DialogueReference::Journey { arc_idx, .. } = d.reference {
+            if let ArtifactReference::Journey { arc_idx, .. } = d.reference {
                 if arc_idx == search_arc_idx {
                     contents.push(d.content.clone());
                 }

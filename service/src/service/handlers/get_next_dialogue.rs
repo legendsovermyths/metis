@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 
 use crate::{
     app::{
-        dialogue::{kind::DialogueKind, Dialogue, DialogueReference, ReferenceKind},
+        dialogue::{kind::DialogueKind, Dialogue, ArtifactReference, ReferenceKind},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact::JourneyArtifacts,
         AppContext,
@@ -23,7 +23,7 @@ pub struct GetNextDialogueParams {
     pub parent_id: i64,
 }
 
-fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueReference, bool)> {
+fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(ArtifactReference, bool)> {
     match kind {
         ReferenceKind::Journey => {
             let progress = Repository::<JourneyArtifacts>::find_by_id(&parent_id)?
@@ -31,7 +31,7 @@ fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueRefere
                 .generation_progress
                 .clone();
             Ok((
-                DialogueReference::Journey {
+                ArtifactReference::Journey {
                     journey_id: parent_id,
                     arc_idx: progress.arc_idx,
                     topic_idx: progress.topic_idx,
@@ -45,7 +45,7 @@ fn seed_reference(kind: ReferenceKind, parent_id: i64) -> Result<(DialogueRefere
                 .generation_progress
                 .clone();
             Ok((
-                DialogueReference::Explanation {
+                ArtifactReference::Explanation {
                     explanation_id: parent_id,
                     step_idx: progress.step_idx,
                 },

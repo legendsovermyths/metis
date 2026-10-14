@@ -2,7 +2,7 @@ use dborm::DbRow;
 
 use crate::{
     app::{
-        dialogue::{Dialogue, DialogueReference, ReferenceKind},
+        dialogue::{Dialogue, ArtifactReference, ReferenceKind},
         journey::{artifact::JourneyArtifacts, progress::JourneyProgress, Journey},
     },
     db::{repo::dialogue::DialoguesRepo, object::FromDbRow},
@@ -77,7 +77,7 @@ fn derive_progress(
     let Some(dialogue) = last else {
         return Ok(JourneyProgress::new(journey_id));
     };
-    let DialogueReference::Journey {
+    let ArtifactReference::Journey {
         arc_idx: last_arc,
         topic_idx: last_topic,
         ..

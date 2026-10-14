@@ -1,6 +1,6 @@
 use crate::{
     app::{
-        dialogue::{DialogueReference, ReferenceKind},
+        dialogue::{ArtifactReference, ReferenceKind},
         explanation::artifact::ExplanationArtifacts,
         journey::artifact,
         AppContext,
@@ -92,7 +92,7 @@ impl Tool for FetchReferenceMaterialTool {
         let dialogue = dialogue.read();
 
         let content = match &dialogue.reference {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx,
                 topic_idx,
@@ -104,11 +104,11 @@ impl Tool for FetchReferenceMaterialTool {
                 )?;
                 load_topic_content(&artifacts.chapter_dir, &topic.name)
             }
-            DialogueReference::Explanation { explanation_id, .. } => {
+            ArtifactReference::Explanation { explanation_id, .. } => {
                 let artifacts = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?;
                 load_explanation_material(&artifacts.read().explanation_directory)
             }
-            DialogueReference::None => {
+            ArtifactReference::None => {
                 return Ok(json!({
                     "error": "Dialogue has no reference material."
                 }));

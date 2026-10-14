@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAppContext } from "@/context/AppContext";
@@ -35,6 +35,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  failed?: boolean;
 }
 
 interface Exchange {
@@ -188,15 +189,8 @@ export default function ChatPage() {
     }, 15);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isBusy) return;
-
-    const text = input.trim();
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+  const deliver = async (msgId: string, text: string) => {
     setIsWaiting(true);
-
     try {
       await new Promise((r) => setTimeout(r, 0));
       const response = await sendMessage(text);
@@ -206,15 +200,26 @@ export default function ChatPage() {
           ? (response.content as { message: string }).message
           : "";
       streamText(text_out);
-    } catch (err) {
+    } catch {
       setIsWaiting(false);
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Something went wrong: ${err instanceof Error ? err.message : String(err)}`,
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, failed: true } : m)));
     }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isBusy) return;
+
+    const text = input.trim();
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text };
+    setMessages((prev) => [...prev.filter((m) => !m.failed), userMsg]);
+    setInput("");
+    await deliver(userMsg.id, text);
+  };
+
+  const handleRetry = async (msg: Message) => {
+    if (isBusy) return;
+    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, failed: false } : m)));
+    await deliver(msg.id, msg.content);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -388,6 +393,29 @@ export default function ChatPage() {
                         <p className="font-display italic text-[1.02rem] leading-relaxed text-foreground/85">
                           <Latex>{ex.user.content}</Latex>
                         </p>
+                        {ex.user.failed && (
+                          <div
+                            className="mt-3 flex items-center gap-3 border-l pl-3 animate-blur-in"
+                            style={{ borderColor: "hsl(var(--destructive) / 0.5)" }}
+                          >
+                            <span
+                              className="font-display italic text-sm"
+                              style={{ color: "hsl(var(--destructive) / 0.8)" }}
+                            >
+                              This didn't reach Metis.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => ex.user && void handleRetry(ex.user)}
+                              disabled={isBusy}
+                              className="group inline-flex items-center gap-1.5 label-whisper transition-opacity hover:opacity-100 opacity-80 disabled:opacity-40"
+                              style={{ color: "hsl(var(--amber))" }}
+                            >
+                              <RotateCcw className="h-3 w-3 transition-transform duration-300 group-hover:-rotate-90" />
+                              try again
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 

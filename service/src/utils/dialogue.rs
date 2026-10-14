@@ -81,12 +81,12 @@ pub fn dialogue_to_summary(d: &Dialogue) -> Value {
 
 pub fn format_reference(d: &Dialogue) -> String {
     match d.reference {
-        crate::app::dialogue::DialogueReference::None => String::new(),
-        crate::app::dialogue::DialogueReference::Explanation {
+        crate::app::dialogue::ArtifactReference::None => String::new(),
+        crate::app::dialogue::ArtifactReference::Explanation {
             explanation_id: _,
             step_idx,
         } => format!("step {}", step_idx),
-        crate::app::dialogue::DialogueReference::Journey {
+        crate::app::dialogue::ArtifactReference::Journey {
             journey_id: _,
             arc_idx,
             topic_idx,
