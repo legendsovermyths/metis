@@ -11,7 +11,12 @@ const ESC_DOLLAR = "ESCDOLLAR";
  * lines). Escaped `\$` (currency) is protected so it stays literal.
  */
 export function normalizeDisplayMath(md: string): string {
-  const protectedMd = md.split("\\$").join(ESC_DOLLAR);
+  const protectedMd = md
+    .split("\\$")
+    .join(ESC_DOLLAR)
+    // OpenAI models often emit LaTeX-style delimiters; remark-math only understands `$`.
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, tex) => `$$${tex}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, tex) => `$${tex.trim()}$`);
   const blocked = protectedMd.replace(
     /\$\$([\s\S]*?)\$\$/g,
     (_, tex) => `\n\n$$\n${tex.trim()}\n$$\n\n`,

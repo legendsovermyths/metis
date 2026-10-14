@@ -1,6 +1,6 @@
 use crate::{
     error::Result,
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::factory::{ClientType, LLMClientFactory},
 };
 
 const SMALL_PAGE_THRESHOLD: usize = 1000;
@@ -11,7 +11,7 @@ pub async fn is_usable_page(markdown: &str) -> Result<bool> {
     if markdown.trim().len() >= SMALL_PAGE_THRESHOLD {
         return Ok(true);
     }
-    let mut client = GeminiClient::with_model("gemini-3.1-flash-lite");
+    let mut client = LLMClientFactory::get_client(ClientType::GeminiFlashLite);
     client.set_system_prompt(PAGE_CHECK_PROMPT.to_string());
     let verdict = client.generate(markdown.to_string()).await?.text();
     Ok(verdict.trim().to_uppercase().starts_with("USABLE"))

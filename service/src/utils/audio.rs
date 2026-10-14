@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::{
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::factory::{ClientType, LLMClientFactory},
     prompts::get_prompt_provider,
     utils::format::sanitize_json,
 };
@@ -13,7 +13,7 @@ struct TranscriptOutput {
 }
 
 pub async fn transcribe(content: &str) -> Result<String> {
-    let mut client = GeminiClient::new();
+    let mut client = LLMClientFactory::get_client(ClientType::GeminiFlash);
     client.set_system_prompt(get_prompt_provider().get_content_to_transcript_prompt());
     client.set_json_mode(true);
     let response = client

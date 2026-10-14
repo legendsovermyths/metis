@@ -9,7 +9,10 @@ use crate::{
     },
     db::repo::{dialogue::DialoguesRepo, Repository},
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::{
+        factory::{ClientType, GeminiModel, LLMClientFactory},
+        llm_client::LLMClient,
+    },
     prompts::get_prompt_provider,
     task::tasks::create_journey::PageRange,
     utils::{
@@ -29,7 +32,7 @@ pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<Topic
         .join("\n");
     let prompt = get_prompt_provider().get_topic_mapper_prompt(&topic_list);
 
-    let mut mapper = GeminiClient::with_model("gemini-3.1-pro-preview");
+    let mut mapper = LLMClientFactory::get_client(ClientType::GeminiPro);
     mapper.set_system_prompt(prompt);
     let response = mapper
         .generate(format!(
@@ -50,7 +53,7 @@ pub async fn map_topics(content_md: &str, topics: &[String]) -> Result<Vec<Topic
 
 pub async fn detect_page_range(book_path: &str, chapter_title: &str) -> Result<PageRange> {
     let truncated = truncated_copy(book_path)?;
-    let mut client = GeminiClient::new();
+    let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Flash);
     client.set_json_mode(true);
     let prompt = get_prompt_provider().get_page_range_prompt(chapter_title);
     client.set_system_prompt(prompt);
@@ -109,7 +112,7 @@ pub async fn convert_to_markdown(chapter_pdf: &str, num_pages: usize) -> Result<
         let batch_pages = page_end - batch_start + 1;
 
         set.spawn(async move {
-            let mut client = GeminiClient::new();
+            let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Flash);
 
             let _permit = sem
                 .acquire()
@@ -193,7 +196,7 @@ pub async fn extract_topics_from_content(
     content_md: &str,
     request: &AgentResponseInstruction,
 ) -> Result<Vec<String>> {
-    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
+    let mut client = LLMClientFactory::get_client(ClientType::GeminiPro);
     client.set_system_prompt(get_prompt_provider().get_content_to_topics_prompt());
     let response;
     if let AgentResponseInstruction::ArtifactGenerationInstructions(instructions) = request {
@@ -228,7 +231,7 @@ pub async fn generate_journey(topics: Vec<String>) -> Result<Journey> {
     );
     let topic_list = topics.join("\n");
     let prompt = get_prompt_provider().get_architect_prompt(&topic_list);
-    let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
+    let mut client = LLMClientFactory::get_client(ClientType::GeminiPro);
     client.set_system_prompt(prompt);
 
     let response = client.generate("Generate the journey.".to_string()).await?;

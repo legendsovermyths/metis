@@ -70,7 +70,7 @@ pub fn create_explanation(context: TaskContext) -> TaskFuture {
 
         let prompt =
             get_prompt_provider().get_explanation_architect_prompt(&profile, &reference_material);
-        let mut client = LLMClientFactory::get_client(ClientType::ClaudeOpus);
+        let mut client = LLMClientFactory::get_client(ClientType::OpenAiSol);
         client.set_json_mode(true);
         client.set_system_prompt(prompt);
 

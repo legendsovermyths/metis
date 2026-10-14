@@ -8,7 +8,11 @@ use crate::{
     constants::QUESTION_COUNT_PER_ARC,
     db::repo::Repository,
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::{
+        factory::{GeminiModel, LLMClientFactory},
+        clients::gemini::client::GeminiClient,
+        llm_client::LLMClient,
+    },
     prompts::get_prompt_provider,
     task::tasks::draft_dialogues::DialogueDraft,
     utils::{
@@ -42,7 +46,7 @@ pub struct QuestionerRequest {
 
 impl Questioner {
     pub fn new() -> Self {
-        let mut client = GeminiClient::with_model("gemini-3.1-pro-preview");
+        let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Pro);
         client.set_json_mode(true);
         Self { client }
     }

@@ -48,8 +48,11 @@ use app_lib::{
     },
     error::{MetisError, Result},
     llm_client::{
-        clients::gemini::{chat::GeminiChat, client::GeminiClient},
-        llm_client::{LLMChatClient, LLMClient, LLMResponse},
+        clients::{
+            gemini::{chat::GeminiChat, client::GeminiClient},
+            openai::{chat::OpenAiChat, client::OpenAiClient, ReasoningEffort},
+        },
+        llm_client::{LLMChatClient, LLMClient},
         tool::Tool,
     },
     prompts::get_prompt_provider,
@@ -67,253 +70,17 @@ use app_lib::{
         svg::{extract_part_bboxes, svg_dimensions},
     },
 };
-use async_trait::async_trait;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-const OPENAI_ENDPOINT: &str =
-    "https://metis-project-resource.services.ai.azure.com/openai/v1/responses";
-
-fn reasoning_effort() -> String {
-    env::var("PROBE_REASONING_EFFORT").unwrap_or_else(|_| "high".to_string())
-}
-
-// ---------------------------------------------------------------------------
-// OpenAI Responses clients (Sol / Astra)
-// ---------------------------------------------------------------------------
-
-struct OpenAiClient {
-    client: Client,
-    system_prompt: String,
-    model: String,
-    json_mode: bool,
-}
-
-impl OpenAiClient {
-    fn new(model: &str) -> Self {
-        Self { client: Client::new(), system_prompt: String::new(), model: model.into(), json_mode: false }
-    }
-}
-
-async fn openai_call(client: &Client, body: &Value) -> Result<Value> {
-    let key = env::var("OPEN_AI_KEY")?;
-    let mut last_err = String::new();
-    for attempt in 0..3u64 {
-        let resp = client
-            .post(OPENAI_ENDPOINT)
-            .bearer_auth(&key)
-            .header("Content-Type", "application/json")
-            .json(body)
-            .send()
-            .await?;
-        let status = resp.status();
-        if status.is_success() {
-            let v: Value = resp.json().await?;
-            if let Some(u) = v.get("usage") {
-                eprintln!("[usage] {}", u);
-            }
-            return Ok(v);
-        }
-        last_err = format!("{status}: {}", resp.text().await.unwrap_or_default());
-        eprintln!("[openai] attempt {attempt} failed: {last_err}");
-        if status.is_client_error() && status.as_u16() != 429 {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(5 * (attempt + 1))).await;
-    }
-    Err(MetisError::HttpError(last_err))
-}
-
-fn openai_text(output: &[Value]) -> Option<String> {
-    for item in output {
-        if item.get("type").and_then(|t| t.as_str()) == Some("message") {
-            for block in item.get("content").and_then(|c| c.as_array()).into_iter().flatten() {
-                if let Some(t) = block.get("text").and_then(|t| t.as_str()) {
-                    if !t.trim().is_empty() {
-                        return Some(t.to_string());
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-#[async_trait]
-impl LLMClient for OpenAiClient {
-    async fn generate(&self, prompt: String) -> Result<LLMResponse> {
-        // json_object mode requires the word "json" inside `input` (not `instructions`), so in
-        // JSON mode the system prompt travels as a system message with the same JSON suffix the
-        // production Claude client appends.
-        let mut input = Vec::new();
-        if self.json_mode {
-            input.push(json!({"role": "system", "content": format!(
-                "{}\n\nRespond with a single valid JSON value. No prose, no markdown fences.",
-                self.system_prompt
-            )}));
-        }
-        input.push(json!({"role": "user", "content": prompt}));
-        let mut body = json!({
-            "model": self.model,
-            "input": input,
-            "max_output_tokens": 64000,
-            "reasoning": {"effort": reasoning_effort()},
-        });
-        if self.json_mode {
-            body["text"] = json!({"format": {"type": "json_object"}});
-        } else if !self.system_prompt.is_empty() {
-            body["instructions"] = json!(self.system_prompt);
-        }
-        let v = openai_call(&self.client, &body).await?;
-        let output = v.get("output").and_then(|o| o.as_array()).cloned().unwrap_or_default();
-        openai_text(&output)
-            .map(LLMResponse::from)
-            .ok_or_else(|| MetisError::JsonError(format!("No message text in response: {v}")))
-    }
-    fn set_system_prompt(&mut self, prompt: String) {
-        self.system_prompt = prompt;
-    }
-    fn set_json_mode(&mut self, enabled: bool) {
-        self.json_mode = enabled;
-    }
-}
-
-/// Tool-using chat client mirroring the in-progress `OpenAiChat` in the main checkout.
-struct OpenAiChat<'a> {
-    client: Client,
-    system_prompt: String,
-    model: String,
-    tools: HashMap<String, Box<dyn Tool>>,
-    tool_desc: Vec<Value>,
-    history: EventHistory,
-    context: &'a AppContext,
-    messages: Vec<Value>,
-}
-
-impl<'a> OpenAiChat<'a> {
-    fn new(model: &str, context: &'a AppContext) -> Self {
-        Self {
-            client: Client::new(),
-            system_prompt: String::new(),
-            model: model.into(),
-            tools: HashMap::new(),
-            tool_desc: Vec::new(),
-            history: EventHistory::new(),
-            context,
-            messages: Vec::new(),
-        }
-    }
-
-    fn rebuild(&mut self) {
-        let mut msgs = Vec::new();
-        let mut n = 0u64;
-        let mut pending: Option<String> = None;
-        for e in &self.history.events {
-            match e.event_type {
-                EventType::UserMessage | EventType::UserRequest => {
-                    msgs.push(json!({"role": "user", "content": e.content}))
-                }
-                EventType::LlmMessage => {
-                    if !e.content.is_empty() {
-                        msgs.push(json!({"role": "assistant", "content": e.content}))
-                    }
-                }
-                EventType::FunctionCall => {
-                    n += 1;
-                    let id = format!("call_{n}");
-                    let input: Value = serde_json::from_str(&e.content).unwrap_or(json!({}));
-                    msgs.push(json!({"type": "function_call", "call_id": id, "name": e.name, "arguments": input.to_string()}));
-                    pending = Some(id);
-                }
-                EventType::FunctionResponse => {
-                    let id = pending.take().unwrap_or_else(|| {
-                        n += 1;
-                        format!("call_{n}")
-                    });
-                    msgs.push(json!({"type": "function_call_output", "call_id": id, "output": e.content}));
-                }
-            }
-        }
-        self.messages = msgs;
-    }
-}
-
-#[async_trait]
-impl<'a> LLMChatClient for OpenAiChat<'a> {
-    async fn generate(&mut self, message: String) -> Result<LLMResponse> {
-        self.history.events.push(Event::new("user", EventType::UserMessage, &message));
-        self.messages.push(json!({"role": "user", "content": message}));
-        for _ in 0..12 {
-            let mut body = json!({
-                "model": self.model,
-                "input": self.messages,
-                "max_output_tokens": 32000,
-                "reasoning": {"effort": reasoning_effort()},
-                "instructions": self.system_prompt,
-            });
-            if !self.tool_desc.is_empty() {
-                body["tools"] = json!(self.tool_desc);
-            }
-            let v = openai_call(&self.client, &body).await?;
-            let output = v.get("output").and_then(|o| o.as_array()).cloned().unwrap_or_default();
-            let calls: Vec<Value> = output
-                .iter()
-                .filter(|i| i.get("type").and_then(|t| t.as_str()) == Some("function_call"))
-                .cloned()
-                .collect();
-            if !calls.is_empty() {
-                if let Some(t) = openai_text(&output) {
-                    self.history.events.push(Event::new("model", EventType::LlmMessage, &t));
-                }
-                // Reasoning models require the reasoning item that preceded a function_call
-                // to be echoed back alongside it, so replay every output item verbatim.
-                self.messages.extend(output.iter().cloned());
-                for call in calls {
-                    let name = call["name"].as_str().unwrap_or("").to_string();
-                    let args: Value =
-                        serde_json::from_str(call["arguments"].as_str().unwrap_or("{}")).unwrap_or(json!({}));
-                    self.history.events.push(Event::new(&name, EventType::FunctionCall, &args.to_string()));
-                    let result = match self.tools.get(&name) {
-                        Some(tool) => tool.execute(args, self.context).await?,
-                        None => json!({"error": format!("unknown tool {name}")}),
-                    };
-                    self.history.events.push(Event::new(&name, EventType::FunctionResponse, &result.to_string()));
-                    self.messages.push(json!({"type": "function_call_output", "call_id": call["call_id"], "output": result.to_string()}));
-                }
-                continue;
-            }
-            if let Some(t) = openai_text(&output) {
-                self.messages.push(json!({"role": "assistant", "content": t}));
-                self.history.events.push(Event::new("model", EventType::LlmMessage, &t));
-                return Ok(LLMResponse::from(t));
-            }
-            return Err(MetisError::AgentError(format!("no text in output: {}", json!(output))));
-        }
-        Err(MetisError::AgentError("tool loop exceeded".into()))
-    }
-    fn set_system_prompt(&mut self, prompt: String) {
-        self.system_prompt = prompt;
-    }
-    fn add_tool(&mut self, tool: Box<dyn Tool>) {
-        let mut props = json!({});
-        let mut req = Vec::new();
-        for p in tool.parameters() {
-            props[&p.name] = json!({"type": p.parameter_type, "description": p.description});
-            req.push(p.name.clone());
-        }
-        self.tool_desc.push(json!({
-            "type": "function", "name": tool.name(), "description": tool.description(),
-            "parameters": {"type": "object", "properties": props, "required": req},
-        }));
-        self.tools.insert(tool.name().to_string(), tool);
-    }
-    fn get_event_history(&self) -> EventHistory {
-        self.history.clone()
-    }
-    fn set_event_history(&mut self, history: EventHistory) {
-        self.history = history;
-        self.rebuild();
+fn reasoning_effort() -> ReasoningEffort {
+    match env::var("PROBE_REASONING_EFFORT").as_deref() {
+        Ok("none") => ReasoningEffort::None,
+        Ok("low") => ReasoningEffort::Low,
+        Ok("medium") => ReasoningEffort::Medium,
+        Ok("xhigh") => ReasoningEffort::XHigh,
+        Ok("max") => ReasoningEffort::Max,
+        _ => ReasoningEffort::High,
     }
 }
 
@@ -321,7 +88,7 @@ fn make_client(model: &str) -> Box<dyn LLMClient> {
     if model.starts_with("gemini") {
         Box::new(GeminiClient::with_model(model))
     } else {
-        Box::new(OpenAiClient::new(model))
+        Box::new(OpenAiClient::with_model(model, reasoning_effort()))
     }
 }
 
@@ -329,7 +96,7 @@ fn make_chat<'a>(model: &str, ctx: &'a AppContext) -> Box<dyn LLMChatClient + 'a
     if model.starts_with("gemini") {
         Box::new(GeminiChat::with_model(model, ctx))
     } else {
-        Box::new(OpenAiChat::new(model, ctx))
+        Box::new(OpenAiChat::with_model(model, reasoning_effort(), ctx))
     }
 }
 
@@ -863,7 +630,7 @@ async fn main() {
             }
             "compose" => {
                 // Full compose_explainer chain: curator+enhancer = <model>, illustrator = [extra] (default Gemini Pro).
-                let ill_model = args.get(5).cloned().unwrap_or_else(|| "gemini-3.1-pro-preview".into());
+                let ill_model = args.get(5).cloned().unwrap_or_else(|| app_lib::llm_client::factory::GEMINI_PRO.into());
                 let d = dialogue(id)?;
                 let cur = curate(&d, model, &out, &mut log, "compose.curation").await?;
                 if let Some(ill) = illustrate(&d, &cur.dialogue, &cur.parts, &ill_model, &out, &mut log, "compose.illustration").await? {

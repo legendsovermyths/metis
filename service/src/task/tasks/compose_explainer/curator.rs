@@ -40,7 +40,7 @@ pub struct Curator {
 
 impl<'a> Curator {
     pub fn new() -> Self {
-        let client = LLMClientFactory::get_client(ClientType::ClaudeOpus);
+        let client = LLMClientFactory::get_client(ClientType::OpenAiSol);
         Self { client }
     }
 

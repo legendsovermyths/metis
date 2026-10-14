@@ -2,9 +2,9 @@ use std::{fs, path::Path};
 
 use crate::{
     app::dialogue::segment::Segment,
-    constants::{GEMINI_TTS_MODEL, GEMINI_TTS_VOICE},
+    constants::GEMINI_TTS_VOICE,
     error::{MetisError, Result},
-    llm_client::clients::gemini::client::GeminiClient,
+    llm_client::factory::{GeminiModel, LLMClientFactory},
     utils::{audio::transcribe, text::short_hash},
 };
 
@@ -36,7 +36,7 @@ impl AudioRenderer {
                 let audio_dir = audio_dir.clone();
                 tokio::spawn(async move {
                     let transcript = transcribe(&segment.text).await?;
-                    let audio = GeminiClient::with_model(GEMINI_TTS_MODEL)
+                    let audio = LLMClientFactory::get_gemini_client(GeminiModel::Tts)
                         .synthesize_speech(&transcript, GEMINI_TTS_VOICE, TTS_DIRECTION)
                         .await?;
                     let filename = format!("seg_{}.mp3", short_hash(&transcript));

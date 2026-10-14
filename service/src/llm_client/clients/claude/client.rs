@@ -19,10 +19,6 @@ pub struct ClaudeClient {
 }
 
 impl ClaudeClient {
-    pub fn new() -> Self {
-        Self::with_model("us.anthropic.claude-opus-4-6-v1")
-    }
-
     pub fn with_model(model: &str) -> Self {
         Self {
             base_url: BEDROCK_BASE_URL.to_string(),

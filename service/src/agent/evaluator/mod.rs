@@ -31,7 +31,7 @@ pub struct Evaluator<'a> {
 
 impl<'a> Evaluator<'a> {
     pub fn new(context: &'a AppContext) -> Self {
-        let mut client = LLMClientFactory::get_chat_client(ClientType::ClaudeOpus, context);
+        let mut client = LLMClientFactory::get_chat_client(ClientType::OpenAiSol, context);
         for tool in Self::tools() {
             client.add_tool(tool);
         }

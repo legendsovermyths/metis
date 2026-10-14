@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::{
     error::Result,
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::factory::{ClientType, LLMClientFactory},
     prompts::get_prompt_provider,
     utils::chrome::chrome_convert_html_to_pdf,
 };
@@ -14,7 +14,7 @@ pub fn short_hash(text: &str) -> String {
 }
 
 pub async fn convert_text_to_markdown(text: &str) -> Result<String> {
-    let mut convertor_client = GeminiClient::new();
+    let mut convertor_client = LLMClientFactory::get_client(ClientType::GeminiFlash);
 
     let system_prompt = get_prompt_provider().get_text_to_markdown();
     convertor_client.set_system_prompt(system_prompt.to_string());

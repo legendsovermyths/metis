@@ -16,7 +16,10 @@ use crate::{
     bridges::user_input::UserInputBridge,
     db::repo::Repository,
     error::{MetisError, Result},
-    llm_client::{clients::gemini::client::GeminiClient, llm_client::LLMClient},
+    llm_client::{
+        factory::{GeminiModel, LLMClientFactory},
+        llm_client::LLMClient,
+    },
     prompts::get_prompt_provider,
     service::handler::BoxFuture,
     utils::{
@@ -128,7 +131,7 @@ pub fn submit_user_input(params: SubmitUserInputParams, _context: &AppContext) -
 }
 
 async fn probe_resource(path: &str) -> Result<ProbeResult> {
-    let mut client = GeminiClient::new();
+    let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Flash);
     client.set_system_prompt(get_prompt_provider().get_probe_resource_prompt());
     let raw = client
         .generate_with_file("Classify this resource.".to_string(), path)
@@ -139,7 +142,7 @@ async fn probe_resource(path: &str) -> Result<ProbeResult> {
 }
 
 async fn analyse_book_structure(path: &str) -> Result<Vec<Chapter>> {
-    let mut client = GeminiClient::new();
+    let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Flash);
     client.set_system_prompt(get_prompt_provider().get_analyse_book_prompt());
     let raw = client
         .generate_with_file("Extract the table of contents.".to_string(), path)
@@ -152,7 +155,7 @@ async fn analyse_book_structure(path: &str) -> Result<Vec<Chapter>> {
 }
 
 async fn document_sections(path: &str) -> Result<Vec<Section>> {
-    let mut client = GeminiClient::new();
+    let mut client = LLMClientFactory::get_gemini_client(GeminiModel::Flash);
     client.set_system_prompt(get_prompt_provider().get_document_sections_prompt());
     let raw = client
         .generate_with_file("Extract the document sections.".to_string(), path)

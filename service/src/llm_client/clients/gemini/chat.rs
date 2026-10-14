@@ -31,10 +31,6 @@ pub struct GeminiChat<'a> {
 }
 
 impl<'a> GeminiChat<'a> {
-    pub fn new(context: &'a AppContext) -> Self {
-        Self::with_model("gemini-3-flash-preview", context)
-    }
-
     pub fn with_model(model: &str, context: &'a AppContext) -> Self {
         let sa = load_service_account().expect("VERTEX_AI_SERVICE_ACCOUNT must be set");
         Self {

@@ -21,10 +21,6 @@ pub struct GeminiClient {
 }
 
 impl GeminiClient {
-    pub fn new() -> Self {
-        Self::with_model("gemini-3-flash-preview")
-    }
-
     pub fn with_model(model: &str) -> Self {
         let sa = load_service_account().expect("VERTEX_AI_SERVICE_ACCOUNT must be set");
         Self {

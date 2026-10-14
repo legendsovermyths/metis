@@ -43,7 +43,7 @@ pub struct Enhancer {
 
 impl<'a> Enhancer {
     pub fn new() -> Self {
-        let mut client = LLMClientFactory::get_client(ClientType::ClaudeOpus);
+        let mut client = LLMClientFactory::get_client(ClientType::OpenAiSol);
         client.set_json_mode(true);
         Self { client }
     }
