@@ -33,7 +33,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { normalizeDisplayMath } from "@/lib/markdown";
+import { normalizeDisplayMath, PROSE_CLASSES } from "@/lib/markdown";
 import gsap from "gsap";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import { MorphSVGPlugin } from "gsap/MorphSVGPlugin";
@@ -187,9 +187,24 @@ function ensureArrowMarker(svgRoot: SVGSVGElement) {
   marker.setAttribute("orient", "auto-start-reverse");
   const arrowPath = document.createElementNS(SVG_NS, "path");
   arrowPath.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-  arrowPath.setAttribute("fill", "currentColor");
+  arrowPath.setAttribute("fill", "#000");
   marker.appendChild(arrowPath);
   defs.appendChild(marker);
+}
+
+/// Center of `el`'s bbox mapped into the root SVG's user space, where connect arrows live.
+function centerInRoot(svgRoot: SVGSVGElement, el: SVGGraphicsElement): DOMPoint | null {
+  let box: DOMRect;
+  try {
+    box = el.getBBox();
+  } catch {
+    return null;
+  }
+  const elCtm = el.getScreenCTM();
+  const rootCtm = svgRoot.getScreenCTM();
+  if (!elCtm || !rootCtm) return null;
+  const center = new DOMPoint(box.x + box.width / 2, box.y + box.height / 2);
+  return center.matrixTransform(rootCtm.inverse().multiply(elCtm));
 }
 
 /// Clears any previously-drawn runtime connects, then redraws all past connects
@@ -213,22 +228,15 @@ function rebuildConnects(
     const fromEl = svgRoot.querySelector(`#${CSS.escape(from)}`) as SVGGraphicsElement | null;
     const toEl = svgRoot.querySelector(`#${CSS.escape(to)}`) as SVGGraphicsElement | null;
     if (!fromEl || !toEl) continue;
-    let fromBox: DOMRect;
-    let toBox: DOMRect;
-    try {
-      fromBox = fromEl.getBBox();
-      toBox = toEl.getBBox();
-    } catch {
-      continue;
-    }
-    const fx = fromBox.x + fromBox.width / 2;
-    const fy = fromBox.y + fromBox.height / 2;
-    const tx = toBox.x + toBox.width / 2;
-    const ty = toBox.y + toBox.height / 2;
+    const fromCenter = centerInRoot(svgRoot, fromEl);
+    const toCenter = centerInRoot(svgRoot, toEl);
+    if (!fromCenter || !toCenter) continue;
+    const { x: fx, y: fy } = fromCenter;
+    const { x: tx, y: ty } = toCenter;
 
     const arrow = document.createElementNS(SVG_NS, "path");
     arrow.setAttribute("d", `M ${fx} ${fy} L ${tx} ${ty}`);
-    arrow.setAttribute("stroke", "currentColor");
+    arrow.setAttribute("stroke", "#000");
     arrow.setAttribute("stroke-width", "1.5");
     arrow.setAttribute("fill", "none");
     arrow.setAttribute("marker-end", "url(#metis-arrow)");
@@ -1509,16 +1517,7 @@ export default function TeachingPage() {
 
       {/* Content area — two-pane on lg+, stacked on mobile */}
       {(() => {
-        const proseClasses = cn(
-          "prose prose-neutral dark:prose-invert max-w-none",
-          "prose-headings:font-display prose-headings:italic prose-headings:tracking-tight",
-          "prose-p:leading-[1.85] prose-p:text-[1.05rem] prose-p:text-foreground/90",
-          "prose-blockquote:border-foreground/20 prose-blockquote:text-foreground/70",
-          "prose-strong:text-foreground prose-strong:font-semibold",
-          "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
-          "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
-          "[&_.katex]:text-foreground"
-        );
+        const proseClasses = PROSE_CLASSES;
 
         // Every on-screen passage reveals from the single cursor. A passage with
         // segments is "settled" once its last segment is fully typed.

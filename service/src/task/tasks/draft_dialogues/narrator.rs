@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::{
     app::{
         dialogue::{
-            blackboard::BlackboardInstructions, DialogueReference,
+            blackboard::BlackboardInstructions, ArtifactReference,
         },
         explanation::artifact::ExplanationArtifacts,
         journey::artifact,
@@ -27,7 +27,7 @@ pub struct NarratorOutput {
 
 pub struct NarrateRequest {
     pub parent_id: i64,
-    pub dialogue_reference: DialogueReference,
+    pub dialogue_reference: ArtifactReference,
 }
 
 pub struct Narrator {
@@ -57,7 +57,7 @@ impl Narrator {
             .unwrap_or_default();
 
         let prompt = match request.dialogue_reference {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx,
                 topic_idx,
@@ -84,7 +84,7 @@ impl Narrator {
                     &blackboard_state,
                 )
             }
-            DialogueReference::Explanation { step_idx, .. } => {
+            ArtifactReference::Explanation { step_idx, .. } => {
                 let artifact = Repository::<ExplanationArtifacts>::find_by_id(&request.parent_id)?;
                 let artifact = artifact.read();
                 let plan = serde_json::to_string_pretty(&artifact.explanation)
@@ -107,7 +107,7 @@ impl Narrator {
                     &blackboard_state,
                 )
             }
-            DialogueReference::None => {
+            ArtifactReference::None => {
                 return Err(MetisError::ParamsError(
                     "dialogue reference is none for the dialgoue that needs to be generated"
                         .to_string(),

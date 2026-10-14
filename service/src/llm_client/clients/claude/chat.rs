@@ -29,7 +29,7 @@ pub struct ClaudeChat<'a> {
 
 impl<'a> ClaudeChat<'a> {
     pub fn new(context: &'a AppContext) -> Self {
-        Self::with_model("us.anthropic.claude-opus-4-6-v1", context)
+        Self::with_model("us.anthropic.claude-opus-5", context)
     }
 
     pub fn with_model(model: &str, context: &'a AppContext) -> Self {

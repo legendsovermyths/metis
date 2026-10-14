@@ -16,7 +16,7 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dialogue {
     pub id: Option<i64>,
-    pub reference: DialogueReference,
+    pub reference: ArtifactReference,
     pub idx: usize,
     pub content: String,
     pub blackboard: Blackboard,
@@ -34,7 +34,7 @@ impl Default for Dialogue {
         Dialogue {
             id: None,
             idx: 0,
-            reference: DialogueReference::None,
+            reference: ArtifactReference::None,
             content: String::new(),
             blackboard: Blackboard::empty(),
             heading: String::new(),
@@ -49,7 +49,7 @@ impl Default for Dialogue {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum DialogueReference {
+pub enum ArtifactReference {
     Journey {
         journey_id: i64,
         arc_idx: usize,
@@ -62,29 +62,29 @@ pub enum DialogueReference {
     None,
 }
 
-impl DialogueReference {
+impl ArtifactReference {
     pub fn kind(&self) -> ReferenceKind {
         match self {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id: _,
                 arc_idx: _,
                 topic_idx: _,
             } => ReferenceKind::Journey,
-            DialogueReference::Explanation {
+            ArtifactReference::Explanation {
                 explanation_id: _,
                 step_idx: _,
             } => ReferenceKind::Explanation,
-            DialogueReference::None => ReferenceKind::None,
+            ArtifactReference::None => ReferenceKind::None,
         }
     }
     pub fn parent_id(&self) -> i64 {
         match self {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx: _,
                 topic_idx: _,
             } => *journey_id,
-            DialogueReference::Explanation {
+            ArtifactReference::Explanation {
                 explanation_id,
                 step_idx: _,
             } => *explanation_id,
@@ -94,15 +94,15 @@ impl DialogueReference {
 
     pub fn get_directory(&self) -> Result<String> {
         match self {
-            DialogueReference::Journey { journey_id, .. } => {
+            ArtifactReference::Journey { journey_id, .. } => {
                 let journey = Repository::<artifact::JourneyArtifacts>::find_by_id(journey_id)?;
                 Ok(journey.read().chapter_dir.clone())
             }
-            DialogueReference::Explanation { explanation_id, .. } => {
+            ArtifactReference::Explanation { explanation_id, .. } => {
                 let explanation = Repository::<ExplanationArtifacts>::find_by_id(explanation_id)?;
                 Ok(explanation.read().explanation_directory.clone())
             },
-            DialogueReference::None => {
+            ArtifactReference::None => {
                 Err(MetisError::InternalDataError("Directory being requested from the reference that is not associated with any resource".to_string()))
             }
         }
@@ -110,7 +110,7 @@ impl DialogueReference {
 
     pub fn get_dialogue_kind(&self) -> Result<DialogueKind> {
         match self {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx,
                 topic_idx,
@@ -125,15 +125,16 @@ impl DialogueReference {
                     ))
                 }
             }
-            DialogueReference::Explanation {
+            ArtifactReference::Explanation {
                 explanation_id: _,
                 step_idx: _,
             } => Ok(DialogueKind::Explainer),
-            DialogueReference::None => Err(MetisError::InternalDataError(
+            ArtifactReference::None => Err(MetisError::InternalDataError(
                 "No reference exist for the dialogue that is trying to fetch the kind".to_string(),
             )),
         }
     }
+
 }
 
 #[derive(Deserialize, Serialize, Clone, Copy)]

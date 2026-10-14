@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MathMarkdown } from "@/lib/markdown";
+import { MathMarkdown, PROSE_CLASSES } from "@/lib/markdown";
 import { parseQuaestio, quaestioState, type QuaestioOption } from "@/lib/quaestio";
 import type { Dialogue } from "@/lib/service";
 
 type Exchange = { question: string; answer: string };
+
+// Shared with the lecture surface so questions render identically.
+const PROSE = PROSE_CLASSES;
 
 interface QuaestioColumnProps {
   dialogue: Dialogue;
@@ -19,15 +22,6 @@ interface QuaestioColumnProps {
   onCommit: (chosen: string, reasoning: string) => void;
   onAsk: (question: string) => void;
 }
-
-const PROSE = cn(
-  "prose prose-neutral dark:prose-invert max-w-none",
-  "prose-p:leading-[1.85] prose-p:text-[1.05rem] prose-p:text-foreground/90",
-  "prose-strong:text-foreground prose-strong:font-semibold",
-  "prose-code:text-foreground/80 prose-code:bg-surface prose-code:rounded prose-code:px-1",
-  "[&_.katex-display]:my-6 [&_.katex-display]:overflow-x-auto",
-  "[&_.katex]:text-foreground",
-);
 
 const DIFFICULTY_LEVEL: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
 

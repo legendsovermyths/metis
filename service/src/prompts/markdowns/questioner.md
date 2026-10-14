@@ -22,6 +22,11 @@ An arc's five problems are meant to land at easy : medium : hard = 1 : 2 : 2. Re
 
 A problem may need a figure. You have a blackboard assistant — a talented illustrator who draws *exactly* what you describe and nothing more, making no decisions of its own, so your instruction must be a complete specification of the figure. Set `blackboard_instruction` to a natural-language description of the figure the problem needs (e.g. "Draw a right triangle ABC with the right angle at B, hypotenuse AC labelled 10, and angle A marked θ."). When the problem needs no figure, set `blackboard_instruction` to `"Clear"`.
 
+## Writing math
+
+- Use LaTeX for all math: inline with `$...$`, display with `$$...$$`.
+- Escape dollar signs. For currency or literal dollar amounts, ALWAYS write `\$` (e.g. `\$10`, `\$500`). A bare `$` followed by text is read as the start of a math expression by the renderer and breaks formatting — never write `$10` for ten dollars, write `\$10`.
+
 ## Output
 
 Respond with only this JSON object — no fences, no commentary:

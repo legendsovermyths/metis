@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use crate::{
     app::{
-        dialogue::{blackboard::BlackboardInstructions, DialogueReference},
+        dialogue::{blackboard::BlackboardInstructions, ArtifactReference},
         journey::artifact::JourneyArtifacts,
     },
     constants::QUESTION_COUNT_PER_ARC,
@@ -37,7 +37,7 @@ pub struct QuestionerOutput {
 }
 
 pub struct QuestionerRequest {
-    pub dialogue_reference: DialogueReference,
+    pub dialogue_reference: ArtifactReference,
 }
 
 impl Questioner {
@@ -49,7 +49,7 @@ impl Questioner {
 
     pub async fn prepare(&mut self, request: QuestionerRequest) -> Result<QuestionerOutput> {
         let (journey_id, arc_idx) = match request.dialogue_reference {
-            DialogueReference::Journey {
+            ArtifactReference::Journey {
                 journey_id,
                 arc_idx,
                 ..

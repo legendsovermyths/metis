@@ -1,15 +1,12 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 
 use crate::{
-    error::{MetisError, Result},
-    llm_client::{clients::gemini::auth::{ServiceAccount, get_access_token, load_service_account}, llm_client::{LLMClient, LLMResponse}},
-    app::events::Event,
+    app::events::Event, constants::VERTEX_BASE_URL, error::{MetisError, Result}, llm_client::{clients::gemini::auth::{get_access_token, load_service_account, ServiceAccount}, llm_client::{LLMClient, LLMResponse}}
 };
 use async_trait::async_trait;
 use reqwest::Client;
 use serde_json::{Value, json};
 
-pub const VERTEX_BASE_URL: &str = "https://aiplatform.googleapis.com";
 
 pub struct GeminiClient {
     client: Client,

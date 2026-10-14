@@ -20,7 +20,7 @@ pub struct ClaudeClient {
 
 impl ClaudeClient {
     pub fn new() -> Self {
-        Self::with_model("us.anthropic.claude-opus-4-6-v1")
+        Self::with_model("us.anthropic.claude-opus-5")
     }
 
     pub fn with_model(model: &str) -> Self {
