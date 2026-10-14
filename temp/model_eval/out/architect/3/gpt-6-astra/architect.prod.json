@@ -1,0 +1,55 @@
+{
+  "steps": [
+    {
+      "brief": "Restate the setup plainly: Bessie owns only the chain bridges, so from s her entire life is s → s+1 → … → n with zero decisions; Elsie owns the whole DAG and moves second. Point out that this kills the game-theory smell — there is no strategy tree, only a question about Elsie's best route. Fix the budget now: n−1 separate starting positions, n and m up to 2·10^5, so we need something near-linear overall, not one search per s.",
+      "label": "Grasp",
+      "name": "Who in this race actually gets to choose?"
+    },
+    {
+      "brief": "Work the m = 0 case first: Bessie moves first and leaves rubble behind her, so Elsie can never step on any island Bessie has already occupied — she is pinned behind a moving wall and loses from every start. Then notice the mirror fact: if Elsie ever stands strictly to the right of Bessie, Bessie is finished for exactly the same reason. Let the student feel that collapse is not a complication but a one-way valve on the number line.",
+      "label": "Observation",
+      "name": "What does a collapsing island actually forbid?"
+    },
+    {
+      "brief": "Draw the consequence of the valve: the race has only two possible histories — Elsie stays behind forever and loses, or Elsie lands strictly ahead once and wins. So the answer for a given s is exactly the predicate 'does Elsie ever land strictly beyond Bessie's current island?' Emphasize that after that single leap nothing else needs simulating, so we only have to reason about one move.",
+      "label": "Deduction",
+      "name": "Can we replace the whole race with a single yes/no?"
+    },
+    {
+      "brief": "Examine the anatomy of the leap now that we know only one matters. A main bridge can never do it — stepping from u to u+1 while u is behind Bessie lands you at best on her square, which is suicide once she moves off it. So the overtake is a single alternative bridge, and everything before it is Elsie racing as fast as she can to that bridge's tail.",
+      "label": "Observation",
+      "name": "What must that overtaking move look like?"
+    },
+    {
+      "brief": "Set up the timeline: after Bessie's t-th move she sits on s+t, and Elsie moves after her in the same round. Let d_x be Elsie's earliest arrival time at island x, and write the natural first criterion: Elsie wins if she can be standing on some island v with v > s + (her arrival time), i.e. d_v ≤ v − s − 1. Handle the off-by-one out loud — landing exactly on Bessie's island is elimination, not an overtake.",
+      "label": "Deduction",
+      "name": "Putting a clock on the overtake"
+    },
+    {
+      "brief": "Take the tempting shortcut seriously: run one shortest-path pass over main plus alternative bridges, then test d_v ≤ v − s − 1 for every v. Break it with a concrete case — an alternative bridge whose tail already lies to the right of s, so the 'fast route' to v runs through islands Bessie has demolished; the test declares a phantom win. Let the shape of that failure name the fix: the only thing we may trust is the tail of the leaping bridge, and that tail must lie strictly left of s.",
+      "label": "Observation",
+      "name": "Is a global shortest path telling us the truth?"
+    },
+    {
+      "brief": "Re-express the criterion per alternative bridge (u, v): Elsie must be legal at u, so u < s, and then she jumps on her (d_u + 1)-th move while Bessie sits on s + d_u + 1, giving the condition v > s + d_u + 1. Note the payoff that the failure handed us — every path to u uses only islands ≤ u, all of which are left of s and therefore untouched, so the plainly computed d_u is genuinely achievable. Add that indices only increase, so d is a single left-to-right relaxation over main and alternative edges, no Dijkstra needed.",
+      "label": "Deduction",
+      "name": "Why anchoring at the tail makes the numbers honest"
+    },
+    {
+      "brief": "Motivate by cost: testing all m bridges for each of the n−1 starts is 4·10^10 comparisons, so the per-edge data and the query s must be separated. Rearrange v > s + d_u + 1 into s ≤ v − d_u − 2 and let this land — each alternative bridge is a fixed threat number that kills exactly the starts u < s ≤ v − d_u − 2. Then observe the monotonicity that makes it cheap: as s increases the set of eligible bridges (those with u < s) only grows, never shrinks, so a running maximum of v − d_u − 2 is all the bookkeeping we ever need.",
+      "label": "Observation",
+      "name": "Where can s be pulled out of the inequality?"
+    },
+    {
+      "brief": "Assemble the method: compute d by one forward sweep, then sweep s from 1 upward, activating every bridge with tail u = s − 1 into a running maximum M, and output '1' at s exactly when M < s. State why this is complete — it certifies that no legal single leap gets Elsie strictly ahead, which by the earlier reduction is the whole race. Keep it at the level of the rule; no code yet.",
+      "label": "Conclusion",
+      "name": "The criterion, stated once and for all"
+    },
+    {
+      "brief": "Write the two-pass implementation (Rust-flavoured, adjacency by head for the DP, by tail for the activation) and confirm O(n + m) time and memory. Replay the samples — the 2→6 case producing 11011 and the ten-island case producing 100001111 — plus the degenerate checks: m = 0 gives all ones, and s = 1 wins because Elsie is standing on the island Bessie vacates. Close by contrasting this with the editorial's multiset/segment-tree O(n log n) route and naming the transferable move: convert a per-query test into per-object thresholds, then exploit monotone eligibility with one sweep.",
+      "label": "Application",
+      "name": "Making it run, and making it trustworthy"
+    }
+  ],
+  "title": "One Leap Decides the Race: Turning a Chase into a Sweep"
+}

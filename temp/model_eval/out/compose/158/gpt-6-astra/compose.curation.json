@@ -1,0 +1,208 @@
+{
+  "dialogue": "Look closely at the columns of our matrix $A$ on the board. What happens if you add them straight across?\n\nIn row 1, you have a $-1$, a $+1$, and two zeros. They sum to zero. Row 2? $-1$, $+1$, and two zeros. They sum to zero, too. \n\nIn fact, because every single pipe starts at exactly one tank and ends at exactly one other tank, every row has exactly one $-1$ and one $+1$. The columns perfectly cancel each other out.\n\nIn the language of linear algebra, a combination of the columns that yields the zero vector means that $x = [1, 1, 1, 1]^T$ is in the nullspace. $Ax = 0$. And if you can multiply by $1$, you can multiply by any constant $c$. The entire line of vectors $x = [c, c, c, c]^T$ lives in the nullspace.\n\nWhat does that mean physically for our tanks? Remember, $Ax$ computes the pressure *differences*. If $x = [c, c, c, c]^T$, the pressure in every tank is exactly $c$. If all tanks are at the exact same pressure, nothing flows. All differences are zero.\n\nAnd that answers our engineering problem: can you deduce the absolute pressures from the differences alone? No. If we pump an extra $50$ units of pressure into *every single tank*, the differences between them don't change a bit. The physics matches the math perfectly: because the matrix has a non-empty nullspace, $Ax = b$ does not have a unique solution. You can always add the nullspace—an arbitrary constant $c$—to your answer, just like the $+C$ when you integrate in calculus.\n\nThis beautiful structure is called an **incidence matrix**. It translates a physical graph into a mathematical object. Our matrix has $4$ columns, but because its nullspace is $1$-dimensional, its rank is only $4 - 1 = 3$.\n\nBut let's flip the question around. If our sensors hand us a vector of five pressure differences $b$, is there *always* a valid set of tank pressures that could have produced them? Or do the pipe differences have to follow some hidden rules?",
+  "parts": [
+    {
+      "id": "tank-nodes",
+      "desc": "Four tank symbols arranged around a square, numbered clockwise from the upper left by the separate tank labels."
+    },
+    {
+      "id": "tank-labels",
+      "desc": "Tank identifiers 1, 2, 3, and 4, corresponding to the four columns of A."
+    },
+    {
+      "id": "pipe-edges",
+      "desc": "Five pipes connecting the tanks, with reference orientations 1→2, 2→3, 3→4, 4→1, and 1→3. These orientations define the matrix rows, not actual flow."
+    },
+    {
+      "id": "matrix-a",
+      "desc": "The displayed 5×4 matrix A, with rows (-1,1,0,0), (0,-1,1,0), (0,0,-1,1), (1,0,0,-1), and (-1,0,1,0), matching the five oriented pipes."
+    },
+    {
+      "id": "row-one-sum",
+      "desc": "A small row-sum annotation aligned beside row 1: -1 + 1 + 0 + 0 = 0."
+    },
+    {
+      "id": "row-two-sum",
+      "desc": "A small row-sum annotation aligned beside row 2: 0 - 1 + 1 + 0 = 0."
+    },
+    {
+      "id": "nullspace-equation",
+      "desc": "Below the matrix, the equation A[c,c,c,c]^T = [0,0,0,0,0]^T, with both vectors typeset as vertical column vectors."
+    },
+    {
+      "id": "nullspace-label",
+      "desc": "The word 'nullspace' directly beneath the four-entry constant vector in the nullspace equation."
+    },
+    {
+      "id": "equal-pressure-labels",
+      "desc": "A pressure label c beside each of the four tanks, visibly assigning the same pressure to every tank."
+    },
+    {
+      "id": "rank-formula",
+      "desc": "A compact formula beneath the nullspace display: rank(A) = 4 - 1 = 3."
+    }
+  ],
+  "segments": [
+    {
+      "text": "Look closely at the columns of our matrix $A$ on the board. What happens if you add them straight across?\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "tank-nodes",
+            "tank-labels",
+            "pipe-edges",
+            "matrix-a"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In row 1, you have a $-1$, a $+1$, and two zeros. They sum to zero. Row 2? $-1$, $+1$, and two zeros. They sum to zero, too. \n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "row-one-sum",
+            "row-two-sum"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a",
+            "row-one-sum",
+            "row-two-sum"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In fact, because every single pipe starts at exactly one tank and ends at exactly one other tank, every row has exactly one $-1$ and one $+1$. The columns perfectly cancel each other out.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "tank-nodes",
+            "pipe-edges",
+            "matrix-a"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In the language of linear algebra, a combination of the columns that yields the zero vector means that $x = [1, 1, 1, 1]^T$ is in the nullspace. $Ax = 0$. And if you can multiply by $1$, you can multiply by any constant $c$. The entire line of vectors $x = [c, c, c, c]^T$ lives in the nullspace.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "What does that mean physically for our tanks? Remember, $Ax$ computes the pressure *differences*. If $x = [c, c, c, c]^T$, the pressure in every tank is exactly $c$. If all tanks are at the exact same pressure, nothing flows. All differences are zero.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "equal-pressure-labels"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "tank-nodes",
+            "pipe-edges",
+            "equal-pressure-labels",
+            "nullspace-equation"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "And that answers our engineering problem: can you deduce the absolute pressures from the differences alone? No. If we pump an extra $50$ units of pressure into *every single tank*, the differences between them don't change a bit. The physics matches the math perfectly: because the matrix has a non-empty nullspace, $Ax = b$ does not have a unique solution. You can always add the nullspace—an arbitrary constant $c$—to your answer, just like the $+C$ when you integrate in calculus.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "equal-pressure-labels",
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "nullspace-equation"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "This beautiful structure is called an **incidence matrix**. It translates a physical graph into a mathematical object. Our matrix has $4$ columns, but because its nullspace is $1$-dimensional, its rank is only $4 - 1 = 3$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "rank-formula"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a",
+            "nullspace-equation",
+            "rank-formula"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "But let's flip the question around. If our sensors hand us a vector of five pressure differences $b$, is there *always* a valid set of tank pressures that could have produced them? Or do the pipe differences have to follow some hidden rules?",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "tank-nodes",
+            "tank-labels",
+            "pipe-edges",
+            "matrix-a"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

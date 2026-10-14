@@ -1,0 +1,23 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Universal limits of the CDF"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "label-monotone",
+      "text": "Raising the cutoff never removes outcomes: $\\{X \\le a\\} \\subseteq \\{X \\le b\\}$."
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "cdf-curve",
+      "text": "Push the cutoff toward $+\\infty$: eventually every outcome is included. Push it toward $-\\infty$: no outcome stays included forever."
+    },
+    {
+      "type": "callout",
+      "target_gid": "jump-marker",
+      "text": "At the jump, which height does $F(x)$ take?"
+    }
+  ]
+}

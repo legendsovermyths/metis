@@ -1,0 +1,201 @@
+{
+  "dialogue": "Since we know we are hunting for exactly one leap that puts Elsie strictly ahead, let's look at the anatomy of that leap. We have two types of bridges to choose from. The natural first instinct is to wonder: could Elsie just tailgate Bessie and overtake her using the standard $+1$ main bridges?\n\nLet's try it. Suppose Elsie is at island $u$, which is currently behind Bessie. She takes a main bridge to $u+1$. Can $u+1$ be strictly ahead of Bessie? Mathematically, no. If $u$ is behind Bessie, $u+1$ is at best *exactly* the island Bessie is currently standing on.\n\nIs a tie good enough? Look at the rules: if Elsie lands on Bessie's island, Bessie simply takes her next turn, steps forward, the island collapses beneath them, and Elsie is eliminated. Stepping onto Bessie's current square isn't a tie; it is suicide.\n\nThat failure tells us something massive. A main bridge can *never* be the overtaking move. The winning leap must be a single alternative bridge that soars cleanly over Bessie's head.\n\nAnd that gives us the exact shape of Elsie's entire strategy. She isn't playing a complex tactical game of positioning. She is picking one specific alternative bridge, running from island $1$ to its tail as fast as physically possible, and pulling the trigger. Everything before the jump is just a pure, greedy sprint.",
+  "parts": [
+    {
+      "id": "islands-number-line",
+      "desc": "Number line of islands 1 through 6"
+    },
+    {
+      "id": "bessie-marker",
+      "desc": "Bessie standing on island 4"
+    },
+    {
+      "id": "bessie-label",
+      "desc": "Label identifying Bessie"
+    },
+    {
+      "id": "elsie-marker",
+      "desc": "Elsie standing on island 3, representing u"
+    },
+    {
+      "id": "elsie-label",
+      "desc": "Label identifying Elsie and u"
+    },
+    {
+      "id": "main-bridge",
+      "desc": "Short main bridge from island 3 to island 4"
+    },
+    {
+      "id": "fatal-x",
+      "desc": "Red X marking the main-bridge attempt as impossible"
+    },
+    {
+      "id": "skull-icon",
+      "desc": "Skull icon showing that landing with Bessie is fatal"
+    },
+    {
+      "id": "alternative-bridge",
+      "desc": "Long sweeping alternative bridge from island 2 to island 6"
+    },
+    {
+      "id": "success-check",
+      "desc": "Bright green checkmark marking the successful overtaking bridge"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Since we know we are hunting for exactly one leap that puts Elsie strictly ahead, let's look at the anatomy of that leap. We have two types of bridges to choose from. ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "islands-number-line",
+            "bessie-marker",
+            "bessie-label",
+            "elsie-marker",
+            "elsie-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "elsie-marker",
+            "bessie-marker"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "The natural first instinct is to wonder: could Elsie just tailgate Bessie and overtake her using the standard $+1$ main bridges?\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "main-bridge"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "main-bridge",
+            "elsie-marker",
+            "bessie-marker"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Let's try it. Suppose Elsie is at island $u$, which is currently behind Bessie. She takes a main bridge to $u+1$. Can $u+1$ be strictly ahead of Bessie? ",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "elsie-marker",
+            "main-bridge",
+            "bessie-marker"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Mathematically, no. If $u$ is behind Bessie, $u+1$ is at best *exactly* the island Bessie is currently standing on.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "fatal-x"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "main-bridge",
+            "fatal-x",
+            "bessie-marker"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Is a tie good enough? Look at the rules: if Elsie lands on Bessie's island, Bessie simply takes her next turn, steps forward, the island collapses beneath them, and Elsie is eliminated. Stepping onto Bessie's current square isn't a tie; it is suicide.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "skull-icon"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "fatal-x",
+            "skull-icon",
+            "main-bridge"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "skull-icon"
+          ],
+          "duration_ms": 450
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "That failure tells us something massive. A main bridge can *never* be the overtaking move. The winning leap must be a single alternative bridge that soars cleanly over Bessie's head.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "alternative-bridge",
+            "success-check"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "alternative-bridge",
+            "success-check",
+            "bessie-marker"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "success-check"
+          ],
+          "duration_ms": 450
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "And that gives us the exact shape of Elsie's entire strategy. She isn't playing a complex tactical game of positioning. She is picking one specific alternative bridge, running from island $1$ to its tail as fast as physically possible, and pulling the trigger. Everything before the jump is just a pure, greedy sprint.",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "islands-number-line",
+            "elsie-marker",
+            "alternative-bridge",
+            "success-check"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

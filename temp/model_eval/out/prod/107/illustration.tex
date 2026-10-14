@@ -1,0 +1,58 @@
+\begin{tikzpicture}[scale=1.5]
+  % quadrant-region
+  \gid{quadrant-region}{
+    \fill[black, fill opacity=0.1] (0,0) rectangle (2.5, 2.5);
+  }
+
+  % axes
+  \gid{axes}{
+    \draw[->, thick] (-2.5, 0) -- (2.5, 0) node[right] {$x$};
+    \draw[->, thick] (0, -2.5) -- (0, 2.5) node[above] {$y$};
+    \foreach \x in {-2, -1, 1, 2} {
+      \draw[thick] (\x, 0.05) -- (\x, -0.05) node[below, font=\small] {$\x$};
+    }
+    \foreach \y in {-2, -1, 1, 2} {
+      \draw[thick] (0.05, \y) -- (-0.05, \y) node[left, font=\small] {$\y$};
+    }
+  }
+
+  % quadrant-label
+  \gid{quadrant-label}{
+    \node[font=\normalsize] at (1.5, 0.6) {$x \ge 0, y \ge 0$};
+  }
+
+  % dashed-extension
+  \gid{dashed-extension}{
+    \draw[dashed, thick] (1.25, 2.5) -- (-1.25, -2.5);
+  }
+
+  % vector-v
+  \gid{vector-v}{
+    \draw[-{Stealth[length=3mm]}, line width=1.5pt] (0,0) -- (1,2);
+  }
+
+  % label-v
+  \gid{label-v}{
+    \node[above right, font=\large] at (1,2) {$v = (1,2)$};
+  }
+
+  % vector-neg-v
+  \gid{vector-neg-v}{
+    \draw[-{Stealth[length=3mm]}, line width=1.5pt] (0,0) -- (-1,-2);
+  }
+
+  % label-neg-v
+  \gid{label-neg-v}{
+    \node[below left, font=\large] at (-1,-2) {$-v = (-1)v$};
+  }
+
+  % origin-point
+  \gid{origin-point}{
+    \fill (0,0) circle (2.5pt) node[below right=2pt, font=\small] {$(0,0)$};
+  }
+
+  % heading
+  \gid{heading}{
+    \node[font=\Large] at (0, 3.2) {Subspace test: closed under $+$ and scalar $\times$};
+  }
+\end{tikzpicture}

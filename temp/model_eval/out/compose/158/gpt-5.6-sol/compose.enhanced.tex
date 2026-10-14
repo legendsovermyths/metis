@@ -1,0 +1,87 @@
+\begin{tikzpicture}[
+    tank/.style={circle, draw, thick, minimum size=1cm, font=\large},
+    pipe/.style={->, >=stealth, thick},
+    flowlabel/.style={fill=white, inner sep=1.5pt, font=\small\bfseries},
+    preslabel/.style={font=\small}
+]
+
+\gid{tank-nodes}{
+    \node[tank] (n1) at (-3.5, 2) {1};
+    \node[tank] (n2) at (-5.5, 0) {2};
+    \node[tank] (n3) at (-1.5, 0) {3};
+    \node[tank] (n4) at (-3.5, -2) {4};
+}
+
+\gid{equal-pressure-state}{
+    \node[preslabel, above=0.15cm of n1] {$p_1 = c$};
+    \node[preslabel, left=0.15cm of n2] {$p_2 = c$};
+    \node[preslabel, right=0.15cm of n3] {$p_3 = c$};
+    \node[preslabel, below=0.15cm of n4] {$p_4 = c$};
+}
+
+\gid{pipe-arrows}{
+    \draw[pipe] (n1) -- (n2);
+    \draw[pipe] (n1) -- (n3);
+    \draw[pipe] (n2) -- (n3);
+    \draw[pipe] (n2) -- (n4);
+    \draw[pipe] (n3) -- (n4);
+}
+
+\gid{zero-flow-annotation}{
+    \node[flowlabel] at ($(n1)!0.5!(n2)$) {0};
+    \node[flowlabel] at ($(n1)!0.5!(n3)$) {0};
+    \node[flowlabel] at ($(n2)!0.5!(n3)$) {0};
+    \node[flowlabel] at ($(n2)!0.5!(n4)$) {0};
+    \node[flowlabel] at ($(n3)!0.5!(n4)$) {0};
+}
+
+\gid{incidence-heading}{
+    \node[font=\Large\bfseries] at (2.5, 3) {Incidence matrix};
+}
+
+\gid{matrix-a}{
+    \node (A) at (2.5, 0.5) {
+        $ \begin{bmatrix}
+        -1 & 1 & 0 & 0 \\
+        -1 & 0 & 1 & 0 \\
+        0 & -1 & 1 & 0 \\
+        0 & -1 & 0 & 1 \\
+        0 & 0 & -1 & 1
+        \end{bmatrix} $
+    };
+    \node[left=0.1cm of A] {$A =$};
+}
+
+\gid{row-cancellation-highlight}{
+    \draw[dashed, rounded corners=2pt] ($(A.center) + (-1.1, 0.65)$) rectangle ($(A.center) + (1.1, 1.1)$);
+    \draw[dashed, rounded corners=2pt] ($(A.center) + (-1.1, 0.2)$) rectangle ($(A.center) + (1.1, 0.65)$);
+    
+    \node[right, font=\small] at ($(A.center) + (1.2, 0.875)$) {sum $= 0$};
+    \node[right, font=\small] at ($(A.center) + (1.2, 0.425)$) {sum $= 0$};
+}
+
+\gid{nullspace-equation}{
+    \node (eqA) at (1.1, -2.5) {$A$};
+    \node (eqX) at (2.1, -2.5) {$\begin{bmatrix} c \\ c \\ c \\ c \end{bmatrix}$};
+    \node (eqZero) at (3.7, -2.5) {$= \begin{bmatrix} 0 \\ 0 \\ 0 \\ 0 \\ 0 \end{bmatrix}$};
+}
+
+\gid{nullspace-label}{
+    \node (ns_lbl) [below=0.4cm of eqX, font=\small] {nullspace};
+    \draw[->, >=stealth, shorten >= 2pt] (ns_lbl) -- (eqX);
+}
+
+\gid{rank-formula}{
+    \node[font=\large] at (2.5, -5.5) {$\operatorname{rank}(A) = 4 - 1 = 3$};
+}
+
+
+% --- enhancer additions ---
+\coordinate (fig-east) at (current bounding box.east);
+\coordinate (fig-west) at (current bounding box.west);
+\gid{callout-1}{\node[name=callout-1, anchor=north west, font=\small, align=left, text width=3.5cm] at ($(fig-east |- gid-row-cancellation-highlight.north) + (28.0pt, -0.0pt)$) {What happens when you add the columns?};
+\draw[-{Stealth[length=4pt]}, thin] (gid-row-cancellation-highlight.east) to[out=0, in=180] (callout-1.west);}
+\gid{sidenote-1}{\node[name=sidenote-1, anchor=north west, font=\itshape\small, align=left, text width=3.5cm] at ($(fig-east |- gid-rank-formula.north) + (28.0pt, -0.0pt)$) {More generally, a connected network with n tanks has incidence-matrix rank n − 1.};}
+\gid{header-1}{\node[anchor=south, font=\bfseries\large, align=center] at ([yshift=14pt]current bounding box.north) {The Nullspace of the Incidence Matrix};}
+\gid{footer-1}{\node[anchor=north, font=\itshape\small, align=center, text width=10cm] at ([yshift=-12pt]current bounding box.south) {Pressure differences determine absolute pressures only up to a shared additive constant—just like +C in calculus.};}
+\end{tikzpicture}

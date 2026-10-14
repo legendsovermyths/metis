@@ -1,0 +1,22 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Is the First Quadrant a Subspace?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "first-quadrant-region",
+      "text": "Addition works here: adding nonnegative coordinates keeps them nonnegative."
+    },
+    {
+      "type": "callout",
+      "target_gid": "negative-vector",
+      "text": "Scaling by $-1$ breaks closure."
+    },
+    {
+      "type": "footer",
+      "text": "Containing the origin is necessary—but it isn't enough."
+    }
+  ]
+}

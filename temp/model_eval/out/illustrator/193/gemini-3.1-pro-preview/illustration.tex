@@ -1,0 +1,41 @@
+\begin{tikzpicture}[>=stealth]
+
+\gid{heading-recurrence}{
+    \node[font=\Large\bfseries] (hr) at (0, 4) {Recurrence Relation};
+}
+
+\gid{formula-base-case}{
+    \node[font=\Large, anchor=east] (fbc) at (-0.5, 2.5) {$T_0 = 0$};
+}
+
+\gid{label-base-case}{
+    \node[font=\normalsize\itshape, anchor=west] (lbc) at (0.5, 2.5) {boundary value / base case};
+    \draw[->, shorten >=5pt, shorten <=5pt] (lbc.west) -- (fbc.east);
+}
+
+\gid{formula-recurrence}{
+    \node[font=\Large, anchor=east] (fr) at (-0.5, 1) {$T_n = 2T_{n-1} + 1 \quad (n > 0)$};
+}
+
+\gid{label-general-step}{
+    \node[font=\normalsize\itshape, anchor=west] (lgs) at (0.5, 1) {general value from earlier ones};
+    \draw[->, shorten >=5pt, shorten <=5pt] (lgs.west) -- (fr.east);
+}
+
+\gid{arrow-solve}{
+    \draw[-{Stealth[length=6mm, width=5mm]}, line width=2.5pt] (0, -0.2) -- (0, -3.3);
+}
+
+\gid{question-mark}{
+    \node[font=\Huge\bfseries] (qm) at (0.8, -1.75) {?};
+}
+
+\gid{heading-closed-form}{
+    \node[font=\Large\bfseries] (hcf) at (0, -4.5) {Closed-Form Expression};
+}
+
+\gid{formula-closed-form}{
+    \node[font=\Large] (fcf) at (0, -6) {$T_n = 2^n - 1$};
+}
+
+\end{tikzpicture}

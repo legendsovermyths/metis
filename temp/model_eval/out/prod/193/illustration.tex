@@ -1,0 +1,43 @@
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+\gid{heading-recurrence}{
+    \node[font=\Large\bfseries] at (0, 4.5) {Recurrence Relation};
+}
+
+\gid{formula-base-case}{
+    \node[anchor=east, font=\Large] (bL) at (-2.5, 3.2) {$T_0$};
+    \node[anchor=west, font=\Large] (bR) at (-2.5, 3.2) {$= 0$};
+}
+
+\gid{label-base-case}{
+    \node[anchor=west, font=\normalsize, text width=5cm, align=left] (lbc) at (1.2, 3.2) {\textit{boundary value / base case}};
+    \draw[<-, >=stealth, shorten <= 4pt, shorten >= 4pt, dashed] (bR.east) -- (lbc.west);
+}
+
+\gid{formula-recurrence}{
+    \node[anchor=east, font=\Large] (rL) at (-2.5, 1.8) {$T_n$};
+    \node[anchor=west, font=\Large] (rR) at (-2.5, 1.8) {$= 2T_{n-1} + 1 \quad (\text{for } n > 0)$};
+}
+
+\gid{label-general-step}{
+    \node[anchor=west, font=\normalsize, text width=5cm, align=left] (lgs) at (1.2, 1.8) {\textit{general value from earlier ones}};
+    \draw[<-, >=stealth, shorten <= 4pt, shorten >= 4pt, dashed] (rR.east) -- (lgs.west);
+}
+
+\gid{arrow-solve}{
+    \draw[->, >=stealth, line width=2pt] (0, 0.6) -- (0, -1.4);
+}
+
+\gid{question-mark}{
+    \node[font=\Huge\bfseries] at (0.6, -0.4) {?};
+}
+
+\gid{heading-closed-form}{
+    \node[font=\Large\bfseries] at (0, -2.5) {Closed-Form Expression};
+}
+
+\gid{formula-closed-form}{
+    \node[font=\Large] at (0, -3.7) {$T_n = 2^n - 1$};
+}
+
+\end{tikzpicture}

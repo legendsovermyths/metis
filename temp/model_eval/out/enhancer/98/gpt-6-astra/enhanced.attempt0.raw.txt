@@ -1,0 +1,12 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Strictly ahead—a tie is fatal"
+    },
+    {
+      "type": "footer",
+      "text": "Choose an alternative bridge for the overtake; everything before the jump is a sprint to its tail."
+    }
+  ]
+}

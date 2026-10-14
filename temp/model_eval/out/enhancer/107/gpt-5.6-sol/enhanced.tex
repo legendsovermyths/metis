@@ -1,0 +1,66 @@
+\begin{tikzpicture}[scale=1.5]
+  % quadrant-region
+  \gid{quadrant-region}{
+    \fill[black, fill opacity=0.1] (0,0) rectangle (2.5, 2.5);
+  }
+
+  % axes
+  \gid{axes}{
+    \draw[->, thick] (-2.5, 0) -- (2.5, 0) node[right] {$x$};
+    \draw[->, thick] (0, -2.5) -- (0, 2.5) node[above] {$y$};
+    \foreach \x in {-2, -1, 1, 2} {
+      \draw[thick] (\x, 0.05) -- (\x, -0.05) node[below, font=\small] {$\x$};
+    }
+    \foreach \y in {-2, -1, 1, 2} {
+      \draw[thick] (0.05, \y) -- (-0.05, \y) node[left, font=\small] {$\y$};
+    }
+  }
+
+  % quadrant-label
+  \gid{quadrant-label}{
+    \node[font=\normalsize] at (1.5, 0.6) {$x \ge 0, y \ge 0$};
+  }
+
+  % dashed-extension
+  \gid{dashed-extension}{
+    \draw[dashed, thick] (1.25, 2.5) -- (-1.25, -2.5);
+  }
+
+  % vector-v
+  \gid{vector-v}{
+    \draw[-{Stealth[length=3mm]}, line width=1.5pt] (0,0) -- (1,2);
+  }
+
+  % label-v
+  \gid{label-v}{
+    \node[above right, font=\large] at (1,2) {$v = (1,2)$};
+  }
+
+  % vector-neg-v
+  \gid{vector-neg-v}{
+    \draw[-{Stealth[length=3mm]}, line width=1.5pt] (0,0) -- (-1,-2);
+  }
+
+  % label-neg-v
+  \gid{label-neg-v}{
+    \node[below left, font=\large] at (-1,-2) {$-v = (-1)v$};
+  }
+
+  % origin-point
+  \gid{origin-point}{
+    \fill (0,0) circle (2.5pt) node[below right=2pt, font=\small] {$(0,0)$};
+  }
+
+  % heading
+  \gid{heading}{
+    \node[font=\Large] at (0, 3.2) {Subspace test: closed under $+$ and scalar $\times$};
+  }
+
+% --- enhancer additions ---
+\coordinate (fig-east) at (current bounding box.east);
+\coordinate (fig-west) at (current bounding box.west);
+\gid{sidenote-1}{\node[name=sidenote-1, anchor=north west, font=\itshape\small, align=left, text width=3.5cm] at ($(fig-east |- gid-origin-point.north) + (28.0pt, -0.0pt)$) {Containing the origin is necessary—but it isn’t sufficient.};}
+\gid{callout-1}{\node[name=callout-1, anchor=north east, font=\small, align=left, text width=3.5cm] at ($(fig-west |- gid-vector-neg-v.north) + (-28.0pt, -0.0pt)$) {Scalar closure fails: multiplying by −1 sends v outside the set.};
+\draw[-{Stealth[length=4pt]}, thin] (gid-vector-neg-v.west) to[out=180, in=0] (callout-1.east);}
+\gid{footer-1}{\node[anchor=north, font=\itshape\small, align=center, text width=10cm] at ([yshift=-12pt]current bounding box.south) {One counterexample is enough: the first quadrant is not a subspace.};}
+\end{tikzpicture}

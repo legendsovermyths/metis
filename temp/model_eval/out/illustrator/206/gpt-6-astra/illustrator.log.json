@@ -1,0 +1,13 @@
+[
+  {
+    "call": "illustration.attempt0",
+    "chars": 2129,
+    "ok": true,
+    "seconds": 43.405037334
+  },
+  {
+    "call": "illustration",
+    "library": "tikz",
+    "rendered_on_attempt": 0
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Will Both Blocks Survive the Wait?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "label-y",
+      "text": "With several blocks in the way, $y$ is their maximum lifetime—we wait for the last obstacle to vanish."
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "condition-annotation",
+      "text": "Even a tie is too late: a block that dies just as the path clears cannot fuse."
+    }
+  ]
+}

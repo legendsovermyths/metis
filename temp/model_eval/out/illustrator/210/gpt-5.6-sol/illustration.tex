@@ -1,0 +1,121 @@
+\begin{tikzpicture}[
+  draw=black,
+  text=black,
+  >=Latex,
+  every node/.style={font=\small,align=center}
+]
+
+\node[font=\normalsize] at (0,3.05) {Current stack};
+
+\gid{bottom-block}{
+  \node[
+    draw=black,
+    double,
+    double distance=1.2pt,
+    line width=1.2pt,
+    minimum width=4.4cm,
+    minimum height=3.0cm
+  ] (bottom) at (0,0) {\texttt{(color: 0,}\\[2pt]\texttt{lifetime: 9)}};
+}
+
+\gid{red-block}{
+  \node[
+    draw=black,
+    dashed,
+    line width=1.5pt,
+    minimum width=4.4cm,
+    minimum height=0.85cm,
+    above=0.08cm of bottom
+  ] (red) {\footnotesize\texttt{(color: 1, lifetime: 1)}};
+}
+
+\gid{red-block-crossout}{
+  \draw[line width=1.8pt] ($(red.south west)+(0.12,0.10)$) -- ($(red.north east)+(-0.12,-0.10)$);
+  \draw[line width=1.8pt] ($(red.north west)+(0.12,-0.10)$) -- ($(red.south east)+(-0.12,0.10)$);
+}
+
+\gid{obstacle-label}{
+  \node[font=\normalsize] (obstacle) at ($(red.north)+(0,0.72cm)$) {$y=1$};
+  \draw[->,line width=1pt] (obstacle.south) -- (red.north);
+}
+
+\gid{new-block}{
+  \node[
+    draw=black,
+    double,
+    double distance=1.2pt,
+    line width=1.2pt,
+    minimum width=3.6cm,
+    minimum height=1.55cm,
+    right=1.7cm of red
+  ] (new) {\texttt{(color: 0,}\\[2pt]\texttt{lifetime: 2)}};
+  \node[font=\normalsize,above=0.35cm of new] {New block arrives};
+}
+
+\gid{size-check-note}{
+  \node[
+    draw=black,
+    rounded corners=4pt,
+    line width=1pt,
+    inner xsep=10pt,
+    inner ysep=7pt
+  ] (check) at ($(bottom.south east)+(2.25cm,-0.85cm)$)
+  {$9>2$: rule says stop};
+  \draw[->,dashed,line width=1pt] (check.north west) to[bend left=18] (bottom.east);
+}
+
+\gid{merged-block}{
+  \node[
+    draw=black,
+    double,
+    double distance=1.2pt,
+    line width=1.5pt,
+    minimum width=4.6cm,
+    minimum height=4.4cm,
+    right=3.2cm of new,
+    yshift=-1.65cm
+  ] (merged) {\large\texttt{(color: 0,}\\[4pt]\large\texttt{lifetime: 10)}};
+  \node[font=\normalsize,above=0.35cm of merged] {Fused block};
+}
+
+\coordinate (join) at ($(new.east)!0.54!(merged.west)$);
+
+\gid{merge-arrow}{
+  \draw[-{Latex[length=3.2mm,width=2.4mm]},line width=1.7pt]
+    (bottom.east) .. controls +(1.1cm,0) and +(-0.9cm,-0.75cm) .. (join);
+  \draw[-{Latex[length=3.2mm,width=2.4mm]},line width=1.7pt]
+    (new.east) .. controls +(0.8cm,0) and +(-0.75cm,0.7cm) .. (join);
+  \fill[black] (join) circle (2.2pt);
+  \draw[-{Latex[length=3.5mm,width=2.6mm]},line width=2pt]
+    (join) -- (merged.west);
+  \node[font=\footnotesize] at ($(join)+(0,-0.55cm)$)
+    {same color $\Rightarrow$ fuse anyway};
+}
+
+\gid{fusion-formula}{
+  \node[
+    draw=black,
+    rounded corners=9pt,
+    line width=1.3pt,
+    inner xsep=13pt,
+    inner ysep=9pt,
+    font=\large
+  ] (formula) at ($(join)+(0,2.05cm)$) {$9+2-1=10$};
+  \draw[->,line width=1pt] (formula.south) -- ($(join)+(0,0.18cm)$);
+}
+
+\gid{reset-label}{
+  \node[
+    draw=black,
+    rounded corners=4pt,
+    line width=1pt,
+    inner xsep=9pt,
+    inner ysep=6pt,
+    font=\normalsize,
+    right=0.65cm of merged,
+    yshift=-1.15cm
+  ] (reset) {$y$ resets to $0$};
+  \draw[->,line width=1.1pt] (reset.west) -- (merged.east);
+}
+
+\end{tikzpicture}

@@ -1,0 +1,56 @@
+\begin{tikzpicture}[
+  font=\small,
+  every node/.style={text=black},
+  block/.style={draw=black, line width=2pt, minimum width=5.2cm, inner sep=0pt, align=center, fill=black, fill opacity=0.08, text opacity=1},
+  fusion/.style={draw=black, line width=2pt, line cap=round, line join=round}
+]
+\gid{bottom-block}{
+  \node[block, minimum height=7.2cm] (bottom) at (0,0)
+    {$(\text{color: }0,\ \text{lifetime: }9)$};
+}
+\gid{red-block}{
+  \node[draw=black, dashed, line width=1.5pt, minimum width=5.2cm, minimum height=0.8cm, inner sep=0pt, above=0pt of bottom] (obstacle) {};
+  \node[xshift=-0.25cm] at (obstacle.center)
+    {$(\text{color: }1,\ \text{lifetime: }1)$};
+}
+\gid{new-block}{
+  \node[block, minimum height=1.6cm, above=0.9cm of obstacle] (incoming)
+    {$(\text{color: }0,\ \text{lifetime: }2)$};
+  \draw[black, line width=1pt, -{Latex[length=2.5mm]}]
+    (incoming.south) -- (obstacle.north);
+}
+\gid{red-block-crossout}{
+  \draw[black, line width=1.5pt, line cap=round]
+    ($(obstacle.north east)+(-0.57,-0.12)$) --
+    ($(obstacle.south east)+(-0.10,0.12)$);
+  \draw[black, line width=1.5pt, line cap=round]
+    ($(obstacle.south east)+(-0.57,0.12)$) --
+    ($(obstacle.north east)+(-0.10,-0.12)$);
+}
+\gid{obstacle-label}{
+  \node[right=0.35cm of obstacle] {$y=1$};
+}
+\gid{size-check-note}{
+  \node[below=0.45cm of bottom] {$9>2$: rule says stop};
+}
+\gid{merged-block}{
+  \node[block, minimum height=8cm] (merged) at (9.3,0.4)
+    {$(\text{color: }0,\ \text{lifetime: }10)$};
+}
+\coordinate (junction) at (4.65,0.4);
+\gid{merge-arrow}{
+  \draw[fusion] (incoming.east) -- (incoming.east -| junction) -- (junction);
+  \draw[fusion] (bottom.east) -- ++(0.65,0) |- (junction);
+  \draw[fusion, -{Latex[length=4mm,width=3mm]}]
+    (junction) -- (merged.west);
+  \node[above=0.25cm, align=center, font=\footnotesize]
+    at ($(junction)!0.5!(merged.west)$) {same color:\\fuse anyway};
+}
+\gid{fusion-formula}{
+  \node[draw=black, ellipse, line width=1pt, inner xsep=0.18cm, inner ysep=0.20cm, below=0.7cm of junction]
+    {$9+2-1=10$};
+}
+\gid{reset-label}{
+  \node[below=0.45cm of merged] {$y$ resets to $0$};
+}
+\end{tikzpicture}

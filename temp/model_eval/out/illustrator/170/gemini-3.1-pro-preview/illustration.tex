@@ -1,0 +1,67 @@
+\begin{tikzpicture}
+  \gid{axes}{
+    \draw[-latex, thick] (-7.5, 0) -- (9.5, 0) node[right] {$x$};
+    \draw[-latex, thick] (0, -0.5) -- (0, 5.5) node[above] {$F(x)$};
+    
+    \node[left] at (0, 4) {$1$};
+    \draw[thick] (0.1, 4) -- (-0.1, 4);
+  }
+
+  \gid{cdf-curve}{
+    \draw[very thick] (-4, 0) -- (-2, 0);
+    \draw[very thick] (-2, 0.6) -- (0, 0.6);
+    \draw[very thick] (0, 1.6) -- (2, 1.6);
+    \draw[very thick] (2, 2.8) -- (4, 2.8);
+    \draw[very thick] (4, 3.6) -- (6, 3.6);
+    \draw[very thick] (6, 4.0) -- (7, 4.0);
+    
+    \filldraw[fill=white, draw=black, thick] (-2, 0) circle (2.5pt);
+    \filldraw[fill=black, draw=black] (-2, 0.6) circle (2.5pt);
+    \filldraw[fill=white, draw=black, thick] (0, 0.6) circle (2.5pt);
+    \filldraw[fill=black, draw=black] (0, 1.6) circle (2.5pt);
+    \filldraw[fill=white, draw=black, thick] (2, 1.6) circle (2.5pt);
+    \filldraw[fill=black, draw=black] (2, 2.8) circle (2.5pt);
+    \filldraw[fill=white, draw=black, thick] (4, 2.8) circle (2.5pt);
+    \filldraw[fill=black, draw=black] (4, 3.6) circle (2.5pt);
+    \filldraw[fill=white, draw=black, thick] (6, 3.6) circle (2.5pt);
+    \filldraw[fill=black, draw=black] (6, 4.0) circle (2.5pt);
+  }
+
+  \gid{asymptote-left}{
+    \draw[thick, dashed, transform canvas={yshift=1.5pt}] (-7.5, 0) -- (-4, 0);
+  }
+
+  \gid{label-limit-left}{
+    \node[above] at (-5.7, 0.2) {$\displaystyle \lim_{x \to -\infty} f(x) = 0$};
+  }
+
+  \gid{asymptote-right}{
+    \draw[thick, dashed] (7, 4) -- (9.5, 4);
+  }
+
+  \gid{label-limit-right}{
+    \node[above] at (8.2, 4.1) {$\displaystyle \lim_{x \to \infty} f(x) = 1$};
+  }
+
+  \gid{marker-a}{
+    \draw[dashed, thick] (0.8, 0) node[below] {$a$} -- (0.8, 1.6) -- (0, 1.6);
+    \filldraw[black] (0.8, 1.6) circle (2.5pt);
+    \node[left] at (0, 1.6) {$F(a)$};
+    \draw[thick] (0.1, 1.6) -- (-0.1, 1.6);
+  }
+
+  \gid{marker-b}{
+    \draw[dashed, thick] (3.2, 0) node[below] {$b$} -- (3.2, 2.8) -- (0, 2.8);
+    \filldraw[black] (3.2, 2.8) circle (2.5pt);
+    \node[left] at (0, 2.8) {$F(b)$};
+    \draw[thick] (0.1, 2.8) -- (-0.1, 2.8);
+  }
+
+  \gid{label-monotone}{
+    \draw[-latex, thick] (0.8, 2.1) to[bend left=15] node[above] {nondecreasing: $F(a) \le F(b)$} (3.2, 3.3);
+  }
+
+  \gid{jump-marker}{
+    \draw[thick, dashed] (2, 2.2) ellipse (0.4 and 0.9);
+  }
+\end{tikzpicture}

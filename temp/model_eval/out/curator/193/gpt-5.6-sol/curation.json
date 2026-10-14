@@ -1,0 +1,160 @@
+{
+  "dialogue": "Let's put some formal names to the tools we are using.\n\nThat step-by-step equation we built—where we defined $T_n = 2T_{n-1} + 1$, along with the starting point $T_0 = 0$—mathematicians call this a **recurrence** or a **recurrence relation**.\n\nAs someone who writes Rust, you know this intimately as a recursive function. It requires two things to be mathematically complete: a boundary value (your base case, so the logic doesn't loop forever backwards), and an equation for the general value in terms of earlier ones.\n\nBut as we just noticed, computing a recurrence for a large $n$ is painfully inefficient. To find the 64th term, you have to compute the 63rd, which requires the 62nd, and so on. That's why we want what we just guessed: $T_n = 2^n - 1$. This is what we call a **closed-form expression**. A closed form lets you compute the answer directly, independent of any previous terms.\n\nIn discrete math, this is the core workflow: you model a complex system by setting up a recurrence relation, and then you try to solve that recurrence to find the neat, efficient closed form.\n\nWe have our recurrence, and we have our suspected closed form. But a strong hunch based on $n=6$ is not a mathematical truth. How do we rigorously prove that our closed form satisfies the recurrence for every $n$ up to infinity?",
+  "parts": [
+    {
+      "id": "recurrence-heading",
+      "desc": "Heading: recurrence relation"
+    },
+    {
+      "id": "base-case",
+      "desc": "Base case equation T_0 = 0"
+    },
+    {
+      "id": "recurrence-rule",
+      "desc": "Recurrence equation T_n = 2T_{n-1} + 1"
+    },
+    {
+      "id": "recurrence-condition",
+      "desc": "Condition n > 0 for the recurrence"
+    },
+    {
+      "id": "closed-form-heading",
+      "desc": "Heading: closed-form expression"
+    },
+    {
+      "id": "closed-formula",
+      "desc": "Closed-form equation T_n = 2^n - 1"
+    },
+    {
+      "id": "solution-arrow",
+      "desc": "Bold arrow from the recurrence to the closed form"
+    },
+    {
+      "id": "proof-question-mark",
+      "desc": "Large question mark above the solution arrow"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Let's put some formal names to the tools we are using.\n\nThat step-by-step equation we built—where we defined $T_n = 2T_{n-1} + 1$, along with the starting point $T_0 = 0$—mathematicians call this a **recurrence** or a **recurrence relation**.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "recurrence-heading",
+            "base-case",
+            "recurrence-rule",
+            "recurrence-condition"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "recurrence-heading",
+            "base-case",
+            "recurrence-rule",
+            "recurrence-condition"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "As someone who writes Rust, you know this intimately as a recursive function. It requires two things to be mathematically complete: a boundary value (your base case, so the logic doesn't loop forever backwards), and an equation for the general value in terms of earlier ones.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "base-case",
+            "recurrence-rule"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "But as we just noticed, computing a recurrence for a large $n$ is painfully inefficient. To find the 64th term, you have to compute the 63rd, which requires the 62nd, and so on. ",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "recurrence-rule"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "That's why we want what we just guessed: $T_n = 2^n - 1$. This is what we call a **closed-form expression**. A closed form lets you compute the answer directly, independent of any previous terms.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "closed-form-heading",
+            "closed-formula"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "closed-form-heading",
+            "closed-formula"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In discrete math, this is the core workflow: you model a complex system by setting up a recurrence relation, and then you try to solve that recurrence to find the neat, efficient closed form.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "solution-arrow"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "recurrence-rule",
+            "solution-arrow",
+            "closed-formula"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "We have our recurrence, and we have our suspected closed form. But a strong hunch based on $n=6$ is not a mathematical truth. How do we rigorously prove that our closed form satisfies the recurrence for every $n$ up to infinity?",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "proof-question-mark"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "solution-arrow",
+            "proof-question-mark"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "proof-question-mark"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

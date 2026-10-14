@@ -1,0 +1,80 @@
+\begin{tikzpicture}[
+  line cap=round,
+  line join=round,
+  every node/.style={text=black},
+  spacebox/.style={draw=black, line width=0.9pt},
+  subspace/.style={draw=black, line width=1.25pt},
+  mapping/.style={draw=black, line width=1.15pt, -{Latex[length=3mm,width=2mm]}}
+]
+
+% Ambient spaces
+\gid{domain-box}{
+  \draw[spacebox] (-6.8,-2.7) rectangle (-1.0,3.1);
+  \node[font=\large] at (-3.9,2.65) {Domain $\mathbb{R}^{n}$};
+}
+
+\gid{codomain-box}{
+  \draw[spacebox] (1.0,-2.7) rectangle (6.8,3.1);
+  \node[font=\large] at (3.9,2.65) {Codomain $\mathbb{R}^{m}$};
+}
+
+% Domain decomposition
+\gid{row-space-axis}{
+  \draw[subspace] (-6.25,0) -- (-1.55,0);
+  \node[font=\small, above=5pt] at (-3.9,0) {$\operatorname{C}(A^{T}),\quad \dim=r$};
+  \node[font=\footnotesize, below=4pt] at (-5.55,0) {row space};
+}
+
+\gid{nullspace-axis}{
+  \draw[subspace] (-3.9,-2.05) -- (-3.9,2.05);
+  \node[font=\small, rotate=90] at (-4.42,0) {$\operatorname{N}(A),\quad \dim=n-r$};
+  \node[font=\footnotesize, rotate=90] at (-3.42,1.15) {nullspace};
+}
+
+\gid{dimension-sum-domain}{
+  \node[font=\large] at (-3.9,-3.25) {$r+(n-r)=n$};
+}
+
+% Codomain decomposition
+\gid{column-space-axis}{
+  \draw[subspace] (1.55,0) -- (6.25,0);
+  \node[font=\small, above=5pt] at (3.9,0) {$\operatorname{C}(A),\quad \dim=r$};
+  \node[font=\footnotesize, below=4pt] at (5.45,0) {column space};
+}
+
+\gid{left-nullspace-axis}{
+  \draw[subspace] (3.9,-2.05) -- (3.9,2.05);
+  \node[font=\small, rotate=90] at (4.42,0) {$\operatorname{N}(A^{T}),\quad \dim=m-r$};
+  \node[font=\footnotesize, rotate=90] at (3.42,1.15) {left nullspace};
+}
+
+\gid{dimension-sum-codomain}{
+  \node[font=\large] at (3.9,-3.25) {$r+(m-r)=m$};
+}
+
+% Orthogonality marks
+\gid{right-angle-marks}{
+  \draw[draw=black, line width=0.9pt] (-3.62,0) -- (-3.62,0.28) -- (-3.9,0.28);
+  \draw[draw=black, line width=0.9pt] (4.18,0) -- (4.18,0.28) -- (3.9,0.28);
+}
+
+% A maps the row space onto the column space
+\gid{arrow-a}{
+  \fill[black] (-2.15,0) circle (2.3pt);
+  \fill[black] (2.15,0) circle (2.3pt);
+  \draw[mapping] (-2.15,0.06) to[out=34,in=146] (2.15,0.06);
+  \node[font=\large, above] at (0,0.92) {$A$};
+  \node[font=\small, below=3pt] at (-2.15,0) {$\mathbf{x}$};
+  \node[font=\small, below=3pt] at (2.15,0) {$A\mathbf{x}$};
+}
+
+% Every vector in the nullspace is sent to the codomain origin
+\gid{arrow-null-to-origin}{
+  \fill[black] (-3.9,-1.42) circle (2.3pt);
+  \draw[mapping] (-3.83,-1.44) to[out=-15,in=-155] (3.84,-0.04);
+  \fill[black] (3.9,0) circle (2.5pt);
+  \node[font=\small, below right=2pt and 4pt] at (3.9,0) {$\mathbf{0}$};
+  \node[font=\small, below] at (0,-1.73) {$\mathbf{z}\in \operatorname{N}(A)\quad\Longrightarrow\quad A\mathbf{z}=\mathbf{0}$};
+}
+
+\end{tikzpicture}

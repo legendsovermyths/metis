@@ -1,0 +1,60 @@
+{
+  "title": "Following Information and Work Through a Tree",
+  "steps": [
+    {
+      "name": "What must survive every cut?",
+      "label": "Grasp",
+      "brief": "Restate the task as counting edge decisions for which every resulting component has all its paths bounded by k. Root the tree at vertex 1 and frame a subtree as something whose valid configurations should be reusable by its parent. Highlight the central difficulty: individually valid branches can create an invalid path when connected."
+    },
+    {
+      "name": "Why can't a branch report just its count?",
+      "label": "Observation",
+      "brief": "Try the natural minimal summary: the number of valid cut configurations inside each subtree. Compare two cut patterns on a short rooted path that are both internally valid but leave different distances reachable from the root. Attach the same outside arm to expose why one configuration may remain valid while the other fails. Use this failure to identify the missing information as the reach of the root's component, rather than the contents of already detached components."
+    },
+    {
+      "name": "What does the rest of the tree need to know?",
+      "label": "Deduction",
+      "brief": "Define dp[v][h] as the number of cut configurations in v's subtree for which every component is valid and the component containing v has maximum distance h from v. Explain why detached components need no further description: no later edge decision can reconnect them to the parent. Reduce the unresolved compatibility question to paths formed by joining two already-valid pieces across one edge."
+    },
+    {
+      "name": "What changes when one edge is decided?",
+      "label": "Observation",
+      "brief": "Inspect a valid piece rooted at v with height i and a valid child piece rooted at u with height j. Show that cutting their connecting edge always preserves validity and leaves the height at v unchanged. Show that keeping it creates a longest crossing path of length i + 1 + j, so it is allowed exactly when this is at most k and produces height max(i, j + 1). Emphasize that all paths not crossing this edge were already checked inside one of the pieces."
+    },
+    {
+      "name": "How can a node handle any number of children?",
+      "label": "Deduction",
+      "brief": "Turn the two-piece rule into a sequential fold, starting with the single vertex v and incorporating one child at a time. Maintain the same validity-and-height invariant for the piece containing v and all subtrees processed so far. Justify multiplying independent configuration counts and adding the disjoint cut-or-keep outcomes, so every full edge assignment is counted exactly once. Set up the performance question by identifying a pair of height indices as the unit of merge work."
+    },
+    {
+      "name": "Where does the straightforward implementation spend too much?",
+      "label": "Observation",
+      "brief": "Estimate the obvious implementation that scans every pair of indices from 0 through k for every child merge, obtaining O(nk²). Reject this bound at n = 5000, then inspect which scanned entries could actually represent configurations. Use a rooted chain to expose the waste: before its only child is merged, a parent's current piece contains just the parent and has only height zero. Make the distinction between the current processed piece and the eventual full subtree explicit."
+    },
+    {
+      "name": "Which height entries can actually exist?",
+      "label": "Deduction",
+      "brief": "Restrict each array to heights at most min(k, H), where H is the structural height of the exact piece currently represented. Update the parent's bound as children are incorporated rather than allocating its eventual height from the start. Upper-bound the two array lengths by a and b, the vertex counts of the current processed piece and the new child's subtree, giving O(ab) merge work. Leave the sum of these products as the remaining question rather than assuming that shorter arrays automatically prove sufficient speed."
+    },
+    {
+      "name": "Could the same work be charged twice?",
+      "label": "Observation",
+      "brief": "Make this the crux: charge the ab upper bound to vertex pairs with one endpoint in each of the two disjoint pieces, without pretending that height indices literally represent vertices. Show that endpoints in different child branches meet only when the later branch is merged at their lowest common ancestor. Cover ancestor–descendant pairs by remembering that the processed piece includes its root from the beginning. Establish that after this meeting the endpoints remain on the same side of every later merge, so the pair cannot be charged again."
+    },
+    {
+      "name": "What does that ownership imply for the cost?",
+      "label": "Deduction",
+      "brief": "Sum the unique pair charges to bound all nested merge loops by O(n²), independently of k. Absorb temporary-array initialization and other linear merge work into the same bound using a + b ≤ 2ab for nonempty pieces. Contrast this accounting with the failed O(nk²) estimate, and stress that using the current processed height is essential to the guarantee."
+    },
+    {
+      "name": "How do the pieces form one counting method?",
+      "label": "Conclusion",
+      "brief": "Assemble the method as a postorder tree DP, initializing each vertex's accumulator with A[0] = 1 and folding in its children. State the recurrence for each pair i, j with weight w = A[i]B[j]: add w to next[i] for cutting, and also to next[max(i, j + 1)] when i + j + 1 ≤ k for keeping. Specify fresh accumulators, the derived height bounds, and arithmetic modulo 998244353. Finish the mathematical method by summing every height state at the root, where no outside compatibility condition remains."
+    },
+    {
+      "name": "How do we implement and stress-check it?",
+      "label": "Application",
+      "brief": "Translate the recurrence into bounded-vector merges using an iterative postorder or a stack-safe DFS, and connect the loop invariant to the earlier validity and unique-counting arguments. Use 64-bit intermediates for modular products and 32-bit stored residues, confirming O(n²) time and O(n(k + 1)) worst-case DP storage within the memory limit. Run the supplied examples to obtain 8, 1, 25, and 29, explicitly checking that k = 0 forces every edge cut and an already-short tree permits every subset. Cross-check small random trees against exhaustive edge-subset enumeration, and use chains and stars to test both correctness and the promised merge bounds."
+    }
+  ]
+}

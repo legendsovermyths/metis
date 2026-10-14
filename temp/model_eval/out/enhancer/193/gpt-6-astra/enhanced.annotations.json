@@ -1,0 +1,14 @@
+{
+  "annotations": [
+    {
+      "type": "sidenote",
+      "target_gid": "formula-closed-form",
+      "text": "Here we can jump straight to $T_{64}$—no earlier terms needed."
+    },
+    {
+      "type": "callout",
+      "target_gid": "question-mark",
+      "text": "It fits the small cases—but why does it work for every $n$?"
+    }
+  ]
+}

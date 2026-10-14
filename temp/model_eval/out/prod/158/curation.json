@@ -1,0 +1,212 @@
+{
+  "dialogue": "Look closely at the columns of our matrix $A$ on the board. What happens if you add them straight across?\n\nIn row 1, you have a $-1$, a $+1$, and two zeros. They sum to zero. Row 2? $-1$, $+1$, and two zeros. They sum to zero, too. \n\nIn fact, because every single pipe starts at exactly one tank and ends at exactly one other tank, every row has exactly one $-1$ and one $+1$. The columns perfectly cancel each other out.\n\nIn the language of linear algebra, a combination of the columns that yields the zero vector means that $x = [1, 1, 1, 1]^T$ is in the nullspace. $Ax = 0$. And if you can multiply by $1$, you can multiply by any constant $c$. The entire line of vectors $x = [c, c, c, c]^T$ lives in the nullspace.\n\nWhat does that mean physically for our tanks? Remember, $Ax$ computes the pressure *differences*. If $x = [c, c, c, c]^T$, the pressure in every tank is exactly $c$. If all tanks are at the exact same pressure, nothing flows. All differences are zero.\n\nAnd that answers our engineering problem: can you deduce the absolute pressures from the differences alone? No. If we pump an extra $50$ units of pressure into *every single tank*, the differences between them don't change a bit. The physics matches the math perfectly: because the matrix has a non-empty nullspace, $Ax = b$ does not have a unique solution. You can always add the nullspace—an arbitrary constant $c$—to your answer, just like the $+C$ when you integrate in calculus.\n\nThis beautiful structure is called an **incidence matrix**. It translates a physical graph into a mathematical object. Our matrix has $4$ columns, but because its nullspace is $1$-dimensional, its rank is only $4 - 1 = 3$.\n\nBut let's flip the question around. If our sensors hand us a vector of five pressure differences $b$, is there *always* a valid set of tank pressures that could have produced them? Or do the pipe differences have to follow some hidden rules?",
+  "parts": [
+    {
+      "id": "graph-tanks",
+      "desc": "the four tank nodes of the network"
+    },
+    {
+      "id": "graph-pipes",
+      "desc": "the five directed pipes joining the tanks"
+    },
+    {
+      "id": "matrix-a",
+      "desc": "the 5x4 incidence matrix entries"
+    },
+    {
+      "id": "matrix-label",
+      "desc": "the label A beside the matrix"
+    },
+    {
+      "id": "row-1-box",
+      "desc": "box around row 1 of the matrix"
+    },
+    {
+      "id": "row-2-box",
+      "desc": "box around row 2 of the matrix"
+    },
+    {
+      "id": "column-sum-annotation",
+      "desc": "annotation showing the four columns summing to the zero vector"
+    },
+    {
+      "id": "nullspace-equation",
+      "desc": "the equation A[c,c,c,c]^T = [0,0,0,0,0]^T below the matrix"
+    },
+    {
+      "id": "nullspace-label",
+      "desc": "the word 'nullspace' labeling the vector [c,c,c,c]^T"
+    },
+    {
+      "id": "rank-annotation",
+      "desc": "note that rank = 4 - 1 = 3"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Look closely at the columns of our matrix $A$ on the board. What happens if you add them straight across?\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "graph-tanks",
+            "graph-pipes",
+            "matrix-a",
+            "matrix-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a",
+            "matrix-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In row 1, you have a $-1$, a $+1$, and two zeros. They sum to zero. Row 2? $-1$, $+1$, and two zeros. They sum to zero, too. \n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "row-1-box",
+            "row-2-box"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "row-1-box",
+            "row-2-box"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In fact, because every single pipe starts at exactly one tank and ends at exactly one other tank, every row has exactly one $-1$ and one $+1$. The columns perfectly cancel each other out.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "column-sum-annotation"
+          ]
+        },
+        {
+          "type": "connect",
+          "from": "graph-pipes",
+          "to": "matrix-a",
+          "duration_ms": 800
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a",
+            "column-sum-annotation"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "In the language of linear algebra, a combination of the columns that yields the zero vector means that $x = [1, 1, 1, 1]^T$ is in the nullspace. $Ax = 0$. And if you can multiply by $1$, you can multiply by any constant $c$. The entire line of vectors $x = [c, c, c, c]^T$ lives in the nullspace.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "What does that mean physically for our tanks? Remember, $Ax$ computes the pressure *differences*. If $x = [c, c, c, c]^T$, the pressure in every tank is exactly $c$. If all tanks are at the exact same pressure, nothing flows. All differences are zero.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "graph-tanks",
+            "graph-pipes",
+            "nullspace-equation"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "And that answers our engineering problem: can you deduce the absolute pressures from the differences alone? No. If we pump an extra $50$ units of pressure into *every single tank*, the differences between them don't change a bit. The physics matches the math perfectly: because the matrix has a non-empty nullspace, $Ax = b$ does not have a unique solution. You can always add the nullspace—an arbitrary constant $c$—to your answer, just like the $+C$ when you integrate in calculus.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "nullspace-equation",
+            "nullspace-label"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "nullspace-label"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "This beautiful structure is called an **incidence matrix**. It translates a physical graph into a mathematical object. Our matrix has $4$ columns, but because its nullspace is $1$-dimensional, its rank is only $4 - 1 = 3$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "rank-annotation"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-a",
+            "rank-annotation"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "rank-annotation"
+          ],
+          "duration_ms": 400
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "But let's flip the question around. If our sensors hand us a vector of five pressure differences $b$, is there *always* a valid set of tank pressures that could have produced them? Or do the pipe differences have to follow some hidden rules?",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": []
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

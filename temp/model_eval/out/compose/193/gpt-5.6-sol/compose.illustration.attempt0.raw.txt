@@ -1,0 +1,4 @@
+{
+  "library": "tikz",
+  "code": "\\begin{tikzpicture}\n  \\gid{recurrence-heading}{\n    \\node at (-4.5, 1.5) [font=\\Large\\bfseries] {Recurrence relation};\n  }\n  \n  \\gid{base-case-formula}{\n    \\node at (-4.5, 0.3) [font=\\Large] {$T_0 = 0$};\n  }\n  \n  \\gid{recurrence-formula}{\n    \\node at (-4.5, -0.7) [font=\\Large] {$T_n = 2T_{n-1} + 1 \\quad (\\text{for } n > 0)$};\n  }\n  \n  \\gid{closed-form-heading}{\n    \\node at (4.5, 1.5) [font=\\Large\\bfseries] {Closed-form expression};\n  }\n  \n  \\gid{closed-form-formula}{\n    \\node at (4.5, -0.2) [font=\\Large] {$T_n = 2^n - 1$};\n  }\n  \n  \\gid{recurrence-to-closed-arrow}{\n    \\draw[-{Stealth[length=6mm, width=5mm]}, line width=3pt] (-1.2, -0.2) -- (1.2, -0.2);\n  }\n  \n  \\gid{proof-question-mark}{\n    \\node at (0, 0.9) [scale=1.5, font=\\Huge\\bfseries] {?};\n  }\n\\end{tikzpicture}"
+}

@@ -1,0 +1,16 @@
+# The Same-Colour Exception
+
+Before we trust “pop only what the newcomer outlives,” let’s attack it with the third sample. Its final suffix is especially revealing: a zero-block with lifetime $9$, then a one-block with lifetime $1$, then a new zero-block with lifetime $L=2$.
+
+Our shadowing rule pops the lifetime-$1$ block because $1 \le 2$. Now the stack exposes the old zero-block of lifetime $9$. Since $9>2$, the naive rule stops and reports $9$.
+
+But that cannot be right. The separator dies at time $y=1$, while both zero-blocks are still alive. They therefore meet and fuse. Our formula gives
+
+$$9+2-1=10.$$
+
+So here is the missing correction: **same colour overrides the usual pop threshold**. If the exposed stack top has the same colour as our current block, we must pop and fuse it even when its lifetime is larger than the current lifetime.
+
+After that fusion, the current lifetime has grown from $2$ to $10$, so we cannot stop—we must continue climbing down the stack, because this stronger fused block may now shadow or fuse with still earlier blocks. And we reset the separator value $y$ to $0$: the old intervening blocks have already been accounted for in the fusion, and the result is now one contiguous block. That failed stress test has exposed the complete shape of the update rule.
+
+---
+**Blackboard:** draw the relevant suffix of the third sample as three horizontal blocks from left to right: a tall blue block labeled "0, lifetime 9", a tiny red block labeled "1, lifetime 1", and a short blue block labeled "0, lifetime 2 (new)". below, draw the monotonic stack before insertion with bottom entry "(0, 9)" and top entry "(1, 1)", plus the incoming entry "cur = (0, 2)". cross out and pop "(1, 1)", labeling it "separator y = 1". show that the naive lifetime-only rule stops at "(0, 9)" because "9 > 2", with a red annotation "wrong answer: 9". then draw the two blue blocks merging after the red separator disappears, and write "9 + 2 - 1 = 10" prominently. add three correction notes with arrows: "same colour => fuse even if top.l > cur.l", "reset y = 0 after fusion", and "cur grew to 10 => keep climbing".

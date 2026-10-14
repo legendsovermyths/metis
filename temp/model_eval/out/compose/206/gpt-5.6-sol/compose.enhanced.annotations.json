@@ -1,0 +1,18 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "When Can Same-Coloured Blocks Meet?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "obstacle-lifetime-label",
+      "text": "With several blocks in between, $y$ is the largest of their lifetimes—the time when the final obstacle vanishes."
+    },
+    {
+      "type": "callout",
+      "target_gid": "fusion-condition",
+      "text": "Why strict? At equality, a waiting block dies just as the path clears."
+    }
+  ]
+}

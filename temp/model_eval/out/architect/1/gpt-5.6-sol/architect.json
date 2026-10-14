@@ -1,0 +1,60 @@
+{
+  "title": "Compressing a Tree into Its Upward-Reaching Paths",
+  "steps": [
+    {
+      "name": "What makes these cuts interact?",
+      "label": "Grasp",
+      "brief": "Restate the task as counting subsets of edges whose connected components all have diameter at most k. Emphasize that the difficulty is not checking one chosen subset, but counting exponentially many subsets while diameter is a global property. Frame the goal as finding a small summary of each rooted subtree that supports independent combination."
+    },
+    {
+      "name": "Why not decide every edge independently?",
+      "label": "Observation",
+      "brief": "Try the natural view in which every edge is simply kept or cut, giving 2^(n-1) candidates. Show why local validity is insufficient: joining two individually valid pieces can create an overlong path whose endpoints lie in different pieces. Let this cross-boundary failure motivate recording exactly what a subtree can contribute to such a path."
+    },
+    {
+      "name": "What must a subtree tell its parent?",
+      "label": "Deduction",
+      "brief": "Root the tree arbitrarily and focus on the component containing a subtree root v. Separate that open component, which may later connect upward, from components already detached inside the subtree, whose validity is final. Reduce the search for a state to identifying the minimal information about this open component needed by the parent."
+    },
+    {
+      "name": "Which paths can become newly dangerous?",
+      "label": "Observation",
+      "brief": "Analyze what changes when valid child-side pieces are joined through v. Establish the crux: every newly formed path passes through v and joins two downward arms, so only the longest arm from each side can produce the worst crossing path. Let the condition that the two arm lengths sum to at most k land as the reason a single depth can summarize the open component."
+    },
+    {
+      "name": "How can that boundary information be counted?",
+      "label": "Deduction",
+      "brief": "Define dp[v][d] as the number of cut patterns inside v's rooted subtree for which every resulting component is valid and the component containing v has maximum distance d from v. Initialize a leaf with dp[v][0] = 1. Justify that this state is sufficient because all internal paths have already been certified and future danger depends only on the deepest arm exposed at v."
+    },
+    {
+      "name": "What goes wrong when all children are combined at once?",
+      "label": "Observation",
+      "brief": "Attempt to write a transition over the states of every child simultaneously. Point out that high-degree vertices turn this into a variable-dimensional enumeration, even though after any partial merge only one maximum depth matters. Use that failure to motivate processing children one at a time while preserving the same dp invariant."
+    },
+    {
+      "name": "How do we account for one more child?",
+      "label": "Deduction",
+      "brief": "Merge a current state i at v with a child state j and distinguish the two exclusive edge choices. If the edge is cut, keep depth i and accept every valid child configuration; if it is kept, require i + j + 1 <= k and update the depth to max(i, j + 1). Accumulate both contributions modulo 998244353 into a fresh array so that no transition reuses partially updated values."
+    },
+    {
+      "name": "Can the nested loops fit the limits?",
+      "label": "Observation",
+      "brief": "Apply the crude bound of O(k^2) per child merge and expose the resulting O(nk^2) estimate as too slow for n = 5000. Notice that a subtree cannot realize depths beyond its height, and that height is at most its size. Let these naturally smaller loop ranges suggest analyzing the total merge work globally rather than multiplying worst-case bounds independently."
+    },
+    {
+      "name": "Where can each unit of merge work be charged?",
+      "label": "Deduction",
+      "brief": "Interpret a merge between an already processed part of size A and a new child subtree of size B as at most O(AB) work. Charge each such unit to a pair containing one vertex from each side, and show that a vertex pair is charged only when its two sides first meet at their lowest common ancestor. Conclude that all merges together process only O(n^2) pairs, giving O(n^2) total time despite the nested loops."
+    },
+    {
+      "name": "What is the complete counting method?",
+      "label": "Conclusion",
+      "brief": "Assemble the method as a rooted tree DP that stores the exposed maximum depth and folds children into each vertex sequentially. State that cutting closes the child's component independently, while keeping the edge is allowed precisely when the two deepest exposed arms do not exceed k together. Finish the mathematical method by summing dp[root][d] over all d, since the root has no parent and every remaining state is globally valid."
+    },
+    {
+      "name": "How do we implement and verify it?",
+      "label": "Application",
+      "brief": "Translate the child-by-child merge into a postorder DFS using temporary vectors, subtree-size or height bounds, and modular addition and multiplication. Check the star with k = 3, where all three edges are independently optional and the answer is 8, and the two-vertex case with k = 0, where the only edge must be cut and the answer is 1. Confirm O(n^2) time and O(n^2) worst-case storage, and include the boundary cases k = 0 and k >= the original diameter."
+    }
+  ]
+}

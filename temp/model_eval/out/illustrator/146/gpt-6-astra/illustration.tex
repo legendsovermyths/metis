@@ -1,0 +1,66 @@
+\begin{tikzpicture}[font=\small, draw=black, text=black, line cap=round, line join=round, >=Stealth]
+\gid{domain-box}{
+  \node[draw, line width=0.8pt, minimum width=6cm, minimum height=6.8cm, inner sep=0pt] (domain) {};
+  \node[above=0.22cm of domain, font=\normalsize] {Domain $\mathbb{R}^{n}$};
+}
+\gid{codomain-box}{
+  \node[draw, line width=0.8pt, minimum width=6cm, minimum height=6.8cm, inner sep=0pt, right=2.6cm of domain] (codomain) {};
+  \node[above=0.22cm of codomain, font=\normalsize] {Codomain $\mathbb{R}^{m}$};
+}
+
+\coordinate (d0) at ($(domain.center)+(-1.65,0)$);
+\coordinate (c0) at ($(codomain.center)+(1.65,0)$);
+\coordinate (rowpoint) at ($(domain.center)+(1.9,0)$);
+\coordinate (colpoint) at ($(codomain.center)+(-1.9,0)$);
+\coordinate (nullpoint) at ($(d0)+(0,-1.8)$);
+\coordinate (bridge) at ($(domain.center)!0.5!(codomain.center)$);
+
+\gid{row-space-axis}{
+  \draw[line width=2pt] ($(domain.center)+(-2.55,0)$) -- ($(domain.center)+(2.55,0)$);
+  \node[align=center] at ($(domain.center)+(0.45,-0.72)$) {row space $C(A^{T})$\\[3pt] $\dim=r$};
+  \fill (d0) circle[radius=2.2pt];
+  \node[above left=3pt] at (d0) {$0$};
+}
+\gid{nullspace-axis}{
+  \draw[line width=2pt] ($(d0)+(0,-2.1)$) -- ($(d0)+(0,1.7)$);
+  \node[align=center] at ($(domain.center)+(0,2.45)$) {nullspace $N(A)$\\[3pt] $\dim=n-r$};
+}
+\gid{column-space-axis}{
+  \draw[line width=2pt] ($(codomain.center)+(-2.55,0)$) -- ($(codomain.center)+(2.55,0)$);
+  \node[align=center] at ($(codomain.center)+(-0.45,-0.72)$) {column space $C(A)$\\[3pt] $\dim=r$};
+}
+\gid{left-nullspace-axis}{
+  \draw[line width=2pt] ($(c0)+(0,-2.1)$) -- ($(c0)+(0,1.7)$);
+  \node[align=center] at ($(codomain.center)+(0,2.45)$) {left nullspace $N(A^{T})$\\[3pt] $\dim=m-r$};
+}
+
+\gid{right-angle-marks}{
+  \draw[line width=1pt] ($(d0)+(0.25,0)$) -- ($(d0)+(0.25,0.25)$) -- ($(d0)+(0,0.25)$);
+  \draw[line width=1pt] ($(c0)+(-0.25,0)$) -- ($(c0)+(-0.25,0.25)$) -- ($(c0)+(0,0.25)$);
+}
+
+\gid{arrow-a}{
+  \fill (rowpoint) circle[radius=3pt];
+  \fill (colpoint) circle[radius=3pt];
+  \draw[->, line width=1.5pt, shorten >=4pt, shorten <=3pt]
+    (rowpoint) .. controls ($(rowpoint)+(1.1,1.15)$) and ($(colpoint)+(-1.1,1.15)$) .. (colpoint);
+  \node[font=\large] at ($(bridge)+(0,1.16)$) {$A$};
+  \node[below=5pt] at (rowpoint) {$x_r$};
+  \node[below=5pt] at (colpoint) {$Ax_r$};
+}
+\gid{arrow-null-to-origin}{
+  \fill (nullpoint) circle[radius=3pt];
+  \draw[->, dashed, line width=1.5pt, shorten <=3pt, shorten >=4pt]
+    (nullpoint) .. controls ($(domain.center)+(0,-3)$) and ($(c0)+(-1,-3)$) .. (c0);
+  \node at ($(bridge)+(0,-1.88)$) {$\left.A\right|_{N(A)}=0$};
+  \fill (c0) circle[radius=3pt];
+  \node[below right=3pt] at (c0) {$0$};
+}
+
+\gid{dimension-sum-domain}{
+  \node[below=0.4cm of domain, font=\normalsize] {$r+(n-r)=n$};
+}
+\gid{dimension-sum-codomain}{
+  \node[below=0.4cm of codomain, font=\normalsize] {$r+(m-r)=m$};
+}
+\end{tikzpicture}

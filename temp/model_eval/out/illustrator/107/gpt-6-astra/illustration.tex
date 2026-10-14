@@ -1,0 +1,47 @@
+\begin{tikzpicture}[x=1.45cm,y=1.45cm,draw=black,text=black,font=\small,>=Latex]
+\gid{heading}{
+  \node[font=\large,align=center] at (0,3.65) {Subspace test: closed under $+$ and scalar $\times$};
+}
+\coordinate (O) at (0,0);
+\coordinate (V) at (1,2);
+\coordinate (N) at (-1,-2);
+
+\gid{quadrant-region}{
+  \fill[black,fill opacity=0.10] (O) rectangle (3.5,3);
+}
+\gid{axes}{
+  \draw[->,line width=1pt] (-3.5,0) -- (3.5,0) node[below right] {$x$};
+  \draw[->,line width=1pt] (0,-2.85) -- (0,3) node[above left] {$y$};
+  \foreach \t in {-2,-1,1,2} {
+    \draw[line width=0.7pt] (\t,-0.045) -- (\t,0.045);
+    \node[below=4pt,font=\footnotesize] at (\t,0) {$\t$};
+    \draw[line width=0.7pt] (-0.045,\t) -- (0.045,\t);
+    \node[left=4pt,font=\footnotesize] at (0,\t) {$\t$};
+  }
+}
+\gid{quadrant-label}{
+  \node at (2.1,2.65) {$x\geq 0,\quad y\geq 0$};
+}
+\gid{dashed-extension}{
+  \draw[line width=1pt,dash pattern=on 5pt off 4pt,line cap=round] (V) -- (O);
+  \draw[line width=1pt,dash pattern=on 5pt off 4pt,line cap=round] (O) -- (N);
+}
+\gid{vector-v}{
+  \draw[-{Latex[length=8pt,width=6pt]},line width=2pt] (O) -- (V);
+}
+\gid{label-v}{
+  \node[above right=4pt] at (V) {$v=(1,2)$};
+}
+\gid{vector-neg-v}{
+  \draw[-{Latex[length=8pt,width=6pt]},line width=2pt,dash pattern=on 5pt off 4pt,line cap=round] (O) -- (N);
+}
+\gid{label-neg-v}{
+  \node[below left=5pt,align=right] at (N) {$-v=(-1)v$\\$=(-1,-2)$};
+}
+\gid{origin-point}{
+  \fill[black] (O) circle[radius=4pt];
+}
+\gid{origin-label}{
+  \node[below right=6pt,font=\footnotesize] at (O) {$(0,0)$};
+}
+\end{tikzpicture}

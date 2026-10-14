@@ -1,0 +1,177 @@
+{
+  "dialogue": "Since our entire goal is to track lifetimes, and lifetimes only ever grow through fusion, we have to interrogate fusion directly. When exactly *do* two blocks of the same color finally meet?\n\nLook at the board. We have a blue block on the left with lifetime $x=4$, and a blue block on the right with lifetime $z=5$. Right now, they can't fuse because that red block is in the way. For the two blue blocks to touch, every single block strictly between them has to completely vanish.\n\nWhen does that happen? Exactly at second $y$, where $y$ is the maximum lifetime among all those in-between blocks. In our case, the obstacle clears at $y=2$.\n\nBut here is the catch: do they *always* get to meet? What if that red block had a lifetime of 10? By the time second 10 rolls around, both blue blocks would have been dead for seconds. They would die waiting.\n\nFor a meeting to actually happen, the time it takes to clear the middle ($y$) must be strictly less than the lifespans of the two blocks waiting to fuse. If $y$ is larger than or equal to either $x$ or $z$, one of the candidates dies before the path clears, and they never get a partner.\n\nSo the ironclad condition for a fusion is that the 'obstacle' lifetime $y$ is below both $x$ and $z$. But if they do survive to meet at second $y$, what happens next?",
+  "parts": [
+    {
+      "id": "blue-left-initial",
+      "desc": "Initial left blue block labeled with lifetime x=4"
+    },
+    {
+      "id": "red-obstacle-initial",
+      "desc": "Initial red block between the blue blocks, labeled with lifetime y=2"
+    },
+    {
+      "id": "blue-right-initial",
+      "desc": "Initial right blue block labeled with lifetime z=5"
+    },
+    {
+      "id": "transition-arrow",
+      "desc": "Downward arrow from the initial arrangement to the second-y state"
+    },
+    {
+      "id": "second-y-label",
+      "desc": "Label marking the new state as second y=2"
+    },
+    {
+      "id": "vanishing-red-obstacle",
+      "desc": "Dashed outline of the red block vanishing in the new state"
+    },
+    {
+      "id": "obstacle-clears-label",
+      "desc": "Label reading obstacle clears beside the dashed red outline"
+    },
+    {
+      "id": "blue-left-meeting",
+      "desc": "Left blue block slid rightward in the new state"
+    },
+    {
+      "id": "blue-right-meeting",
+      "desc": "Right blue block slid leftward to touch the other blue block"
+    },
+    {
+      "id": "fusion-condition",
+      "desc": "Meeting annotation showing y < min(x, z)"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Since our entire goal is to track lifetimes, and lifetimes only ever grow through fusion, we have to interrogate fusion directly. When exactly *do* two blocks of the same color finally meet?\n\n",
+      "actions": [],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Look at the board. We have a blue block on the left with lifetime $x=4$, and a blue block on the right with lifetime $z=5$. ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "blue-left-initial",
+            "blue-right-initial"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "blue-left-initial",
+            "blue-right-initial"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Right now, they can't fuse because that red block is in the way. For the two blue blocks to touch, every single block strictly between them has to completely vanish.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "red-obstacle-initial"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "red-obstacle-initial"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "When does that happen? Exactly at second $y$, where $y$ is the maximum lifetime among all those in-between blocks. In our case, the obstacle clears at $y=2$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "transition-arrow",
+            "second-y-label",
+            "vanishing-red-obstacle",
+            "obstacle-clears-label",
+            "blue-left-meeting",
+            "blue-right-meeting"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "second-y-label",
+            "vanishing-red-obstacle",
+            "obstacle-clears-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "But here is the catch: do they *always* get to meet? What if that red block had a lifetime of 10? By the time second 10 rolls around, both blue blocks would have been dead for seconds. They would die waiting.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "blue-left-initial",
+            "red-obstacle-initial",
+            "blue-right-initial"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "For a meeting to actually happen, the time it takes to clear the middle ($y$) must be strictly less than the lifespans of the two blocks waiting to fuse. If $y$ is larger than or equal to either $x$ or $z$, one of the candidates dies before the path clears, and they never get a partner.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "vanishing-red-obstacle",
+            "blue-left-meeting",
+            "blue-right-meeting"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "So the ironclad condition for a fusion is that the 'obstacle' lifetime $y$ is below both $x$ and $z$. But if they do survive to meet at second $y$, what happens next?",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "fusion-condition"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "blue-left-meeting",
+            "blue-right-meeting",
+            "fusion-condition"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "fusion-condition"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

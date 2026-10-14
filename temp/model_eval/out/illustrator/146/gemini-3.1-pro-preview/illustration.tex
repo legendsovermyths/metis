@@ -1,0 +1,61 @@
+\begin{tikzpicture}[x=1cm, y=1cm]
+
+\coordinate (OD) at (-3.5, 0);
+\coordinate (OC) at (3.5, 0);
+
+\gid{domain-box}{
+  \draw[thick, rounded corners=15pt] (-6.8, -3.2) rectangle (-0.2, 3.2);
+  \node[anchor=north] at (-3.5, 3.0) {\Large Domain $\mathbf{R}^n$};
+}
+
+\gid{codomain-box}{
+  \draw[thick, rounded corners=15pt] (0.2, -3.2) rectangle (6.8, 3.2);
+  \node[anchor=north] at (3.5, 3.0) {\Large Codomain $\mathbf{R}^m$};
+}
+
+\gid{row-space-axis}{
+  \draw[thick, line cap=round] ($(OD)+(195:2.5)$) -- ($(OD)+(15:2.5)$);
+  \node[align=center] at (-1.8, -0.7) {row space $C(A^T)$\\dim = $r$};
+}
+
+\gid{nullspace-axis}{
+  \draw[thick, line cap=round] ($(OD)+(285:2.5)$) -- ($(OD)+(105:2.5)$);
+  \node[align=center] at (-5.1, 1.8) {nullspace $N(A)$\\dim = $n - r$};
+}
+
+\gid{dimension-sum-domain}{
+  \node at (-3.5, -3.8) {\large $r + (n - r) = n$};
+}
+
+\gid{column-space-axis}{
+  \draw[thick, line cap=round] ($(OC)+(195:2.5)$) -- ($(OC)+(15:2.5)$);
+  \node[align=center] at (5.2, -0.7) {column space $C(A)$\\dim = $r$};
+}
+
+\gid{left-nullspace-axis}{
+  \draw[thick, line cap=round] ($(OC)+(285:2.5)$) -- ($(OC)+(105:2.5)$);
+  \node[align=center] at (1.9, 1.8) {left nullspace $N(A^T)$\\dim = $m - r$};
+}
+
+\gid{dimension-sum-codomain}{
+  \node at (3.5, -3.8) {\large $r + (m - r) = m$};
+}
+
+\gid{arrow-a}{
+  \fill ($(OD)+(15:1.9)$) circle (2.5pt) coordinate (xr);
+  \fill ($(OC)+(15:1.9)$) circle (2.5pt) coordinate (yr);
+  \draw[thick, ->, >=stealth] (xr) to[bend left=25] node[above] {$A$} (yr);
+}
+
+\gid{arrow-null-to-origin}{
+  \fill ($(OD)+(105:1.9)$) circle (2.5pt) coordinate (xn);
+  \fill (OC) circle (2.5pt) node[below right, yshift=-1pt] {$\mathbf{0}$};
+  \draw[thick, ->, >=stealth] (xn) to[bend left=30] (OC);
+}
+
+\gid{right-angle-marks}{
+  \draw[thick, join=round] ($(OD)+(15:0.3)$) -- ($(OD)+(15:0.3)+(105:0.3)$) -- ($(OD)+(105:0.3)$);
+  \draw[thick, join=round] ($(OC)+(15:0.3)$) -- ($(OC)+(15:0.3)+(105:0.3)$) -- ($(OC)+(105:0.3)$);
+}
+
+\end{tikzpicture}

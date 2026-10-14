@@ -1,0 +1,30 @@
+[
+  {
+    "call": "compose.curation",
+    "chars": 5793,
+    "ok": true,
+    "seconds": 15.369279708
+  },
+  {
+    "call": "compose.illustration.attempt0",
+    "chars": 875,
+    "ok": true,
+    "seconds": 54.552949375
+  },
+  {
+    "call": "compose.illustration",
+    "library": "tikz",
+    "rendered_on_attempt": 0
+  },
+  {
+    "call": "compose.enhanced.attempt0",
+    "chars": 524,
+    "ok": true,
+    "seconds": 6.728166542
+  },
+  {
+    "call": "compose.enhanced",
+    "n_snippets": 6,
+    "result": "rendered"
+  }
+]

@@ -1,0 +1,190 @@
+{
+  "dialogue": "Look at what happened on the board. The $z=0$ plane is a perfectly self-contained little universe. You can add and scale all day long, and you never leave. \n\nIf we think in Rust terms, it's type-safe. The operations take inputs from the $z=0$ set and guarantee an output in the same $z=0$ set. The $z=1$ plane, on the other hand, immediately breaks the type signature.\n\nThis self-contained universe is exactly what mathematicians call a **subspace**. It's a subset of a vector space that is a valid vector space in its own right. To check if a subset is a subspace, we just need to verify two things are \"closed\":\n1. If you add two vectors in the set, the sum stays in the set.\n2. If you multiply a vector in the set by *any* scalar, the result stays in the set.\n\nBut there's a brilliantly simple shortcut hidden in rule number two. Think about it. If the set must be closed under *any* scalar... what happens if we choose the scalar 0?\n\nAny vector multiplied by 0 gives the zero vector. That means **every subspace must contain the origin.** It's a hard, non-negotiable requirement. That hovering plane at $z=1$ never stood a chance! It doesn't contain $(0,0,0)$, so it fundamentally cannot be a subspace.\n\nNow, let me throw a slightly trickier one at you. Let's drop down to 2D space, $\\mathbf{R}^2$. What if we take just the first quadrant—all vectors where $x \\ge 0$ and $y \\ge 0$? It contains the origin. If you add two vectors in the first quadrant, the sum is still in the first quadrant. But is it a subspace?",
+  "parts": [
+    {
+      "id": "closure-checklist",
+      "desc": "Two-condition checklist for closure under vector addition and scalar multiplication"
+    },
+    {
+      "id": "zero-scalar-formula",
+      "desc": "Formula showing that multiplying any vector by zero gives the zero vector"
+    },
+    {
+      "id": "origin-requirement",
+      "desc": "Highlighted statement that every subspace must contain the origin"
+    },
+    {
+      "id": "axes",
+      "desc": "Standard two-dimensional x-y coordinate axes"
+    },
+    {
+      "id": "first-quadrant-region",
+      "desc": "Light green shading of the entire first quadrant"
+    },
+    {
+      "id": "origin",
+      "desc": "Marked origin at (0,0)"
+    },
+    {
+      "id": "vector-v",
+      "desc": "Vector v from the origin to (1,2) in the first quadrant"
+    },
+    {
+      "id": "label-v",
+      "desc": "Label v=(1,2) beside the first-quadrant vector"
+    },
+    {
+      "id": "negative-vector",
+      "desc": "Dashed collinear extension through the origin ending as a red arrow at -v=(-1,-2)"
+    },
+    {
+      "id": "label-negative-v",
+      "desc": "Red label -v=(-1,-2) beside the endpoint in the third quadrant"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Look at what happened on the board. The $z=0$ plane is a perfectly self-contained little universe. You can add and scale all day long, and you never leave. \n\nIf we think in Rust terms, it's type-safe. The operations take inputs from the $z=0$ set and guarantee an output in the same $z=0$ set. The $z=1$ plane, on the other hand, immediately breaks the type signature.\n\n",
+      "actions": []
+    },
+    {
+      "text": "This self-contained universe is exactly what mathematicians call a **subspace**. It's a subset of a vector space that is a valid vector space in its own right. To check if a subset is a subspace, we just need to verify two things are \"closed\":\n1. If you add two vectors in the set, the sum stays in the set.\n2. If you multiply a vector in the set by *any* scalar, the result stays in the set.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "closure-checklist"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "closure-checklist"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "But there's a brilliantly simple shortcut hidden in rule number two. Think about it. If the set must be closed under *any* scalar... what happens if we choose the scalar 0?\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "zero-scalar-formula"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "zero-scalar-formula"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Any vector multiplied by 0 gives the zero vector. That means **every subspace must contain the origin.** It's a hard, non-negotiable requirement. That hovering plane at $z=1$ never stood a chance! It doesn't contain $(0,0,0)$, so it fundamentally cannot be a subspace.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "origin-requirement"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "origin-requirement"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "origin-requirement"
+          ],
+          "duration_ms": 500
+        }
+      ]
+    },
+    {
+      "text": "Now, let me throw a slightly trickier one at you. Let's drop down to 2D space, $\\mathbf{R}^2$. ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "axes"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "axes"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "What if we take just the first quadrant—all vectors where $x \\ge 0$ and $y \\ge 0$? ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "first-quadrant-region"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "first-quadrant-region"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "It contains the origin. If you add two vectors in the first quadrant, the sum is still in the first quadrant. ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "origin",
+            "vector-v",
+            "label-v"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "origin",
+            "first-quadrant-region",
+            "vector-v"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "But is it a subspace?",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "negative-vector",
+            "label-negative-v"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "negative-vector",
+            "label-negative-v"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "negative-vector"
+          ],
+          "duration_ms": 500
+        }
+      ]
+    }
+  ]
+}

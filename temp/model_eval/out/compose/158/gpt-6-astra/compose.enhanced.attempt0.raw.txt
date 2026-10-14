@@ -1,0 +1,17 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "The Nullspace of the Incidence Matrix"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "rank-formula",
+      "text": "Notice that the network is connected: zero differences force all four pressures to agree, leaving just one free constant."
+    },
+    {
+      "type": "footer",
+      "text": "Pressure differences leave a common offset undetermined—just like the $+C$ when we integrate."
+    }
+  ]
+}

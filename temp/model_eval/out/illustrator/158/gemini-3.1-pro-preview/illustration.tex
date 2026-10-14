@@ -1,0 +1,71 @@
+\begin{tikzpicture}
+
+  % 1. Graph Tanks
+  \gid{graph-tanks}{
+    \node[circle, draw, thick, minimum size=8mm, inner sep=0pt] (T1) at (-4, 2) {1};
+    \node[circle, draw, thick, minimum size=8mm, inner sep=0pt] (T2) at (-4, -1) {2};
+    \node[circle, draw, thick, minimum size=8mm, inner sep=0pt] (T3) at (-1, 2) {3};
+    \node[circle, draw, thick, minimum size=8mm, inner sep=0pt] (T4) at (-1, -1) {4};
+  }
+
+  % 2. Graph Pipes
+  \gid{graph-pipes}{
+    \draw[-stealth, thick] (T1) -- node[left] {1} (T2);
+    \draw[-stealth, thick] (T1) -- node[above] {2} (T3);
+    \draw[-stealth, thick] (T2) -- node[above left, pos=0.3] {3} (T3);
+    \draw[-stealth, thick] (T2) -- node[below] {4} (T4);
+    \draw[-stealth, thick] (T3) -- node[right] {5} (T4);
+  }
+
+  % 3. Matrix A Label
+  \gid{matrix-label}{
+    \node[scale=1.2] at (0.4, 1.0) {$A = $};
+  }
+
+  % 4. Matrix A Entries
+  \gid{matrix-a}{
+    \begin{scope}[every node/.style={minimum width=1.5em, text height=1.5ex, text depth=0.25ex}]
+      \node at (2.0, 2.2) {$-1$}; \node at (2.6, 2.2) {$1$}; \node at (3.2, 2.2) {$0$}; \node at (3.8, 2.2) {$0$};
+      \node at (2.0, 1.6) {$-1$}; \node at (2.6, 1.6) {$0$}; \node at (3.2, 1.6) {$1$}; \node at (3.8, 1.6) {$0$};
+      \node at (2.0, 1.0) {$0$};  \node at (2.6, 1.0) {$-1$};\node at (3.2, 1.0) {$1$}; \node at (3.8, 1.0) {$0$};
+      \node at (2.0, 0.4) {$0$};  \node at (2.6, 0.4) {$-1$};\node at (3.2, 0.4) {$0$}; \node at (3.8, 0.4) {$1$};
+      \node at (2.0, -0.2){$0$};  \node at (2.6, -0.2){$0$}; \node at (3.2, -0.2){$-1$};\node at (3.8, -0.2){$1$};
+    \end{scope}
+    \draw[thick] (1.6, 2.5) -- (1.4, 2.5) -- (1.4, -0.5) -- (1.6, -0.5);
+    \draw[thick] (4.2, 2.5) -- (4.4, 2.5) -- (4.4, -0.5) -- (4.2, -0.5);
+  }
+
+  % 5. Row 1 Box
+  \gid{row-1-box}{
+    \draw[dashed, rounded corners, thick] (1.7, 1.9) rectangle (4.1, 2.5);
+  }
+
+  % 6. Row 2 Box
+  \gid{row-2-box}{
+    \draw[dashed, rounded corners, thick] (1.7, 1.3) rectangle (4.1, 1.9);
+  }
+
+  % 7. Column Sum Annotation
+  \gid{column-sum-annotation}{
+    \node at (2.9, -1.2) {Sum of columns: $\text{col}_1 + \text{col}_2 + \text{col}_3 + \text{col}_4 = \mathbf{0}$};
+  }
+
+  % 8. Nullspace Equation
+  \gid{nullspace-equation}{
+    \node (eqA) at (1.2, -3.5) {$A$};
+    \node (eqX) at (2.0, -3.5) {$\begin{bmatrix} c \\ c \\ c \\ c \end{bmatrix}$};
+    \node (eqR) at (3.4, -3.5) {$= \begin{bmatrix} 0 \\ 0 \\ 0 \\ 0 \\ 0 \end{bmatrix}$};
+  }
+
+  % 9. Nullspace Label
+  \gid{nullspace-label}{
+    \node[below=0.1cm of eqX, font=\small] (nsLabel) {nullspace};
+    \draw[-stealth, thick] (nsLabel) -- (eqX);
+  }
+
+  % 10. Rank Annotation
+  \gid{rank-annotation}{
+    \node[font=\large] at (2.9, -6.5) {$\text{rank} = 4 - 1 = 3$};
+  }
+
+\end{tikzpicture}

@@ -1,0 +1,175 @@
+{
+  "dialogue": "Look back at the board, Anirudh. We have our definition: $F(x) = P(X \\le x)$. Let's pull this apart and rigorously derive the universal rules that govern every CDF.\n\nFirst, let's pick two values, $a$ and $b$, where $a < b$. The event $\\{X \\le a\\}$ is completely contained within the event $\\{X \\le b\\}$. Think about it: if a query finishes in 50ms, it inherently finished in 80ms. Because the first event is a subset of the second, its probability cannot be larger. \n\nSo, $P(X \\le a) \\le P(X \\le b)$, which means $F(a) \\le F(b)$. The CDF is always **nondecreasing**. It can stay flat, but it can never, ever go down.\n\nNow, let's push the boundaries. What happens as $x$ approaches infinity? Let's take a sequence of boundaries $b_n$ that increase toward infinity. The events $\\{X \\le b_n\\}$ get larger and larger, and their union covers the entire sample space, $\\{X < \\infty\\}$. \n\nBy the continuity of probabilities, we can evaluate the limit of the sequence: \n$\\lim_{n \\to \\infty} P(X \\le b_n) = P(X < \\infty) = 1$.\nSo, $\\lim_{x \\to \\infty} F(x) = 1$.\n\nConversely, if we take a sequence $b_n$ decreasing to negative infinity, the intersection of those events is the empty set—it's impossible for a real-valued variable to be less than negative infinity. \nSo, $\\lim_{n \\to \\infty} P(X \\le b_n) = P(\\emptyset) = 0$. Meaning $\\lim_{x \\to -\\infty} F(x) = 0$.\n\nEvery valid CDF is anchored at 0 on the left, reaches 1 on the right, and only ever climbs. But there's one more subtle property hidden in those exact moments where the function jumps. Do you see it?",
+  "parts": [
+    {
+      "id": "axes",
+      "desc": "Coordinate axes extended far left and right, with x and F(x) labels"
+    },
+    {
+      "id": "cdf-curve",
+      "desc": "The step-function CDF rising from 0 to 1"
+    },
+    {
+      "id": "marker-a",
+      "desc": "Point at $(a, F(a))$ with dashed guides and label $a$"
+    },
+    {
+      "id": "marker-b",
+      "desc": "Point at $(b, F(b))$ with dashed guides and label $b$"
+    },
+    {
+      "id": "label-monotone",
+      "desc": "Annotation arrow labeled 'nondecreasing: $F(a) \\le F(b)$'"
+    },
+    {
+      "id": "asymptote-right",
+      "desc": "Horizontal dashed line at $y = 1$ on the far right"
+    },
+    {
+      "id": "label-limit-right",
+      "desc": "Label '$\\lim_{x \\to \\infty} f(x) = 1$'"
+    },
+    {
+      "id": "asymptote-left",
+      "desc": "Horizontal dashed line at $y = 0$ on the far left"
+    },
+    {
+      "id": "label-limit-left",
+      "desc": "Label '$\\lim_{x \\to -\\infty} f(x) = 0$'"
+    },
+    {
+      "id": "jump-marker",
+      "desc": "Highlight circle on one jump discontinuity of the step curve"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Look back at the board, Anirudh. We have our definition: $F(x) = P(X \\le x)$. Let's pull this apart and rigorously derive the universal rules that govern every CDF.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "axes",
+            "cdf-curve"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "First, let's pick two values, $a$ and $b$, where $a < b$. The event $\\{X \\le a\\}$ is completely contained within the event $\\{X \\le b\\}$. Think about it: if a query finishes in 50ms, it inherently finished in 80ms. Because the first event is a subset of the second, its probability cannot be larger. \n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "marker-a",
+            "marker-b"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "marker-a",
+            "marker-b"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "So, $P(X \\le a) \\le P(X \\le b)$, which means $F(a) \\le F(b)$. The CDF is always **nondecreasing**. It can stay flat, but it can never, ever go down.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "label-monotone"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "label-monotone",
+            "cdf-curve"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "label-monotone"
+          ],
+          "duration_ms": 400
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Now, let's push the boundaries. What happens as $x$ approaches infinity? Let's take a sequence of boundaries $b_n$ that increase toward infinity. The events $\\{X \\le b_n\\}$ get larger and larger, and their union covers the entire sample space, $\\{X < \\infty\\}$. \n\nBy the continuity of probabilities, we can evaluate the limit of the sequence: \n$\\lim_{n \\to \\infty} P(X \\le b_n) = P(X < \\infty) = 1$.\nSo, $\\lim_{x \\to \\infty} F(x) = 1$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "asymptote-right",
+            "label-limit-right"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "asymptote-right",
+            "label-limit-right"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Conversely, if we take a sequence $b_n$ decreasing to negative infinity, the intersection of those events is the empty set—it's impossible for a real-valued variable to be less than negative infinity. \nSo, $\\lim_{n \\to \\infty} P(X \\le b_n) = P(\\emptyset) = 0$. Meaning $\\lim_{x \\to -\\infty} F(x) = 0$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "asymptote-left",
+            "label-limit-left"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "asymptote-left",
+            "label-limit-left"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Every valid CDF is anchored at 0 on the left, reaches 1 on the right, and only ever climbs. But there's one more subtle property hidden in those exact moments where the function jumps. Do you see it?",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": []
+        },
+        {
+          "type": "reveal",
+          "targets": [
+            "jump-marker"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "jump-marker"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

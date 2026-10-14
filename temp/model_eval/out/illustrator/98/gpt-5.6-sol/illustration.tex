@@ -1,0 +1,73 @@
+\begin{tikzpicture}[x=1.45cm,y=1.25cm,>=Stealth,every node/.style={text=black}]
+
+\gid{island-number-line}{
+  \draw[black,line width=1pt] (0.65,0) -- (7.35,0);
+  \foreach \x in {1,...,7}{
+    \draw[black,fill=white,line width=1.2pt] (\x,0) circle (0.22);
+    \node[font=\small] at (\x,-0.48) {$\x$};
+  }
+}
+
+\gid{elsie-on-island-3}{
+  \draw[black,line width=1.2pt] (3,0.30) -- (3,0.92);
+  \draw[black,line width=1.2pt] (3,0.72) -- (2.76,0.53);
+  \draw[black,line width=1.2pt] (3,0.72) -- (3.24,0.53);
+  \draw[black,line width=1.2pt] (3,0.30) -- (2.80,0.08);
+  \draw[black,line width=1.2pt] (3,0.30) -- (3.20,0.08);
+  \draw[black,fill=white,line width=1.2pt] (3,1.10) circle (0.18);
+  \node[font=\small,anchor=east] at (2.72,0.98) {Elsie};
+}
+
+\gid{bessie-on-island-4}{
+  \draw[black,line width=1.4pt] (4,0.30) -- (4,1.02);
+  \draw[black,line width=1.4pt] (4,0.78) -- (3.74,0.58);
+  \draw[black,line width=1.4pt] (4,0.78) -- (4.26,0.58);
+  \draw[black,line width=1.4pt] (4,0.30) -- (3.78,0.08);
+  \draw[black,line width=1.4pt] (4,0.30) -- (4.22,0.08);
+  \draw[black,fill=white,line width=1.4pt] (4,1.22) circle (0.19);
+  \node[font=\small,anchor=west] at (4.28,1.10) {Bessie};
+}
+
+\gid{failed-main-bridge}{
+  \draw[black,dashed,line width=1.5pt,-{Stealth[length=3mm]}]
+    (3.25,0.28) .. controls (3.42,0.72) and (3.58,0.72) .. (3.76,0.28);
+  \node[font=\footnotesize] at (3.50,0.92) {$+1$ main bridge};
+}
+
+\gid{failure-cross}{
+  \draw[black,line width=2.3pt] (3.32,0.36) -- (3.68,0.72);
+  \draw[black,line width=2.3pt] (3.32,0.72) -- (3.68,0.36);
+}
+
+\gid{skull-warning}{
+  \draw[black,fill=white,line width=1.2pt]
+    (3.50,1.70) circle (0.25);
+  \draw[black,fill=white,line width=1.2pt]
+    (3.35,1.53) -- (3.35,1.35) -- (3.65,1.35) -- (3.65,1.53);
+  \fill[black] (3.41,1.74) circle (0.045);
+  \fill[black] (3.59,1.74) circle (0.045);
+  \draw[black,line width=0.9pt] (3.50,1.62) -- (3.46,1.54) -- (3.54,1.54) -- cycle;
+  \draw[black,line width=0.8pt] (3.43,1.35) -- (3.43,1.48);
+  \draw[black,line width=0.8pt] (3.50,1.35) -- (3.50,1.48);
+  \draw[black,line width=0.8pt] (3.57,1.35) -- (3.57,1.48);
+}
+
+\gid{winning-alternative-bridge}{
+  \draw[black,line width=2.2pt,-{Stealth[length=3.4mm]}]
+    (2.05,0.22) .. controls (2.55,4.35) and (5.45,4.35) .. (5.95,0.22);
+  \node[font=\small,fill=white,inner sep=2pt] at (4,3.72)
+    {one alternative bridge};
+}
+
+\gid{success-checkmark}{
+  \draw[black,line width=3pt,line cap=round,line join=round]
+    (5.05,2.73) -- (5.25,2.48) -- (5.72,3.10);
+}
+
+\gid{strictly-ahead-label}{
+  \draw[black,dotted,line width=1pt] (6,0.34) -- (6,1.02);
+  \node[font=\small,align=center,anchor=west] at (6.12,1.08)
+    {Elsie lands\\strictly ahead};
+}
+
+\end{tikzpicture}

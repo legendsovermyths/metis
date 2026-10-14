@@ -1,0 +1,50 @@
+{
+  "steps": [
+    {
+      "brief": "Restate the problem: choose any subset of edges to remove so every resulting component has diameter ≤ k; count valid subsets mod 998244353. Identify the core difficulty — decisions are coupled: whether one edge needs cutting depends on which other edges you've already cut, since diameter is a property of whole paths spanning many edges. Note the tree structure and n ≤ 5000, which smells like an O(n²) tree DP.",
+      "label": "Grasp",
+      "name": "What makes counting these cuts hard?"
+    },
+    {
+      "brief": "Root the tree arbitrarily. Observe that every simple path has a unique highest vertex — the point where it turns from going up to going down. Therefore, the diameter of any component is the longest path that peaks at some vertex v, which is the sum of the two longest descending arms into distinct subtrees of v (plus one edge each). Controlling all diameters means ensuring this sum never exceeds k at any vertex.",
+      "label": "Observation",
+      "name": "Where does a long path 'live' in a rooted tree?"
+    },
+    {
+      "brief": "Since the constraint at v involves the lengths of descending paths from v into its children's subtrees, a parent needs to know how far a path can extend downward through each child. And since we're counting configurations, we can't just track the maximum — we need a distribution. Define dp[v][len] = number of valid edge-cut configurations of v's subtree where the longest path starting at v going downward has length exactly len.",
+      "label": "Deduction",
+      "name": "What must each subtree report upward?"
+    },
+    {
+      "brief": "Merging all children at once seems unwieldy. Instead observe: process children of v one by one. After processing some children, dp[v][i] records the count for each possible current longest descending path i. When we introduce a new child c, we independently decide: cut the edge to c (child becomes separate, dp[v] unchanged in shape) or keep it (the path through c extends by 1, becomes j+1, and must satisfy the diameter bound with the current longest i). This gives a clean pairwise merge.",
+      "label": "Observation",
+      "name": "How do multiple children combine?"
+    },
+    {
+      "brief": "Write it out: for keeping the edge v→c, iterate over current longest i and child's longest j. The combined path through v would be i + (j+1); allow it only if i + j + 1 ≤ k, and the new longest from v becomes max(i, j+1). Accumulate dp_new[v][max(i, j+1)] += dp_old[v][i] · dp[c][j]. For cutting: dp_new[v][i] += dp_old[v][i] · (total ways in c's subtree). Initialize dp[v][0] = 1 before processing any children.",
+      "label": "Deduction",
+      "name": "What does the merge formula look like?"
+    },
+    {
+      "brief": "Estimate naively: each merge iterates over all pairs (i, j) up to k. Since there are n−1 edges, total work is O(nk²). With k up to n−1 this is O(n³) — far too slow for n = 5000 within 2 seconds. The formula is correct but the brute iteration range is wasteful. Ask: can the longest path from v really be anywhere near k in a small subtree? This failure points directly at tightening the iteration bounds.",
+      "label": "Observation",
+      "name": "Is this fast enough?"
+    },
+    {
+      "brief": "This is the crux. The longest descending path from v cannot exceed the height of v's subtree — there simply aren't enough vertices. So when merging child c, iterate i only up to the height of the already-processed portion and j only up to the height of c's subtree. Reinterpret the cost: each unit of work corresponds to picking one vertex from the processed side and one from the new child's subtree. Any two vertices in the tree meet this way exactly once — at their LCA. The total work over all merges is bounded by the number of vertex pairs, which is O(n²).",
+      "label": "Deduction",
+      "name": "What actually limits how far we iterate?"
+    },
+    {
+      "brief": "Root at vertex 1. DFS bottom-up. At each vertex v, initialize dp[v][0] = 1. For each child c (already solved), merge: for each (i, j) with i ≤ current height and j ≤ height(c), if i + j + 1 ≤ k accumulate the 'keep' transition into dp_new[max(i, j+1)]; always accumulate the 'cut' transition. After all children, dp[v] is complete. The answer is the sum over all len of dp[root][len]. Total time O(n²), space O(n²) for the dp tables (or O(n · max_height) with care).",
+      "label": "Conclusion",
+      "name": "The full algorithm"
+    },
+    {
+      "brief": "Implement the DFS with the merge. On example 1 (star with k=3): all paths through root have length ≤ 3 regardless of cuts, so all 2³ = 8 subsets valid — confirmed. On example 2 (single edge, k=0): keeping the edge gives diameter 1 > 0, must cut — answer 1. Walk through example 3 briefly to show the merge in action. Confirm O(n²) fits n = 5000 comfortably. Note the modular arithmetic throughout.",
+      "label": "Application",
+      "name": "Running it and confirming"
+    }
+  ],
+  "title": "Counting Cuts by Tracking How Far Paths Reach"
+}

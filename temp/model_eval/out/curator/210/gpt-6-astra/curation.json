@@ -1,0 +1,208 @@
+{
+  "dialogue": "Let's stress-test this beautiful rule on the third sample. Suppose we've processed a few pairs and our stack currently has a block of 9 zeros, then 1 one. So, `(color: 0, lifetime: 9)` on the bottom, `(color: 1, lifetime: 1)` on top. Now, a new block of 2 zeros arrives. $L = 2$.\n\nIf we strictly follow our rule—'only pop what is smaller or equal to $L$'—what happens? The new 2-block pops the `(1, 1)`, setting our obstacle $y = 1$. The next block down is `(0, 9)`. Since $9 > 2$, our rule tells us to stop. We'd push the 2-block, check the bottom of the stack, and report a maximum lifetime of 9.\n\nCheck the problem statement. The true answer is 10. We missed a fusion. Why?\n\nLook at the colors. The 9-block and the 2-block are both zeros. The obstacle between them died at $y=1$. The path is clear! It doesn't matter that 9 outlives 2; they still touch. Let's run the formula we just built: $x=9, z=2, y=1$. They fuse into $9 + 2 - 1 = 10$.\n\nThis is the final piece of the puzzle. If the top of the stack shares our new block's color, we *must* fuse with it, even if it outlives us. And notice the domino effect: our new block's lifetime just spiked from 2 to 10. Because it grew, it might now overshadow even deeper blocks, so we must keep checking the new top of the stack. Finally, since these blocks just fused into one solid run of zeros, there are no obstacles between them anymore—so our obstacle counter $y$ resets to 0.",
+  "parts": [
+    {
+      "id": "bottom-blue-block",
+      "desc": "Large blue block of height 9 at the bottom of the initial stack."
+    },
+    {
+      "id": "bottom-blue-label",
+      "desc": "Label '(color: 0, lifetime: 9)' beside the bottom blue block."
+    },
+    {
+      "id": "top-red-block",
+      "desc": "Thin red block of height 1 immediately above the bottom blue block."
+    },
+    {
+      "id": "top-red-label",
+      "desc": "Label '(color: 1, lifetime: 1)' beside the red block."
+    },
+    {
+      "id": "incoming-blue-block",
+      "desc": "New blue block of height 2 approaching the top of the initial stack."
+    },
+    {
+      "id": "incoming-blue-label",
+      "desc": "Label '(color: 0, lifetime: 2)' beside the arriving blue block."
+    },
+    {
+      "id": "removed-obstacle-mark",
+      "desc": "Cross-out strokes over the thin red block, leaving its identity legible."
+    },
+    {
+      "id": "obstacle-label",
+      "desc": "Label 'y = 1' beside the crossed-out red obstacle."
+    },
+    {
+      "id": "fusion-formula",
+      "desc": "Formula bubble '9 + 2 - 1 = 10' beside the fusion result."
+    },
+    {
+      "id": "merged-blue-block",
+      "desc": "Single solid blue block of height 10 in a separate result position to the right; use the initial stack's height scale."
+    },
+    {
+      "id": "reset-label",
+      "desc": "Text 'y resets to 0' next to the merged blue block."
+    }
+  ],
+  "segments": [
+    {
+      "text": "Let's stress-test this beautiful rule on the third sample. Suppose we've processed a few pairs and our stack currently has a block of 9 zeros, then 1 one. So, `(color: 0, lifetime: 9)` on the bottom, `(color: 1, lifetime: 1)` on top. ",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "bottom-blue-block",
+            "bottom-blue-label",
+            "top-red-block",
+            "top-red-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Now, a new block of 2 zeros arrives. $L = 2$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "incoming-blue-block",
+            "incoming-blue-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "incoming-blue-block",
+            "incoming-blue-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "If we strictly follow our rule—'only pop what is smaller or equal to $L$'—what happens? The new 2-block pops the `(1, 1)`, setting our obstacle $y = 1$. The next block down is `(0, 9)`. Since $9 > 2$, our rule tells us to stop. We'd push the 2-block, check the bottom of the stack, and report a maximum lifetime of 9.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "removed-obstacle-mark",
+            "obstacle-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "removed-obstacle-mark",
+            "obstacle-label",
+            "bottom-blue-label",
+            "incoming-blue-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Check the problem statement. The true answer is 10. We missed a fusion. Why?\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": []
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Look at the colors. The 9-block and the 2-block are both zeros. The obstacle between them died at $y=1$. The path is clear! It doesn't matter that 9 outlives 2; they still touch. ",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "bottom-blue-block",
+            "incoming-blue-block",
+            "removed-obstacle-mark",
+            "obstacle-label"
+          ]
+        },
+        {
+          "type": "connect",
+          "from": "incoming-blue-block",
+          "to": "bottom-blue-block",
+          "duration_ms": 800
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Let's run the formula we just built: $x=9, z=2, y=1$. They fuse into $9 + 2 - 1 = 10$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "fusion-formula",
+            "merged-blue-block"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "fusion-formula",
+            "merged-blue-block"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "fusion-formula"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "This is the final piece of the puzzle. If the top of the stack shares our new block's color, we *must* fuse with it, even if it outlives us. And notice the domino effect: our new block's lifetime just spiked from 2 to 10. Because it grew, it might now overshadow even deeper blocks, so we must keep checking the new top of the stack. ",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "incoming-blue-block",
+            "incoming-blue-label",
+            "merged-blue-block",
+            "fusion-formula"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Finally, since these blocks just fused into one solid run of zeros, there are no obstacles between them anymore—so our obstacle counter $y$ resets to 0.",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "reset-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "merged-blue-block",
+            "reset-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

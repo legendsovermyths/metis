@@ -1,0 +1,53 @@
+\begin{tikzpicture}[
+  font=\small,
+  draw=black,
+  text=black,
+  block/.style={draw=black,line width=1.5pt,minimum width=2.1cm,minimum height=1.25cm,inner sep=0pt},
+  blueblock/.style={block,fill=black,fill opacity=0.08,text opacity=1},
+  motion/.style={-{Latex[length=2.5mm]},line width=1pt},
+  note/.style={font=\small,inner sep=3pt}
+]
+\gid{blue-left-block}{
+  \node[blueblock] (left) {};
+  \node at ([yshift=0.23cm]left.center) {blue};
+}
+\gid{red-middle-block}{
+  \node[block,right=0pt of left] (middle) {};
+  \node at ([yshift=0.23cm]middle.center) {red};
+}
+\gid{blue-right-block}{
+  \node[blueblock,right=0pt of middle] (right) {};
+  \node at ([yshift=0.23cm]right.center) {blue};
+}
+\gid{labels-blue-lifetimes}{
+  \node at ([yshift=-0.23cm]left.center) {$x=4$};
+  \node at ([yshift=-0.23cm]right.center) {$z=5$};
+}
+\gid{label-y}{
+  \node at ([yshift=-0.23cm]middle.center) {$y=2$};
+}
+\coordinate (arrowend) at ([yshift=-1.4cm]middle.south);
+\gid{arrow-down}{
+  \draw[motion,line width=1.5pt] ([yshift=-0.22cm]middle.south) -- (arrowend)
+    node[midway,right=0.22cm,font=\small] {second $y=2$};
+}
+\gid{red-vanishing}{
+  \node[block,dashed,line width=1pt,below=0.35cm of arrowend] (vanished) {};
+  \node[font=\footnotesize] at (vanished.center) {red};
+}
+\gid{label-obstacle-clears}{
+  \node[note,right=0.9cm of vanished] (clears) {obstacle clears};
+  \draw[motion] (clears.west) -- ([xshift=0.12cm]vanished.east);
+}
+\coordinate (meeting) at ([yshift=-1.8cm]vanished.south);
+\gid{blue-blocks-meeting}{
+  \node[blueblock,anchor=east] (joinedleft) at (meeting) {blue};
+  \node[blueblock,anchor=west] (joinedright) at (meeting) {blue};
+  \draw[motion] ([xshift=-1.15cm]joinedleft.west) -- ([xshift=-0.15cm]joinedleft.west);
+  \draw[motion] ([xshift=1.15cm]joinedright.east) -- ([xshift=0.15cm]joinedright.east);
+}
+\gid{condition-annotation}{
+  \node[font=\large,below=1.25cm of meeting] (condition) {$y<\min(x,z)$};
+  \draw[motion] (condition.north) -- ([yshift=-0.72cm]meeting);
+}
+\end{tikzpicture}

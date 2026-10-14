@@ -1,0 +1,60 @@
+{
+  "title": "The Decisive Crossing",
+  "steps": [
+    {
+      "name": "What makes this race hard to compare?",
+      "label": "Grasp",
+      "brief": "Restate the race as Bessie's fixed one-step march competing against Elsie's choices in a forward-only graph. Emphasize that collapsing islands make the cows interact, so comparing their ordinary path lengths is not immediately sufficient. Frame the task as finding, for every starting island S, the event that could let Elsie get past Bessie."
+    },
+    {
+      "name": "Why not play out every strategy?",
+      "label": "Observation",
+      "brief": "Try the natural minimax simulation separately for each S, allowing Elsie to choose among her outgoing bridges after every collapse. Show that this repeats a large strategy tree while also carrying an unwieldy set of destroyed islands. Let the strictly increasing island indices suggest replacing the whole play sequence with a single decisive event."
+    },
+    {
+      "name": "What does Bessie's first move cut off?",
+      "label": "Deduction",
+      "brief": "Show that Bessie's first departure collapses S, permanently separating Elsie from the ordinary main path beyond it. Deduce that Elsie's first crossing must use an alternative bridge (u, v) whose source satisfies u < S. Explain that landing behind Bessie is impossible or useless, landing on Bessie's island leads to elimination, and landing strictly ahead is enough for Elsie to preserve the advantage and win."
+    },
+    {
+      "name": "Exactly when is a jump early enough?",
+      "label": "Observation",
+      "brief": "Introduce d[u] as Elsie's minimum number of moves from island 1 to u, and note that this route is unaffected while u < S. Focus on the timing of one candidate bridge as the crux: Elsie uses (u, v) on her d[u] + 1-th move. Since Bessie moves first, she is then at S + d[u] + 1, so Elsie's landing is decisive exactly when v > S + d[u] + 1."
+    },
+    {
+      "name": "For which starts is one bridge dangerous?",
+      "label": "Deduction",
+      "brief": "Combine u < S with the strict timing inequality and solve for the integer starts S. Derive the dangerous interval [u + 1, v - d[u] - 2] for the bridge (u, v), discarding it when the left endpoint exceeds the right endpoint. Make the off-by-one strictness explicit, since equality leaves Elsie on Bessie's island rather than ahead."
+    },
+    {
+      "name": "Do we really need Dijkstra here?",
+      "label": "Observation",
+      "brief": "Now ask how to obtain every d[u] needed by the interval endpoints. Notice that every main and alternative bridge points from a smaller index to a larger one, so the island order is already a topological order. Use this structure to rule out the need for a priority queue or repeated shortest-path searches."
+    },
+    {
+      "name": "How do the arrival times propagate?",
+      "label": "Deduction",
+      "brief": "Set d[1] = 0 and process islands from left to right. From each island i, relax the main edge to i + 1 and every alternative edge leaving i with cost one. Justify that d[i] is final when i is processed because every possible predecessor has a smaller index."
+    },
+    {
+      "name": "Can we mark every dangerous start directly?",
+      "label": "Observation",
+      "brief": "Try marking every S inside every bridge's dangerous interval and expose the possible quadratic total work. Observe that only whether a start is covered by at least one interval matters, not which bridge supplies the threat. Let the fact that coverage changes only at interval boundaries point toward an aggregate representation."
+    },
+    {
+      "name": "What information changes at an interval boundary?",
+      "label": "Deduction",
+      "brief": "Represent each nonempty interval [L, R] by adding one at L and subtracting one at R + 1. Sweep prefix sums over S = 1 through n - 1 to recover how many dangerous bridges cover each start. Deduce that positive coverage means Elsie has a winning crossing and the output bit is 0, while zero coverage means Bessie wins and the bit is 1."
+    },
+    {
+      "name": "What is the complete decision rule?",
+      "label": "Conclusion",
+      "brief": "Assemble the method without coding it: compute Elsie's earliest arrival times in one forward sweep, convert every alternative bridge into its dangerous interval, and union those intervals with a difference array. Tie correctness in both directions to the first bridge with which Elsie crosses Bessie's collapsed barrier. State that a start is winning for Bessie exactly when no such bridge covers it."
+    },
+    {
+      "name": "Does the implementation survive the boundaries?",
+      "label": "Application",
+      "brief": "Translate the method into adjacency lists for distance relaxation, a retained list of alternative bridges, and a signed difference array. Check the bridge 2 to 6 example: d[2] = 1 produces exactly the losing interval [3, 3], matching the sample. Handle empty intervals, R + 1 updates, the no-alternative-bridge case, and per-test-case resets carefully. Confirm O(n + m) time and O(n + m) memory per test case, compatible with the summed constraints."
+    }
+  ]
+}

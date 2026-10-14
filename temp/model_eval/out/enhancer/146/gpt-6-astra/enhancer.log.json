@@ -1,0 +1,13 @@
+[
+  {
+    "call": "enhanced.attempt0",
+    "chars": 453,
+    "ok": true,
+    "seconds": 10.121551709
+  },
+  {
+    "call": "enhanced",
+    "n_snippets": 3,
+    "result": "rendered"
+  }
+]

@@ -1,0 +1,18 @@
+# Properties of the cumulative distribution function
+
+Notice what this simple equation—$P(a < X \le b) = F(b) - F(a)$—forces upon the shape of $F(x)$.
+
+Because probabilities can never be negative, $P(a < X \le b) \ge 0$. Therefore, $F(b) - F(a) \ge 0$, which directly implies $F(b) \ge F(a)$ for any $a < b$. 
+
+We just proved the first fundamental property of *any* CDF: it is a **nondecreasing function**. You can't lose accumulated probability as you sweep forward along the number line. It can plateau, or it can jump up, but it never goes down.
+
+Now, let's push the boundaries. What happens if we take the limit as $x$ approaches positive infinity? 
+
+We are asking for the probability that our random variable is less than infinity. Since $X$ must evaluate to some finite real number, this event is a certainty. By the continuity property of probabilities, $\lim_{x \to \infty} F(x) = 1$. 
+
+And if we run toward negative infinity? We're asking for the probability that $X \le -\infty$. That's an impossible event. So, $\lim_{x \to -\infty} F(x) = 0$.
+
+Look at the board. We've completely bounded our function. Every valid CDF starts at zero on the far left, marches upward, and gets capped at exactly one on the far right. These aren't arbitrary rules—they are the strict logical consequences of defining $F(x) = P(X \le x)$.
+
+---
+**Blackboard:** draw a generic cumulative distribution function graph. on the x-axis, show the curve starting flat along y=0 as x goes to negative infinity, then non-decreasingly stepping and curving upwards, and finally flattening out asymptotically at y=1 as x goes to positive infinity. label the lower limit as lim_{x \to -\infty} f(x) = 0 and the upper limit as lim_{x \to \infty} f(x) = 1.

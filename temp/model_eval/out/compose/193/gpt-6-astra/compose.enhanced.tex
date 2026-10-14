@@ -1,0 +1,42 @@
+\begin{tikzpicture}[x=1cm, y=1cm, font=\Large]
+
+% Top-Left Section: Recurrence
+\gid{recurrence-heading}{
+    \node[anchor=west] (rec-head) at (-6.5, 4.5) {\textbf{Recurrence relation}};
+}
+\gid{base-value}{
+    \node[anchor=west] (base) at (-5.5, 3) {$T_0 = 0$};
+}
+\gid{recurrence-formula}{
+    \node[anchor=west] (rec-form) at (-5.5, 1.5) {$T_n = 2T_{n-1} + 1 \quad (\text{for } n > 0)$};
+}
+
+% Bottom-Right Section: Closed form
+\gid{closed-form-heading}{
+    \node[anchor=east] (cf-head) at (6.5, -2) {\textbf{Closed-form expression}};
+}
+\gid{closed-form-formula}{
+    \node[anchor=east] (cf-form) at (5.5, -3.5) {$T_n = 2^n - 1$};
+}
+
+% Arrow
+\gid{solution-arrow}{
+    \draw[-{Stealth[length=6mm,width=5mm]}, line width=2.5pt] 
+        (-0.5, 0.5) to[out=-45, in=135] (2.5, -1.0);
+}
+
+% Question mark
+\gid{proof-question}{
+    \node[scale=2.5] at (1.5, 0.8) {\Huge \textbf{?}};
+}
+
+
+% --- enhancer additions ---
+\coordinate (fig-east) at (current bounding box.east);
+\coordinate (fig-west) at (current bounding box.west);
+\gid{label-1}{\node[name=label-1, anchor=north east, font=\footnotesize\bfseries] at ($(fig-west |- gid-base-value.north) + (-28.0pt, -0.0pt)$) {base case};
+\draw[thin] (gid-base-value.west) -- (label-1.east);}
+\gid{callout-1}{\node[name=callout-1, anchor=north west, font=\small, align=left, text width=3.5cm] at ($(fig-east |- gid-proof-question.north) + (28.0pt, -0.0pt)$) {How do we turn a guess into a guarantee for every $n$?};
+\draw[-{Stealth[length=4pt]}, thin] (gid-proof-question.east) to[out=0, in=180] (callout-1.west);}
+\gid{sidenote-1}{\node[name=sidenote-1, anchor=north west, font=\itshape\small, align=left, text width=3.5cm] at ($(fig-east |- gid-closed-form-formula.north) + (28.0pt, -0.0pt)$) {Jump straight to $T_{64}$—no need to compute $T_{63}$ first.};}
+\end{tikzpicture}

@@ -1,0 +1,60 @@
+{
+  "title": "Finding the Moment a Race Is Decided",
+  "steps": [
+    {
+      "name": "What actually needs a strategy?",
+      "label": "Grasp",
+      "brief": "Separate Bessie's forced march along consecutive islands from Elsie's choice of forward bridges. Frame the task as deciding, for every starting island s, whether any legal Elsie route can defeat that march. Emphasize that collapsing islands couple movement and reachability, while the input limits demand sharing work across starts."
+    },
+    {
+      "name": "Why not just compare finishing times?",
+      "label": "Observation",
+      "brief": "Try comparing Elsie's shortest path to n in the original graph with Bessie's n-s moves. Test n=6 with the bridge 2→6 and s=2: the apparent two-move Elsie route fails because Bessie immediately destroys island 2. Use this failure to make the changing boundary of accessible islands, rather than ordinary finishing distance, the next object of study."
+    },
+    {
+      "name": "Where can Elsie still land?",
+      "label": "Deduction",
+      "brief": "Follow the failed route to Bessie's trail: after her kth move, provided Elsie has not already overtaken her, islands s through s+k-1 have collapsed. Deduce that an Elsie landing at or beyond s must either hit a destroyed island, coincide with Bessie's current position, or jump strictly ahead. Reduce the search to understanding those last two possibilities instead of planning a complete route to n."
+    },
+    {
+      "name": "When is the outcome already settled?",
+      "label": "Observation",
+      "brief": "Show that landing on Bessie's current island eliminates Elsie on Bessie's next move, whereas landing strictly ahead lets Elsie follow main bridges and either finish first or eliminate Bessie when she catches up. Establish that Elsie cannot damage Bessie's future route while remaining below s. Make this the crux: Elsie wins exactly when she can achieve one strict overtake."
+    },
+    {
+      "name": "Which shortest paths can we trust now?",
+      "label": "Deduction",
+      "brief": "Deduce that the first winning jump must leave some island u<s, because intermediate landings in Bessie's territory cannot keep Elsie alive. Show that every forward path from 1 to such a u stays below s and therefore avoids all islands Bessie destroys. Define d[u] as the ordinary shortest-path length from 1 to u, with d[1]=0, and justify using it to time this safe prefix rather than an unrestricted route to the finish."
+    },
+    {
+      "name": "On which turn does a jump become dangerous?",
+      "label": "Observation",
+      "brief": "Put the safe prefix onto the actual alternating-turn clock: after reaching u in d[u] moves, Elsie takes u→v on her k=d[u]+1 turn. Place Bessie at s+k immediately before that jump, so the winning condition is v>s+d[u]+1. Check that equality is not an overtake and that the strict inequality, together with v≤n, guarantees Bessie has not already finished."
+    },
+    {
+      "name": "How can we test one start without replaying the race?",
+      "label": "Deduction",
+      "brief": "Rearrange the timing condition by assigning each alternative bridge the fixed score q(u,v)=v-d[u]-1. Deduce that Bessie wins from s exactly when every bridge with u<s has q(u,v)≤s, treating an empty collection as safe. Explain that no separate destination filter is necessary, since a bridge ending at or before s cannot violate this inequality."
+    },
+    {
+      "name": "What changes when the start moves left?",
+      "label": "Observation",
+      "brief": "To avoid rebuilding the maximum score for every start, compare s with s-1. Show that precisely the bridges with tail s-1 become unavailable, while all remaining bridge scores stay unchanged. Point out that deleting the current maximum defeats a single running-maximum variable, creating the need to retain its possible replacements."
+    },
+    {
+      "name": "How do we keep the next candidate available?",
+      "label": "Deduction",
+      "brief": "Choose an ordered multiset because the required operations are deleting bridge scores and querying the largest remaining score. Preserve multiplicities, since distinct bridges can have equal scores and removing one must not remove the others. State the invariant that, when testing s, the multiset contains exactly the scores of bridges whose tails satisfy u<s."
+    },
+    {
+      "name": "How do these pieces become one method?",
+      "label": "Conclusion",
+      "brief": "Assemble the method: compute shortest distances in increasing island order, assign bridge scores, and sweep starting islands from right to left while maintaining their active maximum. Specify that initializing with all alternative bridges and removing those with tail s before testing s establishes the multiset invariant. Connect the maximum-score test back to the strict-overtake equivalence to complete the correctness argument without entering implementation details."
+    },
+    {
+      "name": "Does the implementation respect every boundary?",
+      "label": "Application",
+      "brief": "Implement the forward distance pass by relaxing each main bridge and outgoing alternative bridge, then implement the reverse sweep using outgoing-edge buckets and a multiset or Rust BTreeMap with counts. Store answers by starting index and trace the n=6, 2→6 example to obtain 11011, contrasting the inaccessible tail at s=2, the successful overtake at s=3, and Bessie's earlier finish at s=4. Check the empty-multiset case, duplicate scores, no alternative bridges, and the always-winning starts s=1 and s=n-1. Confirm O((n+m) log(n+m)) time and O(n+m) space against the aggregate input limits."
+    }
+  ]
+}

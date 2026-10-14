@@ -1,0 +1,22 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "From Recurrence to Closed Form"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "formula-recurrence",
+      "text": "Think recursive function: the base case stops the backward chain, while this rule generates each next value."
+    },
+    {
+      "type": "callout",
+      "target_gid": "question-mark",
+      "text": "A pattern is not a proof—why does this hold for every $n$?"
+    },
+    {
+      "type": "footer",
+      "text": "Model recursively, solve directly, then prove the closed form."
+    }
+  ]
+}

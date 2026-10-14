@@ -1,0 +1,22 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "When Can Same-Coloured Blocks Meet?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "label-y",
+      "text": "With several blocks in between, $y$ is the largest lifetime—the last obstacle to vanish."
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "condition-annotation",
+      "text": "The inequality is strict: if $y=x$ or $y=z$, one blue block dies just as the path clears."
+    },
+    {
+      "type": "footer",
+      "text": "The path must clear before either waiting block expires."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "From Recurrence to Closed Form"
+    },
+    {
+      "type": "label",
+      "target_gid": "base-case-formula",
+      "text": "base case"
+    },
+    {
+      "type": "label",
+      "target_gid": "recurrence-formula",
+      "text": "recursive step"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "closed-form-formula",
+      "text": "No earlier terms needed—just plug in $n$ and compute."
+    },
+    {
+      "type": "callout",
+      "target_gid": "proof-question-mark",
+      "text": "How do we prove this for every $n$?"
+    },
+    {
+      "type": "footer",
+      "text": "Model recursively, solve directly, then prove the formula."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "The First Quadrant: Almost a Subspace"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "origin",
+      "text": "Containing the origin is necessary—but not sufficient."
+    },
+    {
+      "type": "callout",
+      "target_gid": "negative-vector",
+      "text": "Now try the scalar −1."
+    },
+    {
+      "type": "footer",
+      "text": "The first quadrant survives addition, but fails scalar closure when −v escapes."
+    }
+  ]
+}

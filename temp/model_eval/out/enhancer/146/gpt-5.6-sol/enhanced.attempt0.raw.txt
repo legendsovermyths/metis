@@ -1,0 +1,1 @@
+{"annotations":[{"type":"header","text":"The Fundamental Theorem of Linear Algebra"},{"type":"sidenote","target_gid":"arrow-a","text":"Restricted to the row space, $A$ is one-to-one onto the column space."},{"type":"callout","target_gid":"right-angle-marks","text":"Why exactly 90°?"},{"type":"footer","text":"One rank $r$ organizes all four fundamental subspaces."}]}

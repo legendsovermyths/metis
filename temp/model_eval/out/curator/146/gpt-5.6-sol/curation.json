@@ -1,0 +1,210 @@
+{
+  "dialogue": "Let's step back and look at the whole board, Anirudh. We didn't just find four separate mathematical objects. We've uncovered the complete anatomy of a matrix.\n\nThink about what an $m \\times n$ matrix $A$ actually does. It takes a vector with $n$ components and transforms it into a vector with $m$ components. It's a bridge between two different worlds: the domain $\\mathbf{R}^n$, and the target space $\\mathbf{R}^m$.\n\nWhere do our four subspaces live?\n\nIn the domain $\\mathbf{R}^n$, we have the row space $C(A^T)$ with dimension $r$, and the nullspace $N(A)$ with dimension $n - r$. Notice how beautifully those dimensions snap together? $r + (n - r) = n$. They perfectly partition the entire input space.\n\nOver in the target space $\\mathbf{R}^m$, we have the column space $C(A)$ with dimension $r$, and the left nullspace $N(A^T)$ with dimension $m - r$. Once again, $r + (m - r) = m$. They perfectly partition the output space.\n\nThis isn't just a neat piece of bookkeeping. It is the **Fundamental Theorem of Linear Algebra, Part I**. Every matrix, no matter how massive or chaotic it seems, cleaves its domain and its target space into these exact pairs of subspaces.\n\nLook at how I've asked the assistant to draw them on the board. Inside each space, the two lines are drawn at a strict 90-degree angle to one another. We know their dimensions complement each other perfectly, but why would I draw them as strictly perpendicular? We'll get to that geometry soon. But first, let's test drive this beautifully symmetric machine on the absolute simplest matrices that exist.",
+  "parts": [
+    {
+      "id": "domain-space",
+      "desc": "Outlined domain panel headed domain R^n"
+    },
+    {
+      "id": "codomain-space",
+      "desc": "Outlined codomain panel headed codomain R^m"
+    },
+    {
+      "id": "row-space-line",
+      "desc": "Line representing the row space in the domain"
+    },
+    {
+      "id": "row-space-label",
+      "desc": "Label C(A^T), dim = r"
+    },
+    {
+      "id": "nullspace-line",
+      "desc": "Line perpendicular to the row space representing the nullspace"
+    },
+    {
+      "id": "nullspace-label",
+      "desc": "Label N(A), dim = n - r"
+    },
+    {
+      "id": "column-space-line",
+      "desc": "Line representing the column space in the codomain"
+    },
+    {
+      "id": "column-space-label",
+      "desc": "Label C(A), dim = r"
+    },
+    {
+      "id": "left-nullspace-line",
+      "desc": "Line perpendicular to the column space representing the left nullspace"
+    },
+    {
+      "id": "left-nullspace-label",
+      "desc": "Label N(A^T), dim = m - r"
+    },
+    {
+      "id": "matrix-map-arrow",
+      "desc": "Arrow labeled A mapping a generic row-space point to a column-space point"
+    },
+    {
+      "id": "nullspace-zero-map",
+      "desc": "Arrow showing the nullspace collapsing to the codomain origin 0"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Let's step back and look at the whole board, Anirudh. We didn't just find four separate mathematical objects. We've uncovered the complete anatomy of a matrix.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "domain-space",
+            "codomain-space"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "domain-space",
+            "codomain-space"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Think about what an $m \\times n$ matrix $A$ actually does. It takes a vector with $n$ components and transforms it into a vector with $m$ components. It's a bridge between two different worlds: the domain $\\mathbf{R}^n$, and the target space $\\mathbf{R}^m$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "row-space-line",
+            "column-space-line",
+            "matrix-map-arrow"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-map-arrow"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Where do our four subspaces live?\n\nIn the domain $\\mathbf{R}^n$, we have the row space $C(A^T)$ with dimension $r$, and the nullspace $N(A)$ with dimension $n - r$. Notice how beautifully those dimensions snap together? $r + (n - r) = n$. They perfectly partition the entire input space.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "row-space-label",
+            "nullspace-line",
+            "nullspace-label",
+            "nullspace-zero-map"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "row-space-line",
+            "row-space-label",
+            "nullspace-line",
+            "nullspace-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Over in the target space $\\mathbf{R}^m$, we have the column space $C(A)$ with dimension $r$, and the left nullspace $N(A^T)$ with dimension $m - r$. Once again, $r + (m - r) = m$. They perfectly partition the output space.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "column-space-label",
+            "left-nullspace-line",
+            "left-nullspace-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "column-space-line",
+            "column-space-label",
+            "left-nullspace-line",
+            "left-nullspace-label"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "This isn't just a neat piece of bookkeeping. It is the **Fundamental Theorem of Linear Algebra, Part I**. Every matrix, no matter how massive or chaotic it seems, cleaves its domain and its target space into these exact pairs of subspaces.\n\n",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "row-space-label",
+            "nullspace-label",
+            "column-space-label",
+            "left-nullspace-label"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "row-space-label",
+            "nullspace-label",
+            "column-space-label",
+            "left-nullspace-label"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "Look at how I've asked the assistant to draw them on the board. Inside each space, the two lines are drawn at a strict 90-degree angle to one another. We know their dimensions complement each other perfectly, but why would I draw them as strictly perpendicular? We'll get to that geometry soon. ",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "row-space-line",
+            "nullspace-line",
+            "column-space-line",
+            "left-nullspace-line"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "But first, let's test drive this beautifully symmetric machine on the absolute simplest matrices that exist.",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "matrix-map-arrow",
+            "nullspace-zero-map"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "matrix-map-arrow",
+            "nullspace-zero-map"
+          ],
+          "duration_ms": 450
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

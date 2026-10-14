@@ -1,0 +1,18 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Will both blocks survive the wait?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "clearance-time-label",
+      "text": "With several blocks in the middle, $y$ is their maximum lifetime—we wait for the last obstacle to vanish."
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "fusion-condition",
+      "text": "Equality is already too late: at least one blue block vanishes just as the path clears."
+    }
+  ]
+}

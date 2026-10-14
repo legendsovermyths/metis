@@ -1,0 +1,13 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "Same-Color Fusion Overrides the Size Check"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "merged-block",
+      "text": "Now use $L=10$ and keep checking the new stack top—this growth can trigger more pops or fusions."
+    }
+  ]
+}

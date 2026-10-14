@@ -1,0 +1,18 @@
+{
+  "annotations": [
+    {
+      "type": "sidenote",
+      "target_gid": "origin-point",
+      "text": "Containing the origin is necessary—but it isn't enough."
+    },
+    {
+      "type": "callout",
+      "target_gid": "vector-neg-v",
+      "text": "“Any scalar” includes −1."
+    },
+    {
+      "type": "footer",
+      "text": "The first quadrant passes addition but fails scalar multiplication—so it is not a subspace."
+    }
+  ]
+}

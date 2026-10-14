@@ -1,0 +1,1 @@
+[usage] {"input_tokens":8876,"input_tokens_details":{"cache_write_tokens":8873,"cached_tokens":0},"output_tokens":1166,"output_tokens_details":{"reasoning_tokens":501},"total_tokens":10042}

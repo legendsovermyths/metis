@@ -1,0 +1,20 @@
+# When can two blocks meet?
+
+Now we have a very specific question to chase: lifetimes only grow through fusion, so **what has to happen for a fusion to become possible?**
+
+Take the two blue blocks on the board. Call their lifetimes $x$ and $z$, measured before this proposed fusion. They have the right colour to merge—but colour alone isn't enough. Every block strictly between them must disappear first.
+
+So we need to know when that entire middle interval becomes empty. Do we add its lifetimes? No: those blocks are shrinking **simultaneously**, not taking turns. We are waiting for the *last* obstruction to disappear. If their lifetimes are $l_1,\ldots,l_k$, that moment is
+
+$$y=\max(l_1,\ldots,l_k).$$
+
+But clearing the path isn't enough either. Both blue blocks must still exist when the path clears. That gives us the meeting condition:
+
+$$y<x\quad\text{and}\quad y<z.$$
+
+The strictness matters. If $x=y$, the left blue block disappears in the very same deletion round as the last obstruction. There is no surviving left partner to fuse with afterward.
+
+So we've reduced the geometry to one comparison: **does the middle disappear before either endpoint does?** Once it does, we can ask how much of each endpoint is left.
+
+---
+**Blackboard:** clear the previous board, including its array-strength annotation. draw a horizontal row of five separated rectangular blocks: blue labelled 'left: lifetime x', red labelled 'l₁', green labelled 'l₂', orange labelled 'l₃', and blue labelled 'right: lifetime z'. state above the row: 'lifetimes before the proposed fusion'. place a bracket under just the three middle blocks labelled 'middle clears at y = max(l₁, l₂, l₃)'. below this, draw a downward arrow labelled 'after deletion round y, if y < x and y < z'. at the arrow's destination draw two touching blue rectangles, retaining a dashed seam between them, labelled 'left survives' and 'right survives'. under them write 'same colour + no obstruction → fusion'. at the bottom, in a separate warning box, write 'if y = x or y = z, that endpoint is already empty: no two-survivor fusion.' do not show a fused lifetime or any fusion arithmetic.

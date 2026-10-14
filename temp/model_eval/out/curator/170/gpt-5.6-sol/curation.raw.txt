@@ -1,0 +1,218 @@
+{
+  "dialogue": "Look back at the board, Anirudh. We have our definition: $F(x) = P(X \\le x)$. Let's pull this apart and rigorously derive the universal rules that govern every CDF.\n\nFirst, let's pick two values, $a$ and $b$, where $a < b$. The event $\\{X \\le a\\}$ is completely contained within the event $\\{X \\le b\\}$. Think about it: if a query finishes in 50ms, it inherently finished in 80ms. Because the first event is a subset of the second, its probability cannot be larger.\n\nSo, $P(X \\le a) \\le P(X \\le b)$, which means $F(a) \\le F(b)$. The CDF is always **nondecreasing**. It can stay flat, but it can never, ever go down.\n\nNow, let's push the boundaries. What happens as $x$ approaches infinity? Let's take a sequence of boundaries $b_n$ that increase toward infinity. The events $\\{X \\le b_n\\}$ get larger and larger, and their union covers the entire sample space, $\\{X < \\infty\\}$.\n\nBy the continuity of probabilities, we can evaluate the limit of the sequence:\n$\\lim_{n \\to \\infty} P(X \\le b_n) = P(X < \\infty) = 1$.\nSo, $\\lim_{x \\to \\infty} F(x) = 1$.\n\nConversely, if we take a sequence $b_n$ decreasing to negative infinity, the intersection of those events is the empty set—it's impossible for a real-valued variable to be less than negative infinity.\nSo, $\\lim_{n \\to \\infty} P(X \\le b_n) = P(\\emptyset) = 0$. Meaning $\\lim_{x \\to -\\infty} F(x) = 0$.\n\nEvery valid CDF is anchored at 0 on the left, reaches 1 on the right, and only ever climbs. But there's one more subtle property hidden in those exact moments where the function jumps. Do you see it?",
+  "parts": [
+    {
+      "id": "axes",
+      "desc": "Coordinate axes with the x-axis extended significantly to the left and right"
+    },
+    {
+      "id": "step-function",
+      "desc": "Existing nondecreasing staircase CDF curve"
+    },
+    {
+      "id": "step-annotations",
+      "desc": "Existing annotations marking the staircase jumps and cumulative values"
+    },
+    {
+      "id": "cdf-definition",
+      "desc": "Definition formula F(x) = P(X ≤ x)"
+    },
+    {
+      "id": "event-inclusion-formula",
+      "desc": "Event containment formula for a < b: {X ≤ a} ⊆ {X ≤ b}"
+    },
+    {
+      "id": "monotonicity-formula",
+      "desc": "Probability and CDF inequalities showing F(a) ≤ F(b)"
+    },
+    {
+      "id": "right-tail-line",
+      "desc": "Horizontal dashed line at y = 1 on the far right"
+    },
+    {
+      "id": "right-limit-label",
+      "desc": "Label “lim x→∞ f(x) = 1” beside the right dashed line"
+    },
+    {
+      "id": "left-tail-line",
+      "desc": "Horizontal dashed line along y = 0 on the far left"
+    },
+    {
+      "id": "left-limit-label",
+      "desc": "Label “lim x→−∞ f(x) = 0” beside the left dashed line"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Look back at the board, Anirudh. We have our definition: $F(x) = P(X \\le x)$. Let's pull this apart and rigorously derive the universal rules that govern every CDF.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "axes",
+            "step-function",
+            "step-annotations",
+            "cdf-definition"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "cdf-definition"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "First, let's pick two values, $a$ and $b$, where $a < b$. The event $\\{X \\le a\\}$ is completely contained within the event $\\{X \\le b\\}$. Think about it: if a query finishes in 50ms, it inherently finished in 80ms. Because the first event is a subset of the second, its probability cannot be larger.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "event-inclusion-formula"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "event-inclusion-formula"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "So, $P(X \\le a) \\le P(X \\le b)$, which means $F(a) \\le F(b)$. The CDF is always **nondecreasing**. It can stay flat, but it can never, ever go down.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "monotonicity-formula"
+          ]
+        },
+        {
+          "type": "connect",
+          "from": "event-inclusion-formula",
+          "to": "monotonicity-formula",
+          "duration_ms": 800
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "step-function",
+            "monotonicity-formula"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "monotonicity-formula"
+          ],
+          "duration_ms": 450
+        }
+      ]
+    },
+    {
+      "text": "Now, let's push the boundaries. What happens as $x$ approaches infinity? Let's take a sequence of boundaries $b_n$ that increase toward infinity. The events $\\{X \\le b_n\\}$ get larger and larger, and their union covers the entire sample space, $\\{X < \\infty\\}$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "right-tail-line"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "right-tail-line"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "By the continuity of probabilities, we can evaluate the limit of the sequence:\n$\\lim_{n \\to \\infty} P(X \\le b_n) = P(X < \\infty) = 1$.\nSo, $\\lim_{x \\to \\infty} F(x) = 1$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "right-limit-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "right-tail-line",
+            "right-limit-label"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "right-limit-label"
+          ],
+          "duration_ms": 450
+        }
+      ]
+    },
+    {
+      "text": "Conversely, if we take a sequence $b_n$ decreasing to negative infinity, the intersection of those events is the empty set—it's impossible for a real-valued variable to be less than negative infinity.\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "left-tail-line"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "left-tail-line"
+          ]
+        }
+      ]
+    },
+    {
+      "text": "So, $\\lim_{n \\to \\infty} P(X \\le b_n) = P(\\emptyset) = 0$. Meaning $\\lim_{x \\to -\\infty} F(x) = 0$.\n\n",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "left-limit-label"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "left-tail-line",
+            "left-limit-label"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "left-limit-label"
+          ],
+          "duration_ms": 450
+        }
+      ]
+    },
+    {
+      "text": "Every valid CDF is anchored at 0 on the left, reaches 1 on the right, and only ever climbs. But there's one more subtle property hidden in those exact moments where the function jumps. Do you see it?",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "step-function",
+            "step-annotations"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "step-annotations"
+          ],
+          "duration_ms": 500
+        }
+      ]
+    }
+  ]
+}

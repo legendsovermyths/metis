@@ -1,0 +1,1 @@
+{"annotations":[{"type":"sidenote","target_gid":"origin-point","text":"Containing the origin is necessary—but it isn’t sufficient."},{"type":"callout","target_gid":"vector-neg-v","text":"Scalar closure fails: multiplying by −1 sends v outside the set."},{"type":"footer","text":"One counterexample is enough: the first quadrant is not a subspace."}]}

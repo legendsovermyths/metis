@@ -1,0 +1,16 @@
+{
+  "actions": {
+    "focus": 6,
+    "pulse": 1,
+    "reveal": 4
+  },
+  "dialogue_len_delta": -2,
+  "dialogue_unchanged_from_input": false,
+  "n_parts": 10,
+  "n_segments": 7,
+  "naming_violations": [],
+  "parts_never_revealed": [],
+  "parts_revealed_twice": [],
+  "segments_concat_equals_dialogue": true,
+  "unknown_ids": []
+}

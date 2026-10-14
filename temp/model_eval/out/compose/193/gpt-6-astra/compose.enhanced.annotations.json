@@ -1,0 +1,19 @@
+{
+  "annotations": [
+    {
+      "type": "label",
+      "target_gid": "base-value",
+      "text": "base case"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "closed-form-formula",
+      "text": "Jump straight to $T_{64}$—no need to compute $T_{63}$ first."
+    },
+    {
+      "type": "callout",
+      "target_gid": "proof-question",
+      "text": "How do we turn a guess into a guarantee for every $n$?"
+    }
+  ]
+}

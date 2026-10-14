@@ -1,0 +1,73 @@
+\begin{tikzpicture}[
+  draw=black,
+  text=black,
+  >=Stealth,
+  block/.style={draw=black, line width=1.2pt, rounded corners=2pt, minimum height=1.3cm},
+  note/.style={font=\small, align=center}
+]
+
+% Initial configuration
+\gid{blue-left-block}{
+  \node[block, minimum width=2.5cm] (blueL) at (-3.6,3.6) {};
+  \node[font=\small] at ([yshift=3pt]blueL.center) {\textsc{Blue}};
+}
+
+\gid{blue-right-block}{
+  \node[block, minimum width=2.8cm] (blueR) at (3.4,3.6) {};
+  \node[font=\small] at ([yshift=3pt]blueR.center) {\textsc{Blue}};
+}
+
+\gid{labels-blue-lifetimes}{
+  \node[font=\small] at ([yshift=-12pt]blueL.center) {$x=4$};
+  \node[font=\small] at ([yshift=-12pt]blueR.center) {$z=5$};
+}
+
+\gid{red-middle-block}{
+  \node[block, minimum width=2.1cm] (redM) at (-0.1,3.6) {};
+  \node[font=\small] at ([yshift=3pt]redM.center) {\textsc{Red}};
+}
+
+\gid{label-y}{
+  \node[font=\small] at ([yshift=-12pt]redM.center) {$y=2$};
+}
+
+% Transition to the clearing time
+\gid{arrow-down}{
+  \draw[->, line width=1.2pt] (0,2.75) -- (0,1.72);
+  \node[note, anchor=west] at (0.25,2.23) {at second $y=2$};
+}
+
+% Vanished obstacle
+\gid{red-vanishing}{
+  \draw[dashed, line width=1.1pt, rounded corners=2pt]
+    (-1.05,0.62) rectangle (1.05,1.48);
+  \node[font=\footnotesize] at (0,1.05) {\textsc{Red}};
+}
+
+\gid{label-obstacle-clears}{
+  \node[note, anchor=west] (clears) at (2.0,1.05) {obstacle clears};
+  \draw[->, dashed, line width=1pt] (clears.west) -- (1.12,1.05);
+}
+
+% Blue blocks move inward and meet
+\gid{blue-blocks-meeting}{
+  \draw[->, line width=1pt] (-3.15,0.18) -- (-0.72,0.18);
+  \draw[->, line width=1pt] (3.15,0.18) -- (0.72,0.18);
+
+  \node[block, minimum width=3.2cm] (meetL) at (-1.6,-0.75) {};
+  \node[block, minimum width=3.2cm] (meetR) at (1.6,-0.75) {};
+
+  \node[font=\small, align=center] at (meetL.center)
+    {\textsc{Blue}\\[-1pt]$x=4$};
+  \node[font=\small, align=center] at (meetR.center)
+    {\textsc{Blue}\\[-1pt]$z=5$};
+}
+
+\gid{condition-annotation}{
+  \node[note] (condition) at (0,-2.25)
+    {meeting occurs precisely when\\[2pt]
+     $\displaystyle y<\min(x,z)$};
+  \draw[->, line width=1pt] (condition.north) -- (0,-1.43);
+}
+
+\end{tikzpicture}

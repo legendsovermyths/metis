@@ -1,0 +1,41 @@
+[
+  {
+    "call": "compose.curation",
+    "chars": 5375,
+    "ok": true,
+    "seconds": 29.677446042
+  },
+  {
+    "call": "compose.illustration.attempt0",
+    "chars": 949,
+    "ok": true,
+    "seconds": 106.532708542
+  },
+  {
+    "attempt": 0,
+    "call": "compose.illustration",
+    "render_error": "Agent error: latex compilation failed:\nLaTeX Font Info:    ... okay on input line 81.\nLaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 81.\nLaTeX Font Info:    ... okay on input line 81.\nLaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 81.\nLaTeX Font Info:    ... okay on input line 81.\nLaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 81.\nLaTeX Font Info:    ... okay on input line 81.\n\n! LaTeX Error: Environment scope undefined.\n\nSee the LaTeX manual or LaTeX Companion for explanation.\nType  H <return>  for immediate help.\n ...             "
+  },
+  {
+    "call": "compose.illustration.attempt1",
+    "chars": 989,
+    "ok": true,
+    "seconds": 18.248372084
+  },
+  {
+    "call": "compose.illustration",
+    "library": "tikz",
+    "rendered_on_attempt": 1
+  },
+  {
+    "call": "compose.enhanced.attempt0",
+    "chars": 429,
+    "ok": true,
+    "seconds": 11.102729458
+  },
+  {
+    "call": "compose.enhanced",
+    "n_snippets": 3,
+    "result": "rendered"
+  }
+]

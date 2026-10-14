@@ -1,0 +1,23 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "The Nullspace of the Incidence Matrix"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "graph-tanks",
+      "text": "Add 50 to every tank’s pressure: all five pipe differences stay the same."
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "nullspace-equation",
+      "text": "If $x$ solves $Ax=b$, so does $x+c[1,1,1,1]^T$—just like the $+C$ in calculus."
+    },
+    {
+      "type": "callout",
+      "target_gid": "rank-annotation",
+      "text": "Can five measured differences really be arbitrary?"
+    }
+  ]
+}

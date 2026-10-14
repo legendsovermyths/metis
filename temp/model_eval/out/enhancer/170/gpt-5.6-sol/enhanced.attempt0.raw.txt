@@ -1,0 +1,1 @@
+{"annotations":[{"type":"header","text":"Universal Limits of a CDF"},{"type":"sidenote","target_gid":"label-monotone","text":"The engine is event inclusion: {X ≤ a} ⊆ {X ≤ b} whenever a < b."},{"type":"callout","target_gid":"jump-marker","text":"Because the event uses ≤, which side of this jump contains F(x)?"}]}

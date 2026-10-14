@@ -1,0 +1,50 @@
+{
+  "title": "Tracking Survivors Through a Collapsing Timeline",
+  "steps": [
+    {
+      "name": "What is disappearing, and what must each prefix report?",
+      "label": "Grasp",
+      "brief": "Restate the process in terms of runs: every surviving run loses its leftmost element each second, and equal-colored runs may merge after the runs between them vanish. Emphasize that the lengths are enormous and that an answer is required after every appended compressed pair. Frame the task as maintaining the final deletion time of an evolving run structure."
+    },
+    {
+      "name": "Why not just play the process forward?",
+      "label": "Observation",
+      "brief": "Try the literal simulation, even at the run level, and show that up to 10^9 rounds can be required for one prefix. Point out that repeating this for every prefix also throws away nearly all previous work. Let these two failures motivate processing pairs incrementally through deletion events rather than through seconds."
+    },
+    {
+      "name": "What timestamp should a block carry?",
+      "label": "Deduction",
+      "brief": "Replace second-by-second state with an absolute lifetime: the second at which an effective block would disappear. Assign a fresh run of length a_i the initial lifetime a_i, since it erodes once per second from time zero. Reduce each relevant historical component to just its color and lifetime, leaving only the effect of future merges to resolve."
+    },
+    {
+      "name": "What happens when matching colors finally touch?",
+      "label": "Observation",
+      "brief": "Focus on two same-colored effective blocks with lifetimes x and z whose intervening blocks have all vanished by time y. Show that, when y is no greater than both endpoint lifetimes, their remaining sizes are x-y and z-y at that moment. Derive the merged lifetime y+(x-y)+(z-y)=x+z-y. Give this identity room to land, since it is the crux that turns the physical process into an update rule."
+    },
+    {
+      "name": "How much of the gap matters?",
+      "label": "Deduction",
+      "brief": "Turn the merge condition into a statement about the separator: only the largest lifetime among intervening blocks determines when the gap is fully gone. Show that matching colors can meet exactly when this barrier lifetime is at most both endpoint lifetimes. Conclude that the internal order of already dominated separators need not be simulated."
+    },
+    {
+      "name": "Which old blocks can still influence the future?",
+      "label": "Observation",
+      "brief": "Imagine scanning backward through every stored component whenever a new run arrives, and expose the potential quadratic repetition. Notice that a different-colored suffix component whose lifetime is no greater than the current lifetime disappears before the current component and can never matter independently again. Explain that it may be discarded while its lifetime is retained as the current gap barrier, whereas a longer-lived different color must stop the scan. Let this permanent shadowing point directly toward a pop-once structure."
+    },
+    {
+      "name": "What shape should the surviving history have?",
+      "label": "Deduction",
+      "brief": "Infer a stack of unresolved components whose lifetimes decrease strictly from bottom to top. State that shorter-or-equal suffix components are popped, while reaching the same color triggers the merge formula and may enlarge the current lifetime enough to continue farther left. Justify amortization immediately: every pair is pushed once and can be popped only once."
+    },
+    {
+      "name": "What is the full update for one new pair?",
+      "label": "Conclusion",
+      "brief": "Assemble the method without writing code: begin with current color b_i, lifetime L=a_i, and gap barrier y=0. While the stack top has the same color or has lifetime at most L, pop it; for a matching color first set L to L+top.lifetime-y, then update y with the popped lifetime. Stop at a longer-lived different color, push the resulting component, and preserve the decreasing-lifetime invariant. Read the prefix strength from the bottom of the stack, which holds its maximum lifetime."
+    },
+    {
+      "name": "How do we make the update contest-ready?",
+      "label": "Application",
+      "brief": "Translate the stack update into Rust using 64-bit integers, taking care to subtract the previous barrier before replacing it with the popped lifetime. Trace the first sample through lifetimes 2, then 2, then the merge 3+2-1=4, and finally the shadowing run of lifetime 5. Confirm that the stack bottom produces every prefix answer and that each pair is pushed and popped at most once. State the final bounds as O(n) time and O(n) memory per test case, with total n bounded by 3·10^5."
+    }
+  ]
+}

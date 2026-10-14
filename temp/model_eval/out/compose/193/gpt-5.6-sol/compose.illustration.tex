@@ -1,0 +1,29 @@
+\begin{tikzpicture}
+  \gid{recurrence-heading}{
+    \node at (-4.5, 1.5) [font=\Large\bfseries] {Recurrence relation};
+  }
+  
+  \gid{base-case-formula}{
+    \node at (-4.5, 0.3) [font=\Large] {$T_0 = 0$};
+  }
+  
+  \gid{recurrence-formula}{
+    \node at (-4.5, -0.7) [font=\Large] {$T_n = 2T_{n-1} + 1 \quad (\text{for } n > 0)$};
+  }
+  
+  \gid{closed-form-heading}{
+    \node at (4.5, 1.5) [font=\Large\bfseries] {Closed-form expression};
+  }
+  
+  \gid{closed-form-formula}{
+    \node at (4.5, -0.2) [font=\Large] {$T_n = 2^n - 1$};
+  }
+  
+  \gid{recurrence-to-closed-arrow}{
+    \draw[-{Stealth[length=6mm, width=5mm]}, line width=3pt] (-1.2, -0.2) -- (1.2, -0.2);
+  }
+  
+  \gid{proof-question-mark}{
+    \node at (0, 0.9) [scale=1.5, font=\Huge\bfseries] {?};
+  }
+\end{tikzpicture}

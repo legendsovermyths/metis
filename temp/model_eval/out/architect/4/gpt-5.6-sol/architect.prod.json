@@ -1,0 +1,60 @@
+{
+  "steps": [
+    {
+      "brief": "Restate the problem in Anirudh's terms: the input is run-length encoded with a_i up to 1e9, so the real array can have ~10^14 elements, and we must report the time-to-empty for every one of the n prefixes. Name the two pressures that will shape everything: we may never touch an individual element, and n answers for n nested arrays means the answer must be maintainable under appending one pair at a time. Say what it smells like — an incremental structure over the right end of the array.",
+      "label": "Grasp",
+      "name": "What exactly are we timing?"
+    },
+    {
+      "brief": "Translate the deletion rule out of index language into block language: deleting every s_i with i=1 or s_i ≠ s_{i-1} is exactly 'every maximal run loses its first element'. Conclude the three facts that form our whole vocabulary: each block shrinks by exactly one per second regardless of position, a block of size 1 disappears, and when it disappears its two neighbours become adjacent and fuse if they share a colour. Walk the first sample's chain once so the student sees fusion happen in the wild.",
+      "label": "Observation",
+      "name": "What does one second do to a block?"
+    },
+    {
+      "brief": "Try the move the student would actually try: keep the block list and simulate, jumping to the next event (the smallest block dying) instead of second by second. Admit it is correct, then expose the failure precisely — each event can touch many blocks, there are up to n events per prefix, and the whole thing must be rerun for all n prefixes. Make the shape of the failure the pointer: we are computing an entire evolution when all we ever print is one number per prefix, and the only events that actually change anything are fusions.",
+      "label": "Observation",
+      "name": "Why can't we just simulate it?"
+    },
+    {
+      "brief": "Follow that complaint: since every block loses exactly one element per second, a block needs only a single attribute — the second at which it becomes empty. Define the lifetime l of a block as that death time (equal to its own count a if it never fuses), and conclude that the strength of the array is simply the largest lifetime among its blocks, where a block that fuses inherits the fused block's death time. The problem is now: maintain lifetimes as pairs are appended on the right.",
+      "label": "Deduction",
+      "name": "Can one number per block replace the whole timeline?"
+    },
+    {
+      "brief": "Lifetimes only ever grow through fusion, so interrogate fusion directly: two blocks of the same colour, left one with lifetime x and right one with lifetime z, can only meet once every block strictly between them is gone. Observe that the moment this happens is y = the maximum lifetime among those in-between blocks, and that the meeting only occurs if y is below both x and z — otherwise one of the two dies first and never gets a partner. Keep this beat purely about the condition; the arithmetic is next.",
+      "label": "Observation",
+      "name": "What has to happen before two same-coloured blocks touch?"
+    },
+    {
+      "brief": "Do the small, safe computation the previous beat set up: at time y the left block has x − y elements and the right has z − y, they fuse into one block of x + z − 2y which from then on loses only one per second. Hence the fused block dies at y + (x + z − 2y) = x + z − y. Check it against the second sample's prefix of length 3 (x = 4, z = 4, y = 1 gives 7) so the formula is earned rather than asserted.",
+      "label": "Deduction",
+      "name": "How much is left of them when they finally meet?"
+    },
+    {
+      "brief": "This is the crux — slow down here. We just learned fusion requires everything in between to die first, so ask who among the old blocks could still be someone's future partner: append a new rightmost block of lifetime L, and note that any block to its left with lifetime ≤ L is finished forever, because reaching any future block would require the new block — which outlives it — to vanish first. Conclude that only a chain of strictly decreasing lifetimes from left to right can ever participate again, and that chain is maintained by a stack of (colour, lifetime) pairs.",
+      "label": "Observation",
+      "name": "Which of the old blocks can ever matter again?"
+    },
+    {
+      "brief": "Cash in the invariant 'lifetimes strictly decrease from bottom to top'. Because we pop from the top downward, the maximum lifetime y of the discarded in-between blocks is just the lifetime of the most recently popped one, and the required bound y ≤ min(x, z) holds automatically (y ≤ L by the pop test, y ≤ x by the invariant). Also conclude where the prefix answer lives: everything we ever discarded was dominated by something still present, so the answer is the lifetime sitting at the bottom of the stack.",
+      "label": "Deduction",
+      "name": "What does the surviving chain hand us for free?"
+    },
+    {
+      "brief": "Stress-test the rule on the third sample's full prefix (…, 9 zeros, 1 one, 2 zeros): popping only blocks with lifetime ≤ L stops at the long-lived zero-block and reports 9, but the truth is 10. Diagnose it with the formula from before — the one-element block dies at y = 1, so the 9-block and the 2-block really do fuse into lifetime 9 + 2 − 1 = 10. Draw the correction: a same-coloured top must be fused with even when it outlives L, the counter y resets after a fusion, and since the fused lifetime grew we must keep climbing down the stack.",
+      "label": "Observation",
+      "name": "Is discarding the shadowed blocks the whole rule?"
+    },
+    {
+      "brief": "Assemble the method as a single statement of what happens when pair (a, b) arrives: start with cur = (b, a) and y = 0, then repeatedly, while the top has lifetime ≤ cur.l or shares cur's colour, pop it — fusing via cur.l += top.l − y and resetting y = 0 when colours match, otherwise setting y to the popped lifetime — then push cur and read off the bottom of the stack as this prefix's answer. State plainly why this is the whole algorithm: lifetimes capture all we need, shadowing discards all that can never matter, and the fusion formula handles every event that changes a lifetime. No code in this beat.",
+      "label": "Conclusion",
+      "name": "The append, in one rule"
+    },
+    {
+      "brief": "Turn the rule into actual code (a Vec-based stack of (colour, lifetime) with the bottom element read for each answer), and trace the fourth sample to show 10 10 10 10 10 10 12 15 15 15 appearing, including the 12 produced by a fusion across two popped blocks. Settle the cost: every pair is pushed once and popped once, so the whole test case is O(n) time and O(n) memory, and note that lifetimes reach ~3·10^14, so 64-bit integers are mandatory. Close with the transferable pattern — monotonic stack over death times plus a 'shadowing' dominance argument — and mention the heap/ordered-set O(n log n) variant for contrast.",
+      "label": "Application",
+      "name": "Writing it, trusting it, and the bill"
+    }
+  ],
+  "title": "Death Times, Not Timelines: Growing a Prefix of Collapsing Blocks"
+}

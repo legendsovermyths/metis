@@ -1,0 +1,61 @@
+\begin{tikzpicture}[font=\sffamily]
+
+% Left stack
+\gid{bottom-block}{
+    \draw[thick] (0, 0) rectangle (4, 4);
+    \node[align=center] at (2, 2) {\Large (color: 0,\\[0.5ex] \Large lifetime: 9)};
+}
+
+\gid{red-block}{
+    \draw[thick] (0, 4) rectangle (4, 5);
+    \node at (2, 4.5) {\normalsize (color: 1, lifetime: 1)};
+}
+
+\gid{new-block}{
+    \draw[thick, dashed] (0, 5.5) rectangle (4, 7);
+    \node[align=center] at (2, 6.25) {\Large (color: 0,\\[0.5ex] \Large lifetime: 2)};
+    \draw[->, thick, dashed] (2, 5.4) -- (2, 5.1);
+}
+
+\gid{size-check-note}{
+    \node[right, align=left] at (4.2, 2) {\Large $9 > 2$:\\[0.5ex] \Large rule says stop};
+}
+
+\gid{red-block-crossout}{
+    \draw[ultra thick] (0, 4) -- (4, 5);
+    \draw[ultra thick] (0, 5) -- (4, 4);
+}
+
+\gid{obstacle-label}{
+    \node[right] at (4.2, 4.5) {\Large $y = 1$};
+}
+
+\gid{merge-arrow}{
+    \draw[->, ultra thick] (-0.2, 6.25) .. controls (-2.8, 6.25) and (-2.8, 2) .. (-0.2, 2);
+}
+
+\gid{fusion-formula}{
+    \node[draw, thick, rounded corners, fill=white, inner sep=6pt] at (-2.1, 4.125) {\Large $9 + 2 - 1 = 10$};
+}
+
+% Transition arrow
+\draw[->, double, thick] (7.5, 3.5) -- (8.5, 3.5);
+
+% Right stack (merged)
+\gid{merged-block}{
+    \fill[black, opacity=0.1] (9, 0) rectangle (13, 6);
+    \draw[thick] (9, 0) rectangle (13, 6);
+    \node[align=center] at (11, 3) {\Large \textbf{(color: 0,}\\[0.5ex] \Large \textbf{lifetime: 10)}};
+}
+
+\gid{reset-label}{
+    \node[right, align=left] at (13.2, 3) {\Large $y$ resets\\[0.5ex] \Large to 0};
+}
+
+
+% --- enhancer additions ---
+\coordinate (fig-east) at (current bounding box.east);
+\coordinate (fig-west) at (current bounding box.west);
+\gid{sidenote-1}{\node[name=sidenote-1, anchor=north west, font=\itshape\small, align=left, text width=3.5cm] at ($(fig-east |- gid-merged-block.north) + (28.0pt, -0.0pt)$) {Now use $L=10$ and keep checking the new stack top—this growth can trigger more pops or fusions.};}
+\gid{header-1}{\node[anchor=south, font=\bfseries\large, align=center] at ([yshift=14pt]current bounding box.north) {Same-Color Fusion Overrides the Size Check};}
+\end{tikzpicture}

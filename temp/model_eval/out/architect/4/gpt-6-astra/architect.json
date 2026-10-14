@@ -1,0 +1,50 @@
+{
+  "title": "Following the Boundary Through Time",
+  "steps": [
+    {
+      "name": "What must we know after each append?",
+      "label": "Grasp",
+      "brief": "Restate the process as removing one element from the front of every current maximal run each second. Emphasize that deletions are simultaneous and that newly adjacent equal-colored runs merge afterward. Frame the task as reporting an extinction time after each appended pair, with work proportional to the compressed input rather than the enormous expanded array."
+    },
+    {
+      "name": "Can we simply run the clock?",
+      "label": "Observation",
+      "brief": "Try the honest compressed simulation: decrement every run, remove empty runs, and merge equal-colored neighbors. Use a single run of length 10^9 to show that avoiding expansion still leaves an impossible number of simulated seconds. Identify waiting through uneventful time as the failure, and make disappearance events rather than individual ticks the next target."
+    },
+    {
+      "name": "Which part of the past can a new run depend on?",
+      "label": "Deduction",
+      "brief": "Establish that appending on the right cannot change when any existing element is deleted, because its deletion decision depends only on itself and its predecessor in the current array. Conclude that the appended run interacts with the old prefix only through the color exposed at that prefix's right boundary over time. Use this causal separation to ask for a compact history of boundary changes instead of repeatedly simulating the entire prefix."
+    },
+    {
+      "name": "What does the right boundary reveal over time?",
+      "label": "Observation",
+      "brief": "Follow the boundary of the prefix [(2,0),(1,1)]: color 1 remains exposed until time 1, then color 0 until time 2. Contrast it with [(2,2),(1,1)] to show that the same strength and identical current last run can conceal different future neighbors. Record the exposed colors together with their absolute disappearance times. Highlight that successive boundary states encountered as time advances end progressively later, giving the history an order worth exploiting."
+    },
+    {
+      "name": "How much of that history should we retain?",
+      "label": "Deduction",
+      "brief": "Translate the ordered history into stack entries (color, lifetime), with the nearest boundary candidate on top and lifetimes nonincreasing from bottom to top. Treat each lifetime as an absolute disappearance horizon of an effective boundary state, not necessarily an original run length, and allow ties as redundant zero-duration states. Deduce that an append need only inspect the top end, since those states must be passed before farther-left states can matter. Introduce y, initially zero, as the latest disappearance time among states already passed, so contact with a matching color can be timed correctly."
+    },
+    {
+      "name": "How much time does meeting the same color actually gain?",
+      "label": "Observation",
+      "brief": "Isolate the contact event the history was built to find: the new tail reaches an old boundary interval of the same color after intervening states disappear at time y. Let x be that interval's absolute ending time and z the new tail's current projected disappearance time, and require the new tail to survive until contact. Derive the crux z + (x - y) = x + z - y by showing that the new tail is protected throughout the matching-color interval, rather than adding two horizons that both include elapsed time. Anchor the calculation with the first sample's x = 2, z = 3, y = 1, without yet assembling the complete algorithm."
+    },
+    {
+      "name": "When is it safe to stop looking left?",
+      "label": "Deduction",
+      "brief": "Derive the different-color transition: if the top lifetime x is smaller than the candidate lifetime z, pop that shadowed state and set y = x. Derive the matching-color transition: replace z with z + x - y, pop the top, and set y to its old lifetime x before inspecting the next state. Stop at a different-colored top with x >= z, retaining equality so simultaneous disappearance does not create a false opportunity to merge. Justify permanent removal through the boundary-history interpretation, and show that pushing the resulting candidate restores nonincreasing lifetimes."
+    },
+    {
+      "name": "How do these local decisions answer every prefix?",
+      "label": "Conclusion",
+      "brief": "Assemble the method into one left-to-right scan: initialize the new candidate from each input pair, reset y to zero, apply the justified pop-or-merge transitions, and push the resulting state. Read the prefix strength from the bottom entry, whose lifetime is the latest disappearance horizon in the maintained history. State the inductive correctness argument through the preserved boundary-history invariant, keeping implementation and performance accounting for the final beat."
+    },
+    {
+      "name": "Does the method survive implementation and edge cases?",
+      "label": "Application",
+      "brief": "Translate the method into a vector-backed stack, preserving each popped lifetime before updating the candidate or y. Trace the first sample to obtain 2, 2, 4, 5, showing both the matching-color extension and the final different-color shadowing. Check equal-lifetime blockers and cascading merges, and use 64-bit arithmetic because accumulated lifetimes are bounded by the sum of run lengths, which can reach 3 × 10^14. Prove O(n) time and O(n) space by charging each stack entry for one push and at most one pop, despite the nested while loop."
+    }
+  ]
+}

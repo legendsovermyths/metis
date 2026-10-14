@@ -1,0 +1,24 @@
+[
+  {
+    "call": "illustration.attempt0",
+    "chars": 3891,
+    "ok": true,
+    "seconds": 64.768669042
+  },
+  {
+    "attempt": 0,
+    "call": "illustration",
+    "render_error": "Agent error: latex compilation failed:\n(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsa.fd\nFile: umsa.fd 2013/01/14 v3.01 AMS symbols A\n)\nLaTeX Font Info:    Trying to load font information for U+msb on input line 96.\n\n\n(/usr/local/texlive/2026basic/texmf-dist/tex/latex/amsfonts/umsb.fd\nFile: umsb.fd 2013/01/14 v3.01 AMS symbols B\n)\n! Undefined control sequence.\n<argument> \\pgf@matrix@last@nextcell@options \n                                             \nl.125 }\n       \nThe control sequence at the end of the top line\nof your error message was never \\def'ed. If you have\nmisspelled"
+  },
+  {
+    "call": "illustration.attempt1",
+    "chars": 4281,
+    "ok": true,
+    "seconds": 45.727946375
+  },
+  {
+    "call": "illustration",
+    "library": "tikz",
+    "rendered_on_attempt": 1
+  }
+]

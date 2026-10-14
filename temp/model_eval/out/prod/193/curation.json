@@ -1,0 +1,178 @@
+{
+  "dialogue": "Let's put some formal names to the tools we are using. \n\nThat step-by-step equation we built—where we defined $T_n = 2T_{n-1} + 1$, along with the starting point $T_0 = 0$—mathematicians call this a **recurrence** or a **recurrence relation**.\n\nAs someone who writes Rust, you know this intimately as a recursive function. It requires two things to be mathematically complete: a boundary value (your base case, so the logic doesn't loop forever backwards), and an equation for the general value in terms of earlier ones.\n\nBut as we just noticed, computing a recurrence for a large $n$ is painfully inefficient. To find the 64th term, you have to compute the 63rd, which requires the 62nd, and so on. That's why we want what we just guessed: $T_n = 2^n - 1$. This is what we call a **closed-form expression**. A closed form lets you compute the answer directly, independent of any previous terms.\n\nIn discrete math, this is the core workflow: you model a complex system by setting up a recurrence relation, and then you try to solve that recurrence to find the neat, efficient closed form.\n\nWe have our recurrence, and we have our suspected closed form. But a strong hunch based on $n=6$ is not a mathematical truth. How do we rigorously prove that our closed form satisfies the recurrence for every $n$ up to infinity?",
+  "parts": [
+    {
+      "id": "heading-recurrence",
+      "desc": "Heading 'Recurrence Relation'"
+    },
+    {
+      "id": "formula-base-case",
+      "desc": "Base case equation T_0 = 0"
+    },
+    {
+      "id": "formula-recurrence",
+      "desc": "Recurrence equation T_n = 2T_{n-1} + 1 for n > 0"
+    },
+    {
+      "id": "label-base-case",
+      "desc": "Annotation 'boundary value / base case' beside T_0 = 0"
+    },
+    {
+      "id": "label-general-step",
+      "desc": "Annotation 'general value from earlier ones' beside the recurrence"
+    },
+    {
+      "id": "heading-closed-form",
+      "desc": "Heading 'Closed-Form Expression'"
+    },
+    {
+      "id": "formula-closed-form",
+      "desc": "Closed-form equation T_n = 2^n - 1"
+    },
+    {
+      "id": "arrow-solve",
+      "desc": "Bold arrow pointing from the recurrence to the closed form"
+    },
+    {
+      "id": "question-mark",
+      "desc": "Large question mark floating above the arrow"
+    }
+  ],
+  "segments": [
+    {
+      "text": "Let's put some formal names to the tools we are using. \n\nThat step-by-step equation we built—where we defined $T_n = 2T_{n-1} + 1$, along with the starting point $T_0 = 0$—mathematicians call this a **recurrence** or a **recurrence relation**.",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "heading-recurrence",
+            "formula-base-case",
+            "formula-recurrence"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "heading-recurrence",
+            "formula-base-case",
+            "formula-recurrence"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "\n\nAs someone who writes Rust, you know this intimately as a recursive function. It requires two things to be mathematically complete: a boundary value (your base case, so the logic doesn't loop forever backwards), and an equation for the general value in terms of earlier ones.",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "label-base-case",
+            "label-general-step"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "label-base-case",
+            "label-general-step",
+            "formula-base-case",
+            "formula-recurrence"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "\n\nBut as we just noticed, computing a recurrence for a large $n$ is painfully inefficient. To find the 64th term, you have to compute the 63rd, which requires the 62nd, and so on.",
+      "actions": [
+        {
+          "type": "focus",
+          "targets": [
+            "formula-recurrence"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": " That's why we want what we just guessed: $T_n = 2^n - 1$. This is what we call a **closed-form expression**. A closed form lets you compute the answer directly, independent of any previous terms.",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "heading-closed-form",
+            "formula-closed-form"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "heading-closed-form",
+            "formula-closed-form"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "formula-closed-form"
+          ],
+          "duration_ms": 500
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "\n\nIn discrete math, this is the core workflow: you model a complex system by setting up a recurrence relation, and then you try to solve that recurrence to find the neat, efficient closed form.",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "arrow-solve"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "arrow-solve",
+            "formula-recurrence",
+            "formula-closed-form"
+          ]
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    },
+    {
+      "text": "\n\nWe have our recurrence, and we have our suspected closed form. But a strong hunch based on $n=6$ is not a mathematical truth. How do we rigorously prove that our closed form satisfies the recurrence for every $n$ up to infinity?",
+      "actions": [
+        {
+          "type": "reveal",
+          "targets": [
+            "question-mark"
+          ]
+        },
+        {
+          "type": "focus",
+          "targets": [
+            "question-mark",
+            "arrow-solve"
+          ]
+        },
+        {
+          "type": "pulse",
+          "targets": [
+            "question-mark"
+          ],
+          "duration_ms": 600
+        }
+      ],
+      "transcript": null,
+      "audio_path": null
+    }
+  ]
+}

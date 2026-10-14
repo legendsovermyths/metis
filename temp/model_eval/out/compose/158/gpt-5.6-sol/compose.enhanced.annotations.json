@@ -1,0 +1,22 @@
+{
+  "annotations": [
+    {
+      "type": "header",
+      "text": "The Nullspace of the Incidence Matrix"
+    },
+    {
+      "type": "callout",
+      "target_gid": "row-cancellation-highlight",
+      "text": "What happens when you add the columns?"
+    },
+    {
+      "type": "sidenote",
+      "target_gid": "rank-formula",
+      "text": "More generally, a connected network with n tanks has incidence-matrix rank n − 1."
+    },
+    {
+      "type": "footer",
+      "text": "Pressure differences determine absolute pressures only up to a shared additive constant—just like +C in calculus."
+    }
+  ]
+}

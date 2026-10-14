@@ -1,0 +1,33 @@
+\begin{tikzpicture}[x=1cm, y=1cm, font=\Large]
+
+% Top-Left Section: Recurrence
+\gid{recurrence-heading}{
+    \node[anchor=west] (rec-head) at (-6.5, 4.5) {\textbf{Recurrence relation}};
+}
+\gid{base-value}{
+    \node[anchor=west] (base) at (-5.5, 3) {$T_0 = 0$};
+}
+\gid{recurrence-formula}{
+    \node[anchor=west] (rec-form) at (-5.5, 1.5) {$T_n = 2T_{n-1} + 1 \quad (\text{for } n > 0)$};
+}
+
+% Bottom-Right Section: Closed form
+\gid{closed-form-heading}{
+    \node[anchor=east] (cf-head) at (6.5, -2) {\textbf{Closed-form expression}};
+}
+\gid{closed-form-formula}{
+    \node[anchor=east] (cf-form) at (5.5, -3.5) {$T_n = 2^n - 1$};
+}
+
+% Arrow
+\gid{solution-arrow}{
+    \draw[-{Stealth[length=6mm,width=5mm]}, line width=2.5pt] 
+        (-0.5, 0.5) to[out=-45, in=135] (2.5, -1.0);
+}
+
+% Question mark
+\gid{proof-question}{
+    \node[scale=2.5] at (1.5, 0.8) {\Huge \textbf{?}};
+}
+
+\end{tikzpicture}

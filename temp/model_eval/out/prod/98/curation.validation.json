@@ -1,0 +1,12 @@
+{
+  "actions": {},
+  "dialogue_len_delta": 0,
+  "dialogue_unchanged_from_input": true,
+  "n_parts": 0,
+  "n_segments": 1,
+  "naming_violations": [],
+  "parts_never_revealed": [],
+  "parts_revealed_twice": [],
+  "segments_concat_equals_dialogue": true,
+  "unknown_ids": []
+}

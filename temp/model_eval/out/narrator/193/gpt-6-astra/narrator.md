@@ -1,0 +1,24 @@
+# A Rule and a Starting Point
+
+First, a correction to my apocalyptic enthusiasm: 585 billion years is an enormous timescale, but that calculation doesn't prove the world will have ended!
+
+Now, let's give our two mathematical objects their proper roles. On the left is what we **proved from the puzzle's rules**:
+
+$$T_0 = 0, \qquad T_n = 2T_{n-1}+1 \quad (n\geq 1).$$
+
+This is a **recurrence relation**: an equation expressing a sequence's terms using earlier terms, together with enough starting information to determine the sequence. Here, each term depends only on its immediate predecessor.
+
+The starting value matters. “Double the previous number and add one” isn't a complete specification. Start at $0$, and you get $0,1,3,7,\ldots$. Start at $1$, and you get $1,3,7,15,\ldots$. Same update rule; different values at each index. Think of a loop body without its initialization.
+
+Together, our starting value and update rule determine **exactly one sequence**: $T_0$ fixes $T_1$, which fixes $T_2$, and so on.
+
+On the right is our candidate **closed form**:
+
+$$T_n = 2^n-1.$$
+
+It gives the value directly in terms of $n$, without referring to previous terms. But it remains a conjecture.
+
+So here's our next move: check that this candidate starts correctly, then prove that whenever it matches one term, the recurrence forces it to match the next. Could those two checks settle infinitely many cases?
+
+---
+**Blackboard:** clear the board. draw two separated panels. title the left panel 'established recurrence' and write t_0 = 0 and t_n = 2t_{n-1} + 1 for n >= 1. underneath, draw the chain t_0 = 0 → t_1 = 1 → t_2 = 3 → t_3 = 7, labeling each arrow '×2 + 1'. below that, write 'starting value + update rule determine the sequence'. title the right panel 'candidate closed form' and write t_n = 2^n - 1 for n >= 0, with 'conjecture: agrees with tested cases' underneath. between the panels draw a connecting line labeled 'proof needed'. along the bottom write two questions: 'same starting value?' and 'does agreement pass to the next term?' do not present the candidate formula as proved.
