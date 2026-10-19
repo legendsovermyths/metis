@@ -75,7 +75,6 @@ const settledCursor = (segments: Segment[]): Cursor => {
 };
 const NARRATION_RATE = 1.3;
 
-const SVG_NS = "http://www.w3.org/2000/svg";
 
 /// Finds the first shape element (path/rect/circle/…) inside a group, for morph.
 function firstShape(group: SVGElement): SVGGraphicsElement | null {
@@ -169,102 +168,6 @@ function dispatchPulse(
   }
 }
 
-/// Ensure a shared `<marker id="metis-arrow">` exists in the SVG for connect arrowheads.
-function ensureArrowMarker(svgRoot: SVGSVGElement) {
-  if (svgRoot.querySelector("#metis-arrow")) return;
-  let defs = svgRoot.querySelector("defs");
-  if (!defs) {
-    defs = document.createElementNS(SVG_NS, "defs");
-    svgRoot.insertBefore(defs, svgRoot.firstChild);
-  }
-  const marker = document.createElementNS(SVG_NS, "marker");
-  marker.setAttribute("id", "metis-arrow");
-  marker.setAttribute("viewBox", "0 0 10 10");
-  marker.setAttribute("refX", "9");
-  marker.setAttribute("refY", "5");
-  marker.setAttribute("markerWidth", "6");
-  marker.setAttribute("markerHeight", "6");
-  marker.setAttribute("orient", "auto-start-reverse");
-  const arrowPath = document.createElementNS(SVG_NS, "path");
-  arrowPath.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
-  arrowPath.setAttribute("fill", "#000");
-  marker.appendChild(arrowPath);
-  defs.appendChild(marker);
-}
-
-/// Center of `el`'s bbox mapped into the root SVG's user space, where connect arrows live.
-function centerInRoot(svgRoot: SVGSVGElement, el: SVGGraphicsElement): DOMPoint | null {
-  let box: DOMRect;
-  try {
-    box = el.getBBox();
-  } catch {
-    return null;
-  }
-  const elCtm = el.getScreenCTM();
-  const rootCtm = svgRoot.getScreenCTM();
-  if (!elCtm || !rootCtm) return null;
-  const center = new DOMPoint(box.x + box.width / 2, box.y + box.height / 2);
-  return center.matrixTransform(rootCtm.inverse().multiply(elCtm));
-}
-
-/// Clears any previously-drawn runtime connects, then redraws all past connects
-/// up to and including the current segment. Idempotent on re-run.
-function rebuildConnects(
-  root: HTMLDivElement,
-  connects: Array<{ from: string; to: string; duration_ms: number }>,
-  tl: gsap.core.Timeline,
-  instant: boolean,
-) {
-  const svgRoot = root.querySelector("svg") as SVGSVGElement | null;
-  if (!svgRoot) return;
-
-  // Remove any existing runtime connects from prior renders.
-  svgRoot.querySelectorAll("[data-metis-connect]").forEach((n) => n.remove());
-  if (connects.length === 0) return;
-
-  ensureArrowMarker(svgRoot);
-
-  for (const { from, to, duration_ms } of connects) {
-    const fromEl = svgRoot.querySelector(`#${CSS.escape(from)}`) as SVGGraphicsElement | null;
-    const toEl = svgRoot.querySelector(`#${CSS.escape(to)}`) as SVGGraphicsElement | null;
-    if (!fromEl || !toEl) continue;
-    const fromCenter = centerInRoot(svgRoot, fromEl);
-    const toCenter = centerInRoot(svgRoot, toEl);
-    if (!fromCenter || !toCenter) continue;
-    const { x: fx, y: fy } = fromCenter;
-    const { x: tx, y: ty } = toCenter;
-
-    const arrow = document.createElementNS(SVG_NS, "path");
-    arrow.setAttribute("d", `M ${fx} ${fy} L ${tx} ${ty}`);
-    arrow.setAttribute("stroke", "#000");
-    arrow.setAttribute("stroke-width", "1.5");
-    arrow.setAttribute("fill", "none");
-    arrow.setAttribute("marker-end", "url(#metis-arrow)");
-    arrow.setAttribute("data-metis-connect", `${from}--${to}`);
-    svgRoot.appendChild(arrow);
-
-    let len = 0;
-    try {
-      len = arrow.getTotalLength();
-    } catch {
-      len = 0;
-    }
-    if (len > 0 && isFinite(len)) {
-      arrow.style.strokeDasharray = String(len);
-      if (instant) {
-        arrow.style.strokeDashoffset = "0";
-      } else {
-        arrow.style.strokeDashoffset = String(len);
-        tl.to(
-          arrow,
-          { strokeDashoffset: 0, duration: duration_ms / 1000, ease: "power2.out" },
-          0,
-        );
-      }
-    }
-  }
-}
-
 function AnimatedBlackboard({
   svgUrl,
   elements,
@@ -274,7 +177,6 @@ function AnimatedBlackboard({
   revealing,
   settled,
   currentActions,
-  pastConnects,
 }: {
   svgUrl: string;
   elements: ElementDescriptor[];
@@ -284,7 +186,6 @@ function AnimatedBlackboard({
   revealing: boolean;
   settled: boolean;
   currentActions: SegmentAction[];
-  pastConnects: Array<{ from: string; to: string; duration_ms: number }>;
 }) {
   const [svgText, setSvgText] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -337,7 +238,7 @@ function AnimatedBlackboard({
     const root = rootRef.current;
     const hasFocus = focused.size > 0;
 
-    // Revisit / finished reveal: show final opacities and static connects only — do not re-run
+    // Revisit / finished reveal: show final opacities only — do not re-run
     // segment one-shots (pulse, morph, trace) or re-play staggered draws.
     if (settled) {
       for (const el of elements) {
@@ -362,11 +263,7 @@ function AnimatedBlackboard({
           }
         }
       }
-      const tlInstant = gsap.timeline();
-      rebuildConnects(root, pastConnects, tlInstant, true);
-      return () => {
-        tlInstant.kill();
-      };
+      return;
     }
 
     const tl = gsap.timeline();
@@ -430,10 +327,7 @@ function AnimatedBlackboard({
         });
       }
 
-      // 3. Rebuild all past connects (runtime-injected arrows that persist within a dialogue).
-      rebuildConnects(root, pastConnects, tl, false);
-
-      // 4. Dispatch motion actions for the CURRENT segment (morph, trace, pulse).
+      // 3. Dispatch motion actions for the CURRENT segment (morph, trace, pulse).
       for (const action of currentActions) {
         if (action.type === "morph") {
           dispatchMorph(root, action, tl);
@@ -449,7 +343,7 @@ function AnimatedBlackboard({
     return () => {
       tl.kill();
     };
-  }, [svgText, elements, revealed, focused, justRevealed, revealing, settled, currentActions, pastConnects]);
+  }, [svgText, elements, revealed, focused, justRevealed, revealing, settled, currentActions]);
 
   if (!svgText) return null;
 
@@ -966,14 +860,10 @@ export default function TeachingPage() {
     const focused = new Set<string>();
     const justRevealed = new Set<string>();
     const currentActions: SegmentAction[] = [];
-    const pastConnects: Array<{ from: string; to: string; duration_ms: number }> = [];
     for (let i = 0; i <= cursor.segmentIndex; i++) {
       for (const action of segments[i]?.actions ?? []) {
         if (action.type === "reveal") {
           for (const id of action.targets) revealed.add(id);
-        }
-        if (action.type === "connect") {
-          pastConnects.push({ from: action.from, to: action.to, duration_ms: action.duration_ms });
         }
       }
     }
@@ -986,7 +876,7 @@ export default function TeachingPage() {
         for (const id of action.targets) justRevealed.add(id);
       }
     }
-    return { revealed, focused, justRevealed, currentActions, pastConnects };
+    return { revealed, focused, justRevealed, currentActions };
   }, [cursor.segmentIndex, segments]);
 
   const fetchNextDialogue = useCallback(async (): Promise<boolean> => {
@@ -1529,7 +1419,7 @@ export default function TeachingPage() {
           cursor.typedLen >= (segments[lastSeg]?.text.length ?? 0);
         const boardElements = currentDialogue?.blackboard?.elements ?? [];
 
-        const { revealed, focused, justRevealed, currentActions, pastConnects } = revealFocusSets;
+        const { revealed, focused, justRevealed, currentActions } = revealFocusSets;
 
         const hasBoard = Boolean(currentImageUrl);
         const boardOnly = immersive && hasBoard;
@@ -1595,7 +1485,6 @@ export default function TeachingPage() {
                       revealing
                       settled={isSettled}
                       currentActions={currentActions}
-                      pastConnects={pastConnects}
                     />
                   ) : (
                     <AnimatedBlackboard
@@ -1607,7 +1496,6 @@ export default function TeachingPage() {
                       revealing={false}
                       settled={false}
                       currentActions={[]}
-                      pastConnects={[]}
                     />
                   )}
                 </div>

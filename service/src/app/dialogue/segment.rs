@@ -21,12 +21,6 @@ pub enum SegmentAction {
         #[serde(default = "default_to_pct")]
         to_pct: f64,
     },
-    Connect {
-        from: String,
-        to: String,
-        #[serde(default = "default_connect_ms")]
-        duration_ms: u32,
-    },
     Pulse {
         targets: Vec<String>,
         #[serde(default = "default_pulse_ms")]
@@ -47,6 +41,5 @@ pub struct Segment {
 
 fn default_morph_ms() -> u32 { 2000 }
 fn default_trace_ms() -> u32 { 2000 }
-fn default_connect_ms() -> u32 { 800 }
 fn default_pulse_ms() -> u32 { 400 }
 fn default_to_pct() -> f64 { 1.0 }

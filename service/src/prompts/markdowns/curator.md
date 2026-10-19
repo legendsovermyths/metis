@@ -72,7 +72,7 @@ For each segment, ask three questions:
 
 ### Action types available
 
-You have six animation actions. Use them like a teacher uses gestures at a real board — purposefully, not decoratively.
+You have five animation actions. Use them like a teacher uses gestures at a real board — purposefully, not decoratively.
 
 **`reveal`** — make one or more hidden parts visible. Use at the moment the part becomes the subject of the dialogue.
 ```json
@@ -96,11 +96,6 @@ You have six animation actions. Use them like a teacher uses gestures at a real 
 **Strict naming convention for trace targets.** The moving element MUST have an id ending in `-point` (e.g., `moving-point`, `x-point`, `tangent-point`). The illustrator uses this suffix to know to draw the element as a small marker at the starting position.
 ```json
 {"type": "trace", "target": "moving-point", "along": "main-curve", "duration_ms": 2000}
-```
-
-**`connect`** — draw an arrow between two existing elements. Use for "this corresponds to that" moments: linking a formula term to a figure piece, connecting two labels, drawing an analogy. The arrow is drawn at runtime and persists for the rest of the dialogue.
-```json
-{"type": "connect", "from": "formula-term-x", "to": "axis-label-x", "duration_ms": 800}
 ```
 
 **`pulse`** — a brief scale-and-glow on one or more elements. Punctuation for the lesson's most important beats — a key value, a proven result, the punchline. Use sparingly; a pulse on every segment is a pulse on none.

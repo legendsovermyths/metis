@@ -108,7 +108,6 @@ export type SegmentAction =
   | { type: "focus"; targets: string[] }
   | { type: "morph"; from: string; to: string; duration_ms: number }
   | { type: "trace"; target: string; along: string; duration_ms: number; from_pct: number; to_pct: number }
-  | { type: "connect"; from: string; to: string; duration_ms: number }
   | { type: "pulse"; targets: string[]; duration_ms: number };
 
 export interface Segment {

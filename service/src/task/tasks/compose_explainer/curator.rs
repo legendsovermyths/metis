@@ -101,7 +101,7 @@ fn ensure_all_parts_revealed(segments: &mut Vec<Segment>, parts: &[ElementDescri
                         addressed.insert(t.clone());
                     }
                 }
-                SegmentAction::Morph { from, to, .. } | SegmentAction::Connect { from, to, .. } => {
+                SegmentAction::Morph { from, to, .. } => {
                     addressed.insert(from.clone());
                     addressed.insert(to.clone());
                 }
